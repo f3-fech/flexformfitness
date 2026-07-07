@@ -1,0 +1,2451 @@
+---
+import { db } from '../../lib/firebase';
+import type { Product, Order, ProductCollection } from '../../types';
+import { getGeneralSettings } from '../../lib/settings';
+import Stripe from 'stripe';
+
+export const prerender = false; // Server-rendered to check auth and fetch live data
+
+const settings = await getGeneralSettings();
+const popularCountries = ['ES', 'FR', 'DE', 'IT', 'PT', 'GB', 'US', 'CA', 'MX'];
+const otherCountries = settings.markets.filter((c) => !popularCountries.includes(c));
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-06-20' as any,
+});
+
+let promotionCodes: Stripe.PromotionCode[] = [];
+try {
+  const promoCodesSnap = await stripe.promotionCodes.list({ active: true, limit: 100, expand: ['data.coupon'] });
+  promotionCodes = promoCodesSnap.data;
+} catch (err) {
+  console.error('Error fetching Stripe promotion codes for dashboard:', err);
+}
+
+// Fetch all products
+let products: Product[] = [];
+try {
+  const productsSnap = await db.collection('products').orderBy('createdAt', 'desc').get();
+  products = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+} catch (err) {
+  console.error('Error fetching products for dashboard:', err);
+}
+
+// Fetch all orders
+let orders: Order[] = [];
+try {
+  const ordersSnap = await db.collection('orders').orderBy('createdAt', 'desc').get();
+  orders = ordersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Order);
+} catch (err) {
+  console.error('Error fetching orders for dashboard:', err);
+}
+
+// Fetch all collections
+let collections: ProductCollection[] = [];
+try {
+  const collectionsSnap = await db.collection('collections').orderBy('createdAt', 'desc').get();
+  collections = collectionsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ProductCollection);
+} catch (err) {
+  console.error('Error fetching collections for dashboard:', err);
+}
+
+// Calculate metrics for dashboard analytics
+const paidOrders = orders.filter((o) => o.paymentStatus === 'paid');
+const totalRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+const pendingShipmentsCount = paidOrders.filter((o) => o.shippingStatus === 'pending').length;
+const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paidOrders.length) : 0;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de Administración | FLEX FORM FITNESS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-50 text-slate-900 min-h-screen font-sans antialiased flex flex-col w-full">
+    
+    <!-- Navbar -->
+    <header class="w-full bg-white border-b border-slate-200 py-4 px-6 md:px-8">
+      <div class="w-full flex justify-between items-center">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2 group">
+          {settings.logoUrl ? (
+            <img src={settings.logoUrl} alt="FLEX FORM FITNESS" class="h-8 w-auto object-contain" />
+          ) : (
+            <div class="flex flex-col">
+              <span class="text-xl md:text-2xl font-black italic tracking-tighter text-slate-950 uppercase leading-none">
+                FLEX <span class="text-rose-600">FORM</span>
+              </span>
+              <span class="text-[8px] font-extrabold tracking-[0.25em] text-slate-400 uppercase leading-none mt-0.5">
+                FITNESS · ADMIN
+              </span>
+            </div>
+          )}
+        </a>
+
+        <!-- Logged in user info & logout -->
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-500 font-semibold hidden sm:inline mr-1">
+            Admin: {Astro.locals.user?.email || 'Activo'}
+          </span>
+          <button
+            type="button"
+            id="publish-changes-btn"
+            class="px-4 py-2 border rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-3xs flex items-center gap-2"
+          >
+            <span class="w-2 h-2 rounded-full transition-all" id="publish-badge"></span>
+            <span id="publish-btn-text">Publicado</span>
+          </button>
+          <a
+            href="/admin/logout"
+            class="px-4 py-2 bg-white border border-slate-200 hover:bg-rose-600 hover:border-rose-600 hover:text-white text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-3xs"
+          >
+            Cerrar Sesión
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full flex-grow p-6 md:p-8 max-w-full px-6 md:px-10">
+      
+      <!-- Top Overview Header -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 class="text-3xl font-black italic tracking-tight text-slate-950 uppercase">
+            Panel de Control
+          </h1>
+          <p class="text-slate-500 text-sm mt-1">Administra el catálogo de productos y gestiona los pedidos de la tienda.</p>
+        </div>
+      </div>
+
+      <!-- Metrics Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+          <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Ingresos Totales</span>
+          <span class="text-xl sm:text-2xl font-bold tracking-tight text-emerald-600 font-mono">
+            ${(totalRevenue / 100).toFixed(2)}
+          </span>
+        </div>
+        <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+          <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Pedidos Pagados</span>
+          <span class="text-xl sm:text-2xl font-bold tracking-tight text-slate-950">
+            {paidOrders.length}
+          </span>
+        </div>
+        <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+          <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Pedidos por Enviar</span>
+          <span class="text-xl sm:text-2xl font-bold tracking-tight text-amber-600">
+            {pendingShipmentsCount}
+          </span>
+        </div>
+        <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+          <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Ticket Medio</span>
+          <span class="text-xl sm:text-2xl font-bold tracking-tight text-slate-950 font-mono">
+            ${(averageOrderValue / 100).toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      <!-- Tab Buttons Navigation -->
+      <div class="flex border-b border-slate-200 mb-8 gap-6 text-sm font-bold tracking-wider">
+        <button
+          type="button"
+          id="tab-products-btn"
+          class="pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all"
+        >
+          Productos
+        </button>
+        <button
+          type="button"
+          id="tab-collections-btn"
+          class="pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all"
+        >
+          Colecciones
+        </button>
+        <button
+          type="button"
+          id="tab-orders-btn"
+          class="pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all"
+        >
+          Pedidos
+        </button>
+        <button
+          type="button"
+          id="tab-settings-btn"
+          class="pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all"
+        >
+          Configuración
+        </button>
+      </div>
+
+      <!-- TAB: PRODUCTS SECTION -->
+      <section id="section-products" class="w-full">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wider">Catálogo de Artículos</h2>
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <input
+              type="text"
+              id="search-products"
+              placeholder="Buscar por título o slug..."
+              class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs placeholder-slate-400 focus:outline-none focus:border-rose-600 w-full sm:w-64 shadow-2xs"
+            />
+            <button
+              type="button"
+              id="open-new-product-modal"
+              class="px-4 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 flex items-center gap-1.5 shadow-md shrink-0"
+            >
+              <span>+ Nuevo Producto</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Products Table -->
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-2xs font-extrabold tracking-widest uppercase border-b border-slate-200">
+                  <th class="p-4 pl-6">Imagen</th>
+                  <th class="p-4">Producto</th>
+                  <th class="p-4">Precio Base</th>
+                  <th class="p-4">Stock General</th>
+                  <th class="p-4">Variantes</th>
+                  <th class="p-4 text-right pr-6">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                {products.length === 0 ? (
+                  <tr>
+                    <td colspan="6" class="p-8 text-center text-slate-400 font-medium">
+                      No hay productos registrados en la tienda.
+                    </td>
+                  </tr>
+                ) : (
+                  products.map((product) => (
+                    <tr class="product-row hover:bg-slate-50 transition-colors" data-title={product.title.toLowerCase()} data-slug={product.slug.toLowerCase()}>
+                      <td class="p-4 pl-6">
+                        <div class="w-12 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                          <img src={product.images[0]} alt={product.title} class="w-full h-full object-cover" />
+                        </div>
+                      </td>
+                      <td class="p-4">
+                        <span class="block font-bold text-slate-900 text-sm leading-tight">{product.title}</span>
+                        <span class="block text-slate-400 text-3xs font-mono uppercase tracking-wider mt-0.5">Slug: {product.slug}</span>
+                      </td>
+                      <td class="p-4 font-semibold text-slate-800">
+                        ${(product.price / 100).toFixed(2)}
+                      </td>
+                      <td class="p-4 font-mono font-bold">
+                        <span class={product.stock <= 5 ? "text-amber-600" : "text-slate-600"}>
+                          {product.stock} uds
+                        </span>
+                      </td>
+                      <td class="p-4">
+                        {product.variants && product.variants.length > 0 ? (
+                          <div class="flex flex-wrap gap-1">
+                            {product.variants.map((v) => (
+                              <span class="px-2 py-0.5 rounded bg-slate-50 text-[10px] text-slate-600 border border-slate-200 font-semibold shadow-3xs">
+                                {v.name} (${(v.price / 100).toFixed(0)}) · {v.stock}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span class="text-slate-400 italic">Sin variantes</span>
+                        )}
+                      </td>
+                      <td class="p-4 text-right pr-6 flex justify-end gap-2 items-center">
+                        <button
+                          type="button"
+                          class="edit-product-btn px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-3xs font-bold text-slate-700 uppercase tracking-wider transition-colors shrink-0 shadow-3xs"
+                          data-product={JSON.stringify(product)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="delete-product-btn px-3 py-1.5 bg-rose-50 hover:bg-rose-650 text-rose-650 hover:text-white border border-rose-100 hover:border-rose-600 rounded-lg text-3xs font-bold uppercase tracking-wider transition-colors shrink-0"
+                          data-product-id={product.id}
+                          data-product-title={product.title}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: COLLECTIONS SECTION -->
+      <section id="section-collections" class="w-full hidden flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wider">Escritorio de Colecciones</h2>
+            <p class="text-3xs text-slate-400 uppercase tracking-widest mt-1">Arrastra productos de la barra lateral y suéltalos en las carpetas para clasificarlos.</p>
+          </div>
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <input
+              type="text"
+              id="search-collections"
+              placeholder="Buscar carpeta..."
+              class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs placeholder-slate-400 focus:outline-none focus:border-rose-600 w-full sm:w-48 shadow-2xs"
+            />
+            <button
+              type="button"
+              id="open-new-collection-modal"
+              class="px-4 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 flex items-center gap-1.5 shadow-md shrink-0"
+            >
+              <span>+ Nueva Carpeta</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Workspace Workspace (Split layout) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          <!-- LEFT AREA: Windows Desktop Grid (Col span 8) -->
+          <div class="lg:col-span-8 bg-white border border-slate-200 rounded-3xl p-6 min-h-[55vh] relative flex flex-col gap-6 shadow-sm">
+            <!-- Grid of amber folders -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6" id="collections-desktop">
+              {collections.map((col) => (
+                <div 
+                  class="collection-folder group flex flex-col items-center justify-center p-4 rounded-2xl border border-transparent hover:border-slate-200/80 hover:bg-slate-50/50 cursor-pointer transition-all duration-200 select-none text-center"
+                  data-id={col.id}
+                  data-collection-slug={col.slug}
+                  data-collection-json={JSON.stringify(col)}
+                  data-title={col.title.toLowerCase()}
+                  data-slug={col.slug.toLowerCase()}
+                >
+                  <!-- Windows 11 style Amber Folder Shape -->
+                  <div class="w-16 h-12 relative flex items-end justify-center shrink-0">
+                    <!-- Back folder layer -->
+                    <div class="absolute inset-0 bg-amber-500 rounded-lg shadow-sm border border-amber-600"></div>
+                    <!-- Tab of folder -->
+                    <div class="absolute -top-1 left-2 w-6 h-1 bg-amber-600 rounded-t"></div>
+                    <!-- Front leaf of folder -->
+                    <div class="absolute inset-0 bg-amber-400 rounded-lg origin-bottom transform group-hover:-rotate-x-12 transition-transform duration-300 shadow-sm border border-amber-300"></div>
+                    <!-- File item inside folder showing count -->
+                    <div class="w-10 h-8 bg-white border border-slate-200 absolute -top-2 left-3 rotate-3 rounded group-hover:-translate-y-1.5 transition-transform flex items-center justify-center text-[10px] font-black text-slate-800 font-mono shadow-sm">
+                      {col.productIds ? col.productIds.length : 0}
+                    </div>
+                  </div>
+                  
+                  <span class="mt-3 text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors line-clamp-2 max-w-[120px] leading-tight">
+                    {col.title}
+                  </span>
+                  
+                  <span class="text-[9px] text-slate-400 font-mono mt-0.5 truncate max-w-[100px]">
+                    /{col.slug}
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            {collections.length === 0 && (
+              <div class="flex-grow flex flex-col items-center justify-center text-center p-8 gap-3 text-slate-400">
+                <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9" />
+                </svg>
+                <span class="text-xs font-bold uppercase tracking-wider">Escritorio vacío</span>
+                <span class="text-3xs text-slate-400 max-w-xs">Crea una nueva carpeta de colección para empezar a organizar tus productos.</span>
+              </div>
+            )}
+          </div>
+
+          <!-- RIGHT AREA: Catalog Sidebar Drawer (Col span 4) -->
+          <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col gap-4 max-h-[60vh]">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+              <span class="text-2xs font-extrabold text-slate-400 uppercase tracking-widest">Catálogo de Artículos</span>
+              <span class="text-[10px] text-slate-500 font-mono">{products.length} productos</span>
+            </div>
+            
+            <!-- Draggable Products List -->
+            <div class="flex flex-col gap-2.5 overflow-y-auto pr-1 flex-grow" id="catalog-draggable-container">
+              {products.map((p) => (
+                <div
+                  class="product-draggable bg-slate-50 hover:bg-slate-100/80 border border-slate-200 p-2.5 rounded-2xl flex items-center gap-3 cursor-grab active:cursor-grabbing select-none transition-all duration-200 group"
+                  draggable="true"
+                  data-id={p.id}
+                  data-title={p.title}
+                  data-image={p.images[0]}
+                  data-sku={p.variants[0]?.sku || 'BASE'}
+                >
+                  <!-- Drag Indicator -->
+                  <div class="text-slate-400 group-hover:text-slate-650 cursor-grab shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
+                    </svg>
+                  </div>
+                  
+                  <!-- Tiny Image -->
+                  <div class="w-9 h-12 rounded overflow-hidden bg-white shrink-0 border border-slate-200">
+                    <img src={p.images[0]} class="w-full h-full object-cover" />
+                  </div>
+                  
+                  <div class="flex-1 min-w-0">
+                    <span class="block text-3xs font-extrabold text-slate-400 uppercase tracking-widest font-mono">
+                      SKU: {p.variants[0]?.sku || 'BASE'}
+                    </span>
+                    <span class="block text-xs font-bold text-slate-800 truncate leading-tight">
+                      {p.title}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+        </div>
+      </section>
+
+      <!-- TAB: ORDERS SECTION -->
+      <section id="section-orders" class="w-full hidden">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+          <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wider">Listado de Pedidos</h2>
+          <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            <input
+              type="text"
+              id="search-orders"
+              placeholder="Buscar por cliente, email o ID..."
+              class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs placeholder-slate-400 focus:outline-none focus:border-rose-600 w-full sm:w-60 shadow-2xs"
+            />
+            <select
+              id="filter-payment-status"
+              class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs focus:outline-none focus:border-rose-600 font-semibold shadow-3xs"
+            >
+              <option value="">Todos los Pagos</option>
+              <option value="paid">Pagado</option>
+              <option value="pending">Pendiente</option>
+              <option value="failed">Fallido</option>
+            </select>
+            <select
+              id="filter-shipping-status"
+              class="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs focus:outline-none focus:border-rose-600 font-semibold shadow-3xs"
+            >
+              <option value="">Todos los Envíos</option>
+              <option value="pending">Pendiente</option>
+              <option value="shipped">Enviado</option>
+              <option value="delivered">Entregado</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-2xs font-extrabold tracking-widest uppercase border-b border-slate-200">
+                  <th class="p-4 pl-6">ID Pedido / Fecha</th>
+                  <th class="p-4">Cliente</th>
+                  <th class="p-4">Importe Total</th>
+                  <th class="p-4">Artículos</th>
+                  <th class="p-4">Estados</th>
+                  <th class="p-4 text-right pr-6">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colspan="6" class="p-8 text-center text-slate-400 font-medium">
+                      No se han registrado pedidos en la tienda todavía.
+                    </td>
+                  </tr>
+                ) : (
+                  orders.map((order) => (
+                    <tr class="order-row hover:bg-slate-50 transition-colors"
+                      data-id={order.id.toLowerCase()}
+                      data-name={order.customerDetails.name.toLowerCase()}
+                      data-email={order.customerDetails.email.toLowerCase()}
+                      data-payment-status={order.paymentStatus}
+                      data-shipping-status={order.shippingStatus}
+                    >
+                      <td class="p-4 pl-6">
+                        <span class="block font-bold font-mono text-slate-900 text-xs">{order.id.slice(-8).toUpperCase()}...</span>
+                        <span class="block text-slate-400 text-3xs mt-0.5">
+                          {new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
+                      </td>
+                      <td class="p-4">
+                        <span class="block font-bold text-slate-900">{order.customerDetails.name}</span>
+                        <span class="block text-slate-400 text-3xs font-mono">{order.customerDetails.email}</span>
+                      </td>
+                      <td class="p-4 font-mono font-bold text-emerald-600">
+                        ${(order.totalAmount / 100).toFixed(2)}
+                      </td>
+                      <td class="p-4">
+                        <div class="flex flex-col gap-1 max-w-[200px]">
+                          {order.items.map((item) => (
+                            <span class="text-3xs text-slate-500 truncate">
+                              • {item.title} {item.variantName ? `(${item.variantName})` : ''} x{item.quantity}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td class="p-4">
+                        <div class="flex flex-col gap-1">
+                          <span class={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase w-fit tracking-wider border ${
+                            order.paymentStatus === 'paid' 
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                              : 'bg-amber-50 border-amber-200 text-amber-700'
+                          }`}>
+                            Pago: {order.paymentStatus}
+                          </span>
+                          <span class={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase w-fit tracking-wider border ${
+                            order.shippingStatus === 'shipped' 
+                              ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                              : order.shippingStatus === 'delivered'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                              : 'bg-slate-50 border-slate-200 text-slate-600'
+                          }`}>
+                            Envío: {order.shippingStatus}
+                          </span>
+                        </div>
+                      </td>
+                      <td class="p-4 text-right pr-6">
+                        {order.shippingStatus === 'pending' && (
+                          <button
+                            type="button"
+                            class="ship-order-btn px-3 py-1.5 bg-rose-600 hover:bg-red-700 text-white rounded-lg text-3xs font-bold uppercase tracking-wider transition-colors active:scale-95 shadow-2xs"
+                            data-order-id={order.id}
+                          >
+                            Enviar
+                          </button>
+                        )}
+                        {order.trackingNumber && (
+                          <span class="block text-slate-500 text-3xs font-mono">
+                            Seguimiento: <br/><strong class="text-slate-700">{order.trackingNumber}</strong>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: SETTINGS SECTION -->
+      <section id="section-settings" class="w-full hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wider">Configuración General</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <!-- Left Side: Sub-navigation sidebar menu -->
+          <div class="md:col-span-1 flex flex-col gap-1 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm h-fit">
+            <button
+              type="button"
+              id="subtab-shipping-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.75a1.125 1.125 0 0 1-1.125-1.125V15h9.75M8.25 18.75a1.5 1.5 0 0 0 3 0M12 18.75a1.5 1.5 0 0 0-3 0m3 0h3.75a1.125 1.125 0 0 0 1.125-1.125V18m-4.875-13.5v10.125c0 .621.504 1.125 1.125 1.125H18M15 4.5V15h4.5M19.5 18a2.25 2.25 0 0 0-2.25-2.25h-1.5A2.25 2.25 0 0 0 13.5 18m6 0a2.25 2.25 0 0 1-2.25 2.25h-1.5A2.25 2.25 0 0 1 13.5 18" /></svg>
+              Envíos y Mercados
+            </button>
+            <button
+              type="button"
+              id="subtab-admins-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm-3.75 7.875c0-1.242 1.343-2.25 3-2.25s3 1.008 3 2.25H6.75Z" /></svg>
+              Administradores
+            </button>
+            <button
+              type="button"
+              id="subtab-branding-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 3.395-1.622m-3.395 1.622a15.999 15.999 0 0 1-1.622-3.395m3.42-3.42L15 4.5M10.97 8.53 4.5 15" /></svg>
+              Identidad de Marca
+            </button>
+            <button
+              type="button"
+              id="subtab-coupons-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a2.25 2.25 0 0 0 3.181 0l5.178-5.178a2.25 2.25 0 0 0 0-3.181l-9.58-9.581A2.25 2.25 0 0 0 9.568 3Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
+              Códigos Descuento
+            </button>
+          </div>
+
+          <!-- Right Side: Forms/Content Panel -->
+          <div class="md:col-span-3 flex flex-col gap-6 text-xs text-slate-705">
+            
+            <!-- SUBSECTION: SHIPPING & MARKETS -->
+            <form id="form-sub-shipping" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm">
+              <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+                <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Envíos y Mercados</h3>
+                <p class="text-slate-400 text-3xs normal-case leading-normal">Configura el costo de los envíos estándar, el umbral para envío gratuito y los códigos de país habilitados en Stripe.</p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="settings-shipping-price" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Envío Estándar ($/€, Ej: 4.99)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="settings-shipping-price"
+                    value={(settings.shippingPrice / 100).toFixed(2)}
+                    required
+                    class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label for="settings-free-shipping-min" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Límite Envío Gratis ($/€, Ej: 50.00)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="settings-free-shipping-min"
+                    value={(settings.freeShippingMin / 100).toFixed(2)}
+                    required
+                    class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-sm"
+                  />
+                </div>
+                <div class="md:col-span-2 flex flex-col gap-4">
+                  <div>
+                    <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider">Selección de Países (Mercados de Stripe)</span>
+                    
+                    <!-- Regional Quick Select Buttons -->
+                    <div class="flex flex-wrap gap-2 mb-3">
+                      <button
+                        type="button"
+                        id="preset-europe-btn"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-3xs font-black uppercase tracking-wider transition-colors border border-slate-200 cursor-pointer"
+                      >
+                        🇪🇺 Europa (UE)
+                      </button>
+                      <button
+                        type="button"
+                        id="preset-northamerica-btn"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-3xs font-black uppercase tracking-wider transition-colors border border-slate-200 cursor-pointer"
+                      >
+                        🌎 Norteamérica (US, CA, MX)
+                      </button>
+                      <button
+                        type="button"
+                        id="preset-clear-btn"
+                        class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 rounded-xl text-3xs font-black uppercase tracking-wider transition-colors border border-rose-100 cursor-pointer"
+                      >
+                        ✕ Deseleccionar Todo
+                      </button>
+                    </div>
+
+                    <!-- Checklist of Common Countries -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200/80 mb-3">
+                      <!-- Spain -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="ES" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('ES')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇪🇸 España (ES)</span>
+                      </label>
+                      <!-- France -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="FR" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('FR')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇫🇷 Francia (FR)</span>
+                      </label>
+                      <!-- Germany -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="DE" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('DE')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇩🇪 Alemania (DE)</span>
+                      </label>
+                      <!-- Italy -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="IT" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('IT')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇮🇹 Italia (IT)</span>
+                      </label>
+                      <!-- Portugal -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="PT" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('PT')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇵🇹 Portugal (PT)</span>
+                      </label>
+                      <!-- United Kingdom -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="GB" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('GB')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇬🇧 Reino Unido (GB)</span>
+                      </label>
+                      <!-- United States -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="US" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('US')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇺🇸 EE.UU. (US)</span>
+                      </label>
+                      <!-- Canada -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="CA" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('CA')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇨🇦 Canadá (CA)</span>
+                      </label>
+                      <!-- Mexico -->
+                      <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-3xs transition-all cursor-pointer">
+                        <input type="checkbox" name="country-checkbox" value="MX" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('MX')} />
+                        <span class="text-2xs font-extrabold uppercase text-slate-700">🇲🇽 México (MX)</span>
+                      </label>
+                    </div>
+
+                    <!-- Auxiliary manual input for other countries -->
+                    <div>
+                      <label for="settings-other-markets" class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-3xs">Otros Países Adicionales (Separados por comas, ej: JP, AU, CH)</label>
+                      <input
+                        type="text"
+                        id="settings-other-markets"
+                        value={otherCountries.join(', ')}
+                        placeholder="Ej: JP, AU, CH"
+                        class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex justify-end pt-4 border-t border-slate-100">
+                <button
+                  type="submit"
+                  id="save-shipping-btn"
+                  class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+                >
+                  Guardar Envíos y Mercados
+                </button>
+              </div>
+            </form>
+
+            <!-- SUBSECTION: ADMINISTRATORS -->
+            <form id="form-sub-admins" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+              <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+                <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Administradores del Sistema</h3>
+                <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Delega o revoca permisos de acceso de administrador secundarios por correo electrónico.</p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-1 flex flex-col gap-3">
+                  <label for="new-admin-email" class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Agregar Administrador</label>
+                  <div class="flex gap-2">
+                    <input
+                      type="email"
+                      id="new-admin-email"
+                      placeholder="admin@flexform.com"
+                      class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-medium"
+                    />
+                    <button
+                      type="button"
+                      id="add-admin-btn"
+                      class="px-4 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase transition-colors shrink-0"
+                    >
+                      Añadir
+                    </button>
+                  </div>
+                  <p class="text-slate-400 text-3xs leading-normal font-medium">
+                    Los administradores delegados podrán acceder a todo el panel usando su propia cuenta de Firebase Auth / Google.
+                  </p>
+                </div>
+
+                <div class="md:col-span-2 flex flex-col gap-2">
+                  <span class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Administradores Autorizados</span>
+                  <div class="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1" id="admins-list-container">
+                    <!-- Super Admin (Read-only) -->
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div class="flex flex-col">
+                        <span class="font-bold text-slate-800 font-mono">{import.meta.env.SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || 'admin@flexform.com'}</span>
+                        <span class="text-3xs text-rose-600 font-extrabold uppercase tracking-wider mt-0.5">Superadministrador Principal (.env)</span>
+                      </div>
+                      <span class="text-2xs text-slate-400 italic px-2">Solo lectura</span>
+                    </div>
+
+                    <!-- Dynamic Admins list -->
+                    {settings.admins && settings.admins.map((adminEmail) => (
+                      <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors admin-row" data-email={adminEmail}>
+                        <span class="font-bold text-slate-800 font-mono">{adminEmail}</span>
+                        <button
+                          type="button"
+                          class="remove-admin-btn text-rose-500 hover:text-rose-600 hover:bg-rose-50 p-2.5 rounded-xl transition-colors font-bold text-base"
+                          title="Eliminar administrador"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-3xs font-extrabold uppercase tracking-widest border border-emerald-100 select-none">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Autoguardado Activo
+                </span>
+              </div>
+            </form>
+
+            <!-- SUBSECTION: BRANDING (LOGO & FAVICON) -->
+            <form id="form-sub-branding" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+              <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+                <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Identidad de Marca</h3>
+                <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Introduce las URLs para el logotipo y el favicon de la pestaña del navegador.</p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="settings-logo" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">URL del Logotipo</label>
+                  <input
+                    type="text"
+                    id="settings-logo"
+                    value={settings.logoUrl || ''}
+                    placeholder="Ej: /logo.png o https://..."
+                    class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label for="settings-favicon" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">URL del Favicon</label>
+                  <input
+                    type="text"
+                    id="settings-favicon"
+                    value={settings.faviconUrl || ''}
+                    placeholder="Ej: /favicon.ico o https://..."
+                    class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="flex justify-end pt-4 border-t border-slate-100">
+                <button
+                  type="submit"
+                  id="save-branding-btn"
+                  class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+                >
+                  Guardar Imagen y Marca
+                </button>
+              </div>
+            </form>
+
+            <!-- SUBSECTION: STRIPE DISCOUNT CODES -->
+            <div id="form-sub-coupons" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+              <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+                <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Códigos de Descuento (Stripe)</h3>
+                <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Crea cupones activos de descuento en Stripe y desactiva los códigos existentes.</p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Left side: create discount form -->
+                <div class="md:col-span-1 flex flex-col gap-3">
+                  <span class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Crear Nuevo Código</span>
+                  
+                  <div class="flex flex-col gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                      <label for="promo-code-name" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Nombre del Código</label>
+                      <input
+                        type="text"
+                        id="promo-code-name"
+                        placeholder="Ej: SUMMER20"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-bold uppercase text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label for="promo-code-type" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Tipo de Descuento</label>
+                      <select
+                        id="promo-code-type"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-707 focus:outline-none focus:border-rose-600 font-semibold text-xs"
+                      >
+                        <option value="percent">Porcentaje (%)</option>
+                        <option value="amount">Cantidad Fija (USD)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label for="promo-code-value" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Valor del Descuento</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        id="promo-code-value"
+                        placeholder="Ej: 20 o 5.00"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-xs"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      id="create-promo-btn"
+                      class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs"
+                    >
+                      Crear Código
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Right side: active discount codes list -->
+                <div class="md:col-span-2 flex flex-col gap-2">
+                  <span class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Códigos Activos en Stripe</span>
+                  
+                  <div class="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1" id="promos-list-container">
+                    {promotionCodes.length === 0 ? (
+                      <div class="p-6 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                        No hay códigos de descuento activos.
+                      </div>
+                    ) : (
+                      promotionCodes.map((promo) => {
+                        const coupon = promo.coupon;
+                        let discountStr = '';
+                        if (coupon.percent_off) {
+                          discountStr = `${coupon.percent_off}% de descuento`;
+                        } else if (coupon.amount_off) {
+                          discountStr = `$${(coupon.amount_off / 100).toFixed(2)} de descuento`;
+                        }
+                        
+                        return (
+                          <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors shadow-3xs" data-promo-id={promo.id}>
+                            <div class="flex flex-col">
+                              <span class="font-black text-slate-905 font-mono text-sm tracking-wide uppercase">{promo.code}</span>
+                              <span class="text-3xs text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{discountStr} · Permanente</span>
+                            </div>
+                            <button
+                              type="button"
+                              class="delete-promo-btn text-rose-500 hover:text-rose-600 hover:bg-rose-50 p-2.5 rounded-xl transition-colors font-bold text-base"
+                              data-promo-id={promo.id}
+                              title="Eliminar código de descuento"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white text-slate-400 py-8 px-6 text-center text-xs border-t border-slate-200 mt-12 w-full">
+      <p class="text-slate-400">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Panel de control exclusivo para administradores autorizados.</p>
+    </footer>
+
+    <!-- MODAL: COLLECTION FORM (CREATE / EDIT) -->
+    <!-- MODAL: WINDOW FOLDER VIEW & EDIT -->
+    <div id="collection-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+        
+        <!-- Window Title Bar (Windows-like layout) -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center select-none shrink-0">
+          <div class="flex items-center gap-2.5">
+            <div class="w-5 h-5 bg-amber-500/10 text-amber-500 rounded flex items-center justify-center border border-amber-500/20">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9" />
+              </svg>
+            </div>
+            <h3 id="collection-modal-title" class="text-xs font-extrabold tracking-widest text-slate-800 uppercase font-mono">
+              Propiedades de Carpeta
+            </h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+            <button type="button" id="close-collection-modal" class="w-5 h-5 flex items-center justify-center rounded bg-slate-100 hover:bg-rose-600 hover:text-white text-slate-500 text-xs font-bold transition-all" title="Cerrar Ventana">
+              ×
+            </button>
+          </div>
+        </div>
+        
+        <form id="collection-form" class="flex-grow overflow-hidden flex flex-col lg:flex-row text-xs">
+          <!-- Hidden id field -->
+          <input type="hidden" name="id" id="form-collection-id" />
+
+          <!-- LEFT COLUMN: Folder Settings & SEO -->
+          <div class="w-full lg:w-2/5 p-6 overflow-y-auto border-r border-slate-200 flex flex-col gap-5">
+            <div class="border-b border-slate-200 pb-2 mb-1">
+              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Ajustes de Carpeta (Colección)</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="form-collection-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Nombre Carpeta</label>
+                <input type="text" name="title" id="form-collection-title" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold" placeholder="Ej: Camisetas Mujeres Gym" />
+              </div>
+              
+              <div>
+                <label for="form-collection-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Ruta URL (Slug)</label>
+                <input type="text" name="slug" id="form-collection-slug" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" placeholder="camisetas-mujeres-gym" />
+              </div>
+            </div>
+
+            <div>
+              <label for="form-collection-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Texto SEO / Descripción (HTML permitido)</label>
+              <textarea name="description" id="form-collection-desc" rows="4" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-sans" placeholder="Redacta un texto introductorio optimizado para SEO..."></textarea>
+            </div>
+
+            <!-- SEO Metadata Section -->
+            <div class="border-t border-slate-200 pt-4 flex flex-col gap-4">
+              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Metadatos para Google (SEO)</span>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="form-collection-seo-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Título de Página (Title)</label>
+                  <input type="text" id="form-collection-seo-title" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600" placeholder="Ej: Ropa de Gym de Mujer" />
+                </div>
+                <div>
+                  <label for="form-collection-seo-keywords" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Palabras Clave (Comas)</label>
+                  <input type="text" id="form-collection-seo-keywords" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" placeholder="gym, ropa, camisetas" />
+                </div>
+              </div>
+              <div>
+                <label for="form-collection-seo-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción de Búsqueda (Meta Description)</label>
+                <textarea id="form-collection-seo-desc" rows="2" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal" placeholder="Resumen para motores de búsqueda..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: Products Selection Area (White themed!) -->
+          <div class="w-full lg:w-3/5 p-6 flex flex-col gap-4 overflow-hidden bg-slate-50 border-l border-slate-200">
+            <div class="border-b border-slate-200 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
+              <div>
+                <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">Selección de Productos</span>
+                <span class="text-[10px] text-slate-500 font-bold" id="folder-items-count">0 asociados</span>
+              </div>
+              
+              <!-- Search box for modal products list -->
+              <input 
+                type="text" 
+                id="modal-product-search" 
+                placeholder="Filtrar por título o SKU..." 
+                class="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs focus:outline-none focus:border-rose-600 w-full sm:w-48 font-semibold shadow-2xs"
+              />
+            </div>
+
+            <!-- Scrollable Grid of All Products in catalog -->
+            <div class="flex-grow overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-3" id="modal-products-grid">
+              <!-- Dynamically populated from JS -->
+            </div>
+            
+            <!-- Toast notification container for inline action feedback inside modal -->
+            <div class="p-3 rounded-2xl bg-white border border-slate-200 text-slate-500 text-[10px] shrink-0 flex items-center justify-between">
+              <span class="font-medium">Arrastrar y soltar también está habilitado aquí.</span>
+              <span class="text-slate-400 font-mono">Total Catálogo: {products.length}</span>
+            </div>
+          </div>
+        </form>
+
+        <!-- Window Actions Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
+          <div>
+            <button
+              type="button"
+              id="delete-current-collection-btn"
+              class="px-4 py-2 bg-rose-50 hover:bg-rose-650 text-rose-600 hover:text-white border border-rose-100 hover:border-rose-600 rounded-xl text-3xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 hidden"
+            >
+              Eliminar Carpeta
+            </button>
+          </div>
+          
+          <div class="flex gap-3">
+            <button
+              type="button"
+              id="cancel-collection-modal"
+              class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95"
+            >
+              Cerrar
+            </button>
+            <button
+              type="submit"
+              form="collection-form"
+              id="save-collection-btn"
+              class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-2xs"
+            >
+              Guardar Cambios
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: PRODUCT FORM (CREATE / EDIT) -->
+    <div id="product-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+        <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <h3 id="modal-title" class="text-lg font-black italic tracking-wide text-slate-900 uppercase">Nuevo Producto</h3>
+          <button type="button" id="close-product-modal" class="text-slate-400 hover:text-slate-700 text-lg font-bold">×</button>
+        </div>
+        
+        <form id="product-form" class="p-6 overflow-y-auto flex-grow flex flex-col gap-4 text-xs">
+          <!-- Hidden mode/id fields -->
+          <input type="hidden" name="id" id="form-product-id" />
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="form-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Nombre del Producto</label>
+              <input type="text" name="title" id="form-title" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600" />
+            </div>
+            <div>
+              <label for="form-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Slug (para URL)</label>
+              <input type="text" name="slug" id="form-slug" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" />
+            </div>
+          </div>
+
+          <div>
+            <label for="form-description" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción</label>
+            <textarea name="description" id="form-description" rows="3" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal"></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="form-price" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Precio base (USD, Ej: 29.99)</label>
+              <input type="number" step="0.01" name="price" id="form-price" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600" />
+            </div>
+            <div>
+              <label for="form-stock" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Stock General</label>
+              <input type="number" name="stock" id="form-stock" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600" />
+            </div>
+          </div>
+
+          <div>
+            <label for="form-default-image" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Imagen de Portada / Por Defecto (URL)</label>
+            <input type="text" id="form-default-image" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" placeholder="https://..." />
+          </div>
+
+          <!-- Variant Tree Editor (Shopify-style) -->
+          <div class="flex flex-col gap-3">
+            <div class="flex justify-between items-center">
+              <label class="block text-3xs font-bold text-slate-500 uppercase tracking-widest">Árbol de Variantes e Imágenes</label>
+              <button
+                type="button"
+                id="add-color-branch"
+                class="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 font-bold rounded-xl text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-2xs"
+              >
+                + Añadir Color
+              </button>
+            </div>
+            
+            <div id="variant-tree-container" class="flex flex-col gap-4 max-h-[35vh] overflow-y-auto pr-1">
+              <!-- Color branches generated dynamically -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button type="button" id="cancel-product-modal" class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold uppercase transition-colors">Cancelar</button>
+            <button type="submit" id="save-product-btn" class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs">Guardar Producto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: SHIP ORDER (SHIPPING DETAILS) -->
+    <div id="ship-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in">
+        <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <h3 class="text-lg font-black italic tracking-wide text-slate-900 uppercase">Registrar Envío</h3>
+          <button type="button" id="close-ship-modal" class="text-slate-400 hover:text-slate-700 text-lg font-bold">×</button>
+        </div>
+        
+        <form id="ship-form" class="p-6 flex flex-col gap-4 text-xs">
+          <input type="hidden" name="orderId" id="form-ship-order-id" />
+
+          <div>
+            <label for="form-ship-status" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Estado de Envío</label>
+            <select name="shippingStatus" id="form-ship-status" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 focus:outline-none focus:border-rose-600 font-semibold shadow-3xs">
+              <option value="shipped" selected>Enviado (En tránsito)</option>
+              <option value="delivered">Entregado</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="form-ship-tracking" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Código de Seguimiento (Tracking Number)</label>
+            <input type="text" name="trackingNumber" id="form-ship-tracking" required placeholder="Ej: ES29103984102" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" />
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button type="button" id="cancel-ship-modal" class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold uppercase transition-colors">Cancelar</button>
+            <button type="submit" id="save-ship-btn" class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs">Confirmar Envío</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+     <!-- Client-side Interactive Logic -->
+    <script>
+      import { actions } from 'astro:actions';
+      import { auth } from '../../lib/firebaseClient';
+      import { signOut } from 'firebase/auth';
+
+      // Elements
+      const logoutBtn = document.querySelector('a[href="/admin/logout"]');
+      logoutBtn?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+          await signOut(auth);
+        } catch (err) {
+          console.error('Error al cerrar sesión client-side:', err);
+        }
+        window.location.href = '/admin/logout';
+      });
+
+      const tabProductsBtn = document.getElementById('tab-products-btn') as HTMLButtonElement;
+      const tabCollectionsBtn = document.getElementById('tab-collections-btn') as HTMLButtonElement;
+      const tabOrdersBtn = document.getElementById('tab-orders-btn') as HTMLButtonElement;
+      const tabSettingsBtn = document.getElementById('tab-settings-btn') as HTMLButtonElement;
+      
+      const sectionProducts = document.getElementById('section-products') as HTMLDivElement;
+      const sectionCollections = document.getElementById('section-collections') as HTMLDivElement;
+      const sectionOrders = document.getElementById('section-orders') as HTMLDivElement;
+      const sectionSettings = document.getElementById('section-settings') as HTMLDivElement;
+
+      const productModal = document.getElementById('product-modal') as HTMLDivElement;
+      const productForm = document.getElementById('product-form') as HTMLFormElement;
+      const modalTitle = document.getElementById('modal-title') as HTMLHeadingElement;
+      const openNewProductModal = document.getElementById('open-new-product-modal') as HTMLButtonElement;
+      const closeProductModal = document.getElementById('close-product-modal') as HTMLButtonElement;
+      const cancelProductModal = document.getElementById('cancel-product-modal') as HTMLButtonElement;
+      const saveProductBtn = document.getElementById('save-product-btn') as HTMLButtonElement;
+
+      const shipModal = document.getElementById('ship-modal') as HTMLDivElement;
+      const shipForm = document.getElementById('ship-form') as HTMLFormElement;
+      const closeShipModal = document.getElementById('close-ship-modal') as HTMLButtonElement;
+      const cancelShipModal = document.getElementById('cancel-ship-modal') as HTMLButtonElement;
+      const saveShipBtn = document.getElementById('save-ship-btn') as HTMLButtonElement;
+
+      // Settings Elements & Subtabs
+      const subtabShippingBtn = document.getElementById('subtab-shipping-btn') as HTMLButtonElement;
+      const subtabAdminsBtn = document.getElementById('subtab-admins-btn') as HTMLButtonElement;
+      const subtabBrandingBtn = document.getElementById('subtab-branding-btn') as HTMLButtonElement;
+      const subtabCouponsBtn = document.getElementById('subtab-coupons-btn') as HTMLButtonElement;
+
+      const formSubShipping = document.getElementById('form-sub-shipping') as HTMLFormElement;
+      const formSubAdmins = document.getElementById('form-sub-admins') as HTMLFormElement;
+      const formSubBranding = document.getElementById('form-sub-branding') as HTMLFormElement;
+      const formSubCoupons = document.getElementById('form-sub-coupons') as HTMLDivElement;
+
+      const addAdminBtn = document.getElementById('add-admin-btn');
+      const newAdminEmailInput = document.getElementById('new-admin-email') as HTMLInputElement;
+      const adminsContainer = document.getElementById('admins-list-container');
+
+      // 1. Tab Navigation Logic
+      function deactivateAllTabs() {
+        tabProductsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+        tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+        tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+        if (tabSettingsBtn) tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+        
+        sectionProducts.classList.add('hidden');
+        sectionCollections.classList.add('hidden');
+        sectionOrders.classList.add('hidden');
+        if (sectionSettings) sectionSettings.classList.add('hidden');
+      }
+
+      tabProductsBtn?.addEventListener('click', () => {
+        deactivateAllTabs();
+        tabProductsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+        sectionProducts.classList.remove('hidden');
+      });
+
+      tabCollectionsBtn?.addEventListener('click', () => {
+        deactivateAllTabs();
+        tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+        sectionCollections.classList.remove('hidden');
+      });
+
+      tabOrdersBtn?.addEventListener('click', () => {
+        deactivateAllTabs();
+        tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+        sectionOrders.classList.remove('hidden');
+      });
+
+      tabSettingsBtn?.addEventListener('click', () => {
+        deactivateAllTabs();
+        tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+        sectionSettings.classList.remove('hidden');
+      });
+
+      // Settings internal subtab navigation
+      function deactivateAllSubtabs() {
+        if (subtabShippingBtn) subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+        if (subtabAdminsBtn) subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+        if (subtabBrandingBtn) subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+        if (subtabCouponsBtn) subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+
+        if (formSubShipping) formSubShipping.classList.add('hidden');
+        if (formSubAdmins) formSubAdmins.classList.add('hidden');
+        if (formSubBranding) formSubBranding.classList.add('hidden');
+        if (formSubCoupons) formSubCoupons.classList.add('hidden');
+      }
+
+      subtabShippingBtn?.addEventListener('click', () => {
+        deactivateAllSubtabs();
+        subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+        formSubShipping?.classList.remove('hidden');
+      });
+
+      subtabAdminsBtn?.addEventListener('click', () => {
+        deactivateAllSubtabs();
+        subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+        formSubAdmins?.classList.remove('hidden');
+      });
+
+      subtabBrandingBtn?.addEventListener('click', () => {
+        deactivateAllSubtabs();
+        subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+        formSubBranding?.classList.remove('hidden');
+      });
+
+      subtabCouponsBtn?.addEventListener('click', () => {
+        deactivateAllSubtabs();
+        subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+        formSubCoupons?.classList.remove('hidden');
+      });
+
+      // --- Country Selector Quick Preset Actions ---
+      const presetEuropeBtn = document.getElementById('preset-europe-btn');
+      const presetNorthAmericaBtn = document.getElementById('preset-northamerica-btn');
+      const presetClearBtn = document.getElementById('preset-clear-btn');
+      const countryCheckboxes = document.querySelectorAll('.country-cb') as NodeListOf<HTMLInputElement>;
+      const settingsOtherMarkets = document.getElementById('settings-other-markets') as HTMLInputElement;
+
+      const europeEU = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'];
+      const northAmerica = ['US', 'CA', 'MX'];
+
+      presetEuropeBtn?.addEventListener('click', () => {
+        countryCheckboxes.forEach(cb => {
+          if (europeEU.includes(cb.value)) {
+            cb.checked = true;
+          }
+        });
+        
+        // Find EU codes that are NOT represented by common checkboxes
+        const popularCodes = Array.from(countryCheckboxes).map(cb => cb.value);
+        const otherEU = europeEU.filter(code => !popularCodes.includes(code));
+        
+        // Merge with existing values in input
+        const currentOthers = settingsOtherMarkets.value.split(',')
+          .map(m => m.trim().toUpperCase())
+          .filter(Boolean);
+        
+        const mergedOthers = Array.from(new Set([...currentOthers, ...otherEU]));
+        settingsOtherMarkets.value = mergedOthers.join(', ');
+      });
+
+      presetNorthAmericaBtn?.addEventListener('click', () => {
+        countryCheckboxes.forEach(cb => {
+          if (northAmerica.includes(cb.value)) {
+            cb.checked = true;
+          }
+        });
+      });
+
+      presetClearBtn?.addEventListener('click', () => {
+        countryCheckboxes.forEach(cb => {
+          cb.checked = false;
+        });
+        settingsOtherMarkets.value = '';
+      });
+
+      // --- Admin Delegation Management ---
+      async function saveAdminsAutomatically() {
+        const data = compileSettingsData();
+        try {
+          const { error } = await actions.updateGeneralSettings(data);
+          if (error) throw error;
+          markChangesAsPending();
+          console.log("Administradores sincronizados con éxito.");
+        } catch (err: any) {
+          console.error("Error al auto-guardar administradores:", err);
+          alert("Error al guardar cambios de administradores: " + (err.message || err.code));
+        }
+      }
+
+      addAdminBtn?.addEventListener('click', async () => {
+        const email = newAdminEmailInput.value.trim().toLowerCase();
+        if (!email) return;
+        if (!email.includes('@')) {
+          alert('Por favor, introduce un correo electrónico válido.');
+          return;
+        }
+
+        // check if duplicate
+        const existingRows = Array.from(document.querySelectorAll('.admin-row')).map(el => el.getAttribute('data-email'));
+        if (existingRows.includes(email)) {
+          alert('Este correo ya está registrado como administrador.');
+          return;
+        }
+
+        // Add dynamically to the list in DOM
+        const adminRow = document.createElement('div');
+        adminRow.className = "flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors admin-row";
+        adminRow.setAttribute('data-email', email);
+        adminRow.innerHTML = `
+          <span class="font-bold text-slate-800 font-mono">${email}</span>
+          <button
+            type="button"
+            class="remove-admin-btn text-rose-500 hover:text-rose-600 hover:bg-rose-50 p-2.5 rounded-xl transition-colors font-bold text-base"
+            title="Eliminar administrador"
+          >
+            ×
+          </button>
+        `;
+        adminsContainer?.appendChild(adminRow);
+        newAdminEmailInput.value = '';
+
+        // bind click for new remove button
+        adminRow.querySelector('.remove-admin-btn')?.addEventListener('click', async () => {
+          adminRow.remove();
+          await saveAdminsAutomatically();
+        });
+
+        // Trigger auto-save to Firestore!
+        await saveAdminsAutomatically();
+      });
+
+      // bind existing admins remove buttons
+      document.querySelectorAll('.remove-admin-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const row = (e.currentTarget as HTMLButtonElement).closest('.admin-row');
+          row?.remove();
+          await saveAdminsAutomatically();
+        });
+      });
+
+      // --- Helper to get common settings form data ---
+      function compileSettingsData() {
+        const shippingPrice = Math.round(parseFloat((document.getElementById('settings-shipping-price') as HTMLInputElement).value) * 100);
+        const freeShippingMin = Math.round(parseFloat((document.getElementById('settings-free-shipping-min') as HTMLInputElement).value) * 100);
+        
+        // Markets compilation: checked checkboxes + other markets input
+        const checkedCountries = Array.from(document.querySelectorAll('.country-cb:checked'))
+          .map(el => (el as HTMLInputElement).value.trim().toUpperCase());
+        
+        const otherMarketsInput = (document.getElementById('settings-other-markets') as HTMLInputElement).value;
+        const otherCountriesList = otherMarketsInput.split(',')
+          .map(m => m.trim().toUpperCase())
+          .filter(Boolean);
+        
+        // Union of both arrays to prevent duplicates
+        const markets = Array.from(new Set([...checkedCountries, ...otherCountriesList]));
+
+        const logoUrl = (document.getElementById('settings-logo') as HTMLInputElement).value.trim() || undefined;
+        const faviconUrl = (document.getElementById('settings-favicon') as HTMLInputElement).value.trim() || undefined;
+        const admins = Array.from(document.querySelectorAll('.admin-row')).map(el => el.getAttribute('data-email') || '').filter(Boolean);
+
+        return { shippingPrice, freeShippingMin, markets, logoUrl, faviconUrl, admins };
+      }
+
+      // --- Submit sub-form: Shipping and Markets ---
+      formSubShipping?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('save-shipping-btn') as HTMLButtonElement;
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span>Guardando...</span>';
+
+        const data = compileSettingsData();
+
+        try {
+          const { error } = await actions.updateGeneralSettings(data);
+          if (error) throw error;
+          localStorage.setItem('flexform_pending_changes', 'true');
+          alert('Configuración de envíos y mercados guardada con éxito.');
+          window.location.reload();
+        } catch (err: any) {
+          console.error(err);
+          alert('Error al guardar envíos: ' + (err.message || err.code));
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+
+      // --- Submit sub-form: Branding ---
+      formSubBranding?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('save-branding-btn') as HTMLButtonElement;
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span>Guardando...</span>';
+
+        const data = compileSettingsData();
+
+        try {
+          const { error } = await actions.updateGeneralSettings(data);
+          if (error) throw error;
+          localStorage.setItem('flexform_pending_changes', 'true');
+          alert('Identidad de marca guardada con éxito.');
+          window.location.reload();
+        } catch (err: any) {
+          console.error(err);
+          alert('Error al guardar marca: ' + (err.message || err.code));
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+
+      // --- Stripe Promo Codes Management Client-side Logic ---
+      const createPromoBtn = document.getElementById('create-promo-btn');
+      const promoCodeNameInput = document.getElementById('promo-code-name') as HTMLInputElement;
+      const promoCodeTypeSelect = document.getElementById('promo-code-type') as HTMLSelectElement;
+      const promoCodeValueInput = document.getElementById('promo-code-value') as HTMLInputElement;
+
+      createPromoBtn?.addEventListener('click', async () => {
+        const code = promoCodeNameInput.value.trim().toUpperCase();
+        const discountType = promoCodeTypeSelect.value as 'percent' | 'amount';
+        const value = parseFloat(promoCodeValueInput.value);
+
+        if (!code) {
+          alert('Por favor, introduce un código de promoción.');
+          return;
+        }
+
+        if (isNaN(value) || value <= 0) {
+          alert('Por favor, introduce un valor de descuento positivo.');
+          return;
+        }
+
+        createPromoBtn.disabled = true;
+        const originalText = createPromoBtn.innerHTML;
+        createPromoBtn.innerHTML = '<span>Creando...</span>';
+
+        try {
+          const { error } = await actions.createDiscountCode({
+            code,
+            discountType,
+            value,
+          });
+
+          if (error) throw error;
+
+          localStorage.setItem('flexform_pending_changes', 'true');
+          alert(`Código promocional "${code}" creado con éxito.`);
+          window.location.reload();
+        } catch (err: any) {
+          console.error('Error creating discount code:', err);
+          alert('Error al crear el código promocional: ' + (err.message || err.code));
+          createPromoBtn.disabled = false;
+          createPromoBtn.innerHTML = originalText;
+        }
+      });
+
+      // Handle delete promo code
+      document.querySelectorAll('.delete-promo-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const promoId = target.dataset.promoId;
+          if (!promoId) return;
+
+          if (confirm('¿Estás seguro de que deseas desactivar este código promocional? Los clientes ya no podrán utilizarlo.')) {
+            target.disabled = true;
+            const originalContent = target.textContent;
+            target.textContent = '...';
+
+            try {
+              const { error } = await actions.deactivateDiscountCode({ id: promoId });
+              if (error) throw error;
+
+              localStorage.setItem('flexform_pending_changes', 'true');
+              alert('Código promocional desactivado.');
+              window.location.reload();
+            } catch (err: any) {
+              console.error('Error deactivating discount code:', err);
+              alert('Error al desactivar el código promocional: ' + (err.message || err.code));
+              target.disabled = false;
+              target.textContent = originalContent;
+            }
+          }
+        });
+      });
+
+      // 2. Modals opening/closing
+      function toggleModal(modal: HTMLDivElement, open: boolean) {
+        if (open) {
+          modal.classList.remove('hidden');
+        } else {
+          modal.classList.add('hidden');
+        }
+      }
+
+      // 3. New Product Mode setup
+      openNewProductModal?.addEventListener('click', () => {
+        productForm.reset();
+        modalTitle.textContent = "Nuevo Producto";
+        (document.getElementById('form-product-id') as HTMLInputElement).value = "";
+        (document.getElementById('form-default-image') as HTMLInputElement).value = "";
+        variantTreeContainer.innerHTML = '';
+        // Add default color branch with sizes
+        addColorBranch('negro', '', [
+          { size: 'xs', sku: '', price: '', stock: '10' },
+          { size: 's', sku: '', price: '', stock: '10' },
+          { size: 'm', sku: '', price: '', stock: '10' }
+        ]);
+        toggleModal(productModal, true);
+      });
+
+      closeProductModal?.addEventListener('click', () => toggleModal(productModal, false));
+      cancelProductModal?.addEventListener('click', () => toggleModal(productModal, false));
+      closeShipModal?.addEventListener('click', () => toggleModal(shipModal, false));
+      cancelShipModal?.addEventListener('click', () => toggleModal(shipModal, false));
+
+      // Auto-compute slug from title
+      const titleInput = document.getElementById('form-title') as HTMLInputElement;
+      const slugInput = document.getElementById('form-slug') as HTMLInputElement;
+      titleInput?.addEventListener('input', () => {
+        const idVal = (document.getElementById('form-product-id') as HTMLInputElement).value;
+        if (!idVal) {
+          slugInput.value = titleInput.value
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/[\s_-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        }
+      });
+
+      // --- Variant Tree Editor logic ---
+      const variantTreeContainer = document.getElementById('variant-tree-container') as HTMLDivElement;
+      const addColorBranchBtn = document.getElementById('add-color-branch') as HTMLButtonElement;
+      let branchIndex = 0;
+
+      function createSizeRowHTML(branchId: string, sizeData: any = {}) {
+        const sizeName = sizeData.size || '';
+        const sku = sizeData.sku || '';
+        const price = sizeData.price || '';
+        const stock = sizeData.stock !== undefined ? sizeData.stock : '10';
+        const rowId = `row-${Math.random().toString(36).substr(2, 9)}`;
+
+        return `
+          <div class="size-row flex items-center gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-900" id="${rowId}">
+            <div class="w-16">
+              <input type="text" placeholder="Talla" value="${sizeName}" class="size-name w-full bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-3xs focus:outline-none font-bold text-center uppercase" required />
+            </div>
+            <div class="flex-1">
+              <input type="text" placeholder="SKU" value="${sku}" class="size-sku w-full bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-3xs font-mono focus:outline-none" required />
+            </div>
+            <div class="w-20">
+              <input type="number" step="0.01" placeholder="Precio ($)" value="${price}" class="size-price w-full bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-3xs focus:outline-none font-mono text-right" required />
+            </div>
+            <div class="w-16">
+              <input type="number" placeholder="Stock" value="${stock}" class="size-stock w-full bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-3xs focus:outline-none font-mono text-right" required />
+            </div>
+            <button type="button" class="remove-size-row-btn text-rose-500 hover:text-rose-455 font-bold px-1.5 text-sm" title="Quitar Talla">×</button>
+          </div>
+        `;
+      }
+
+      function addColorBranch(colorName = '', imageUrl = '', sizes: any[] = []) {
+        branchIndex++;
+        const branchId = `branch-${branchIndex}`;
+        
+        const card = document.createElement('div');
+        card.className = 'color-branch border border-slate-200 bg-slate-50/50 p-4 rounded-2xl flex flex-col gap-3 relative';
+        card.id = branchId;
+        
+        card.innerHTML = `
+          <div class="flex justify-between items-center gap-3">
+            <div class="flex items-center gap-2 flex-1">
+              <span class="text-3xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Color:</span>
+              <input type="text" value="${colorName}" placeholder="Ej: negro, rosa..." class="color-name bg-white text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-rose-600 font-bold flex-1" required />
+            </div>
+            <button type="button" class="remove-branch-btn text-rose-500 hover:text-rose-455 text-xs font-bold uppercase tracking-wider">Eliminar</button>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex-1 flex flex-col gap-1">
+              <span class="text-3xs font-bold text-slate-500 uppercase tracking-wider">URL Imagen de Variante:</span>
+              <input type="text" value="${imageUrl}" placeholder="https://..." class="color-image w-full bg-white text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-3xs font-mono focus:outline-none focus:border-rose-600" />
+            </div>
+            <div class="variant-img-preview w-10 h-14 bg-white border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center text-[8px] text-slate-400 shrink-0">
+              ${imageUrl ? `<img src="${imageUrl}" class="w-full h-full object-cover" />` : 'Sin img'}
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 mt-1">
+            <div class="flex justify-between items-center border-t border-slate-200 pt-2.5 mb-1">
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest">Tallas & Inventario</span>
+              <button type="button" class="add-size-row-btn text-rose-600 hover:text-red-700 text-[10px] font-bold uppercase tracking-wider hover:underline">+ Talla</button>
+            </div>
+            <div class="sizes-container flex flex-col gap-2">
+              <!-- Size rows generated dynamically -->
+            </div>
+          </div>
+        `;
+
+        variantTreeContainer.appendChild(card);
+
+        // Bind image change preview handler
+        const imgInput = card.querySelector('.color-image') as HTMLInputElement;
+        const previewDiv = card.querySelector('.variant-img-preview') as HTMLDivElement;
+        imgInput.addEventListener('input', () => {
+          const url = imgInput.value.trim();
+          if (url) {
+            previewDiv.innerHTML = `<img src="${url}" class="w-full h-full object-cover" />`;
+          } else {
+            previewDiv.innerHTML = 'Sin img';
+          }
+        });
+
+        // Bind remove branch button
+        card.querySelector('.remove-branch-btn')?.addEventListener('click', () => {
+          card.remove();
+        });
+
+        // Bind add size row click handler
+        const sizesContainer = card.querySelector('.sizes-container') as HTMLDivElement;
+        const addSizeRowBtn = card.querySelector('.add-size-row-btn') as HTMLButtonElement;
+        addSizeRowBtn.addEventListener('click', () => {
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = createSizeRowHTML(branchId);
+          const sizeRowEl = tempDiv.firstElementChild as HTMLDivElement;
+          sizesContainer.appendChild(sizeRowEl);
+          
+          sizeRowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
+            sizeRowEl.remove();
+          });
+        });
+
+        // Pre-populate sizes if any
+        if (sizes.length > 0) {
+          sizes.forEach((s) => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = createSizeRowHTML(branchId, s);
+            const sizeRowEl = tempDiv.firstElementChild as HTMLDivElement;
+            sizesContainer.appendChild(sizeRowEl);
+            
+            sizeRowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
+              sizeRowEl.remove();
+            });
+          });
+        } else {
+          // Add default size row
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = createSizeRowHTML(branchId, { size: 's' });
+          const sizeRowEl = tempDiv.firstElementChild as HTMLDivElement;
+          sizesContainer.appendChild(sizeRowEl);
+          
+          sizeRowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
+            sizeRowEl.remove();
+          });
+        }
+      }
+
+      addColorBranchBtn?.addEventListener('click', () => {
+        addColorBranch();
+      });
+
+      // 4. Edit Product Mode setup
+      document.querySelectorAll('.edit-product-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const productData = JSON.parse(target.dataset.product || '{}');
+
+          // Pre-fill form fields
+          modalTitle.textContent = "Editar Producto";
+          (document.getElementById('form-product-id') as HTMLInputElement).value = productData.id;
+          (document.getElementById('form-title') as HTMLInputElement).value = productData.title;
+          (document.getElementById('form-slug') as HTMLInputElement).value = productData.slug;
+          (document.getElementById('form-description') as HTMLTextAreaElement).value = productData.description;
+          (document.getElementById('form-price') as HTMLInputElement).value = (productData.price / 100).toString();
+          (document.getElementById('form-stock') as HTMLInputElement).value = productData.stock.toString();
+          
+          // Set default product image (usually the first one)
+          (document.getElementById('form-default-image') as HTMLInputElement).value = productData.images[0] || '';
+
+          // Parse variants back to tree
+          variantTreeContainer.innerHTML = '';
+          if (productData.variants && productData.variants.length > 0) {
+            const tree: Record<string, { image: string, sizes: any[] }> = {};
+            
+            productData.variants.forEach((v: any) => {
+              const parts = v.name.split('/').map((p: any) => p.trim());
+              const color = parts[0] || 'Base';
+              const size = parts[1] || '';
+              
+              if (!tree[color]) {
+                tree[color] = {
+                  image: v.image || '',
+                  sizes: []
+                };
+              }
+              
+              tree[color].sizes.push({
+                size: size,
+                sku: v.sku,
+                price: (v.price / 100).toString(),
+                stock: v.stock
+              });
+            });
+
+            Object.keys(tree).forEach((colorName) => {
+              const branch = tree[colorName];
+              addColorBranch(colorName, branch.image, branch.sizes);
+            });
+          } else {
+            // Fallback: one empty branch
+            addColorBranch('negro', '', []);
+          }
+
+          toggleModal(productModal, true);
+        });
+      });
+
+      // 5. Submit Product Form Action
+      productForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        saveProductBtn.disabled = true;
+        const originalBtnText = saveProductBtn.innerHTML;
+        saveProductBtn.innerHTML = "<span>Guardando...</span>";
+
+        const idVal = (document.getElementById('form-product-id') as HTMLInputElement).value;
+        const titleVal = (document.getElementById('form-title') as HTMLInputElement).value;
+        const slugVal = (document.getElementById('form-slug') as HTMLInputElement).value;
+        const descVal = (document.getElementById('form-description') as HTMLTextAreaElement).value;
+        const priceVal = parseFloat((document.getElementById('form-price') as HTMLInputElement).value);
+        const stockVal = parseInt((document.getElementById('form-stock') as HTMLInputElement).value);
+
+        // Compile Variant Tree into flat variants array
+        const variantsVal: any[] = [];
+        const productBranches = document.querySelectorAll('.color-branch');
+        
+        productBranches.forEach((branch) => {
+          const colorName = (branch.querySelector('.color-name') as HTMLInputElement).value.trim();
+          const colorImage = (branch.querySelector('.color-image') as HTMLInputElement).value.trim();
+          const sizeRows = branch.querySelectorAll('.size-row');
+          
+          sizeRows.forEach((row) => {
+            const sizeName = (row.querySelector('.size-name') as HTMLInputElement).value.trim();
+            const sku = (row.querySelector('.size-sku') as HTMLInputElement).value.trim();
+            const price = parseFloat((row.querySelector('.size-price') as HTMLInputElement).value);
+            const stock = parseInt((row.querySelector('.size-stock') as HTMLInputElement).value);
+            
+            variantsVal.push({
+              sku: sku,
+              name: sizeName ? `${colorName} / ${sizeName}` : colorName,
+              price: Math.round(price * 100), // convert to cents
+              stock: stock,
+              image: colorImage || null
+            });
+          });
+        });
+
+        // Compile product general images array (default cover + unique variant images)
+        const imagesVal: string[] = [];
+        const defaultImg = (document.getElementById('form-default-image') as HTMLInputElement).value.trim();
+        if (defaultImg) {
+          imagesVal.push(defaultImg);
+        }
+        
+        productBranches.forEach((branch) => {
+          const colorImage = (branch.querySelector('.color-image') as HTMLInputElement).value.trim();
+          if (colorImage && !imagesVal.includes(colorImage)) {
+            imagesVal.push(colorImage);
+          }
+        });
+        
+        if (imagesVal.length === 0) {
+          imagesVal.push('/images/placeholder.jpg'); // Fallback placeholder
+        }
+
+        const productPayload = {
+          title: titleVal,
+          slug: slugVal,
+          description: descVal,
+          price: Math.round(priceVal * 100), // convert back to cents
+          stock: stockVal,
+          images: imagesVal,
+          variants: variantsVal,
+          seo: {
+            title: `${titleVal} | FLEX FORM FITNESS`,
+            description: descVal.substring(0, 150),
+            keywords: ['fitness', 'ropa', 'activewear'],
+          },
+        };
+
+        try {
+          if (idVal) {
+            // Edit Mode: updateProduct
+            const { error } = await actions.updateProduct({
+              id: idVal,
+              ...productPayload,
+            });
+            if (error) throw error;
+            localStorage.setItem('flexform_pending_changes', 'true');
+            alert("Producto actualizado con éxito.");
+          } else {
+            // New Mode: createProduct
+            const { error } = await actions.createProduct(productPayload);
+            if (error) throw error;
+            localStorage.setItem('flexform_pending_changes', 'true');
+            alert("Producto creado con éxito.");
+          }
+          window.location.reload();
+        } catch (err: any) {
+          console.error("Save product action error:", err);
+          alert("Error al guardar producto: " + (err.message || err.code));
+          saveProductBtn.disabled = false;
+          saveProductBtn.innerHTML = originalBtnText;
+        }
+      });
+
+      // 6. Open Ship Order Modal
+      document.querySelectorAll('.ship-order-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const orderId = target.dataset.orderId;
+          
+          (document.getElementById('form-ship-order-id') as HTMLInputElement).value = orderId || '';
+          (document.getElementById('form-ship-tracking') as HTMLInputElement).value = '';
+          
+          toggleModal(shipModal, true);
+        });
+      });
+
+      // 7. Submit Ship Form Action
+      shipForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        saveShipBtn.disabled = true;
+        const originalBtnText = saveShipBtn.innerHTML;
+        saveShipBtn.innerHTML = "<span>Enviando...</span>";
+
+        const orderIdVal = (document.getElementById('form-ship-order-id') as HTMLInputElement).value;
+        const statusVal = (document.getElementById('form-ship-status') as HTMLSelectElement).value as 'shipped' | 'delivered' | 'cancelled';
+        const trackingVal = (document.getElementById('form-ship-tracking') as HTMLInputElement).value.trim();
+
+        try {
+          const { error } = await actions.updateShippingStatus({
+            orderId: orderIdVal,
+            shippingStatus: statusVal,
+            trackingNumber: trackingVal,
+          });
+          
+          if (error) throw error;
+
+          alert("El estado de envío ha sido actualizado con éxito.");
+          window.location.reload();
+        } catch (err: any) {
+          console.error("Update shipping action error:", err);
+          alert("Error al registrar envío: " + (err.message || err.code));
+          saveShipBtn.disabled = false;
+          saveShipBtn.innerHTML = originalBtnText;
+        }
+      });
+
+      // 8. Delete Product Action
+      document.querySelectorAll('.delete-product-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const productId = target.dataset.productId || '';
+          const productTitle = target.dataset.productTitle || '';
+
+          if (confirm(`¿Estás seguro de que deseas eliminar el producto "${productTitle}"? Esta acción no se puede deshacer.`)) {
+            target.disabled = true;
+            const originalContent = target.textContent;
+            target.textContent = "Eliminando...";
+            
+            try {
+              const { error } = await actions.deleteProduct({ id: productId });
+              if (error) throw error;
+              localStorage.setItem('flexform_pending_changes', 'true');
+              alert("Producto eliminado con éxito.");
+              window.location.reload();
+            } catch (err: any) {
+              console.error("Delete product error:", err);
+              alert("Error al eliminar producto: " + (err.message || err.code));
+              target.disabled = false;
+              target.textContent = originalContent;
+            }
+          }
+        });
+      });
+
+      // 9. Search Products Client-side logic
+      const searchProductsInput = document.getElementById('search-products') as HTMLInputElement;
+      searchProductsInput?.addEventListener('input', () => {
+        const query = searchProductsInput.value.toLowerCase().trim();
+        document.querySelectorAll('.product-row').forEach((row) => {
+          const title = row.getAttribute('data-title') || '';
+          const slug = row.getAttribute('data-slug') || '';
+          if (title.includes(query) || slug.includes(query)) {
+            (row as HTMLElement).classList.remove('hidden');
+          } else {
+            (row as HTMLElement).classList.add('hidden');
+          }
+        });
+      });
+
+      // 10. Search & Filter Orders Client-side logic
+      const searchOrdersInput = document.getElementById('search-orders') as HTMLInputElement;
+      const filterPaymentSelect = document.getElementById('filter-payment-status') as HTMLSelectElement;
+      const filterShippingSelect = document.getElementById('filter-shipping-status') as HTMLSelectElement;
+
+      function filterOrders() {
+        const query = searchOrdersInput?.value.toLowerCase().trim() || '';
+        const paymentFilter = filterPaymentSelect?.value || '';
+        const shippingFilter = filterShippingSelect?.value || '';
+
+        document.querySelectorAll('.order-row').forEach((row) => {
+          const id = row.getAttribute('data-id') || '';
+          const name = row.getAttribute('data-name') || '';
+          const email = row.getAttribute('data-email') || '';
+          const payment = row.getAttribute('data-payment-status') || '';
+          const shipping = row.getAttribute('data-shipping-status') || '';
+
+          const matchesQuery = id.includes(query) || name.includes(query) || email.includes(query);
+          const matchesPayment = !paymentFilter || payment === paymentFilter;
+          const matchesShipping = !shippingFilter || shipping === shippingFilter;
+
+          if (matchesQuery && matchesPayment && matchesShipping) {
+            (row as HTMLElement).classList.remove('hidden');
+          } else {
+            (row as HTMLElement).classList.add('hidden');
+          }
+        });
+      }
+
+      searchOrdersInput?.addEventListener('input', filterOrders);
+      filterPaymentSelect?.addEventListener('change', filterOrders);
+      filterShippingSelect?.addEventListener('change', filterOrders);
+
+      // --- Drag & Drop Toast utility ---
+      function showToast(message: string, type: 'success' | 'error' = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `px-4.5 py-3 rounded-2xl text-xs font-bold text-white shadow-xl pointer-events-auto transition-all duration-300 transform translate-y-4 opacity-0 flex items-center gap-2 border ${
+          type === 'success' ? 'bg-emerald-500/90 border-emerald-450' : 'bg-rose-500/90 border-rose-450'
+        }`;
+        toast.innerHTML = `
+          <span class="text-sm">${type === 'success' ? '✓' : '✕'}</span>
+          <span>${message}</span>
+        `;
+        container.appendChild(toast);
+        
+        // Trigger reflow & animate in
+        requestAnimationFrame(() => {
+          toast.classList.remove('translate-y-4', 'opacity-0');
+        });
+        
+        // Animate out and remove
+        setTimeout(() => {
+          toast.classList.add('translate-y-4', 'opacity-0');
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+
+      // Read all products from DOM sidebar Catalog using robust data attributes
+      const allProducts = Array.from(document.querySelectorAll('.product-draggable')).map((el) => {
+        const htmlEl = el as HTMLDivElement;
+        return {
+          id: htmlEl.dataset.id || '',
+          title: htmlEl.dataset.title || '',
+          image: htmlEl.dataset.image || '',
+          sku: htmlEl.dataset.sku || ''
+        };
+      });
+
+      // Track active opened folder list
+      let currentOpenedFolderIds: string[] = [];
+
+      // Render items inside the Folder Window Modal (Filterable Grid of All Products)
+      function populateFolderProducts(associatedIds: string[]) {
+        const gridEl = document.getElementById('modal-products-grid');
+        const countEl = document.getElementById('folder-items-count');
+        if (!gridEl || !countEl) return;
+        
+        const searchQuery = (document.getElementById('modal-product-search') as HTMLInputElement)?.value.toLowerCase().trim() || '';
+        
+        gridEl.innerHTML = '';
+        
+        const filteredProducts = allProducts.filter((p) => {
+          return p.title.toLowerCase().includes(searchQuery) || p.sku.toLowerCase().includes(searchQuery);
+        });
+        
+        const totalAssociatedCount = allProducts.filter((p) => associatedIds.includes(p.id)).length;
+        countEl.textContent = `${totalAssociatedCount} ${totalAssociatedCount === 1 ? 'producto asociado' : 'productos asociados'}`;
+        
+        if (filteredProducts.length === 0) {
+          gridEl.innerHTML = `
+            <div class="col-span-full py-12 flex flex-col items-center justify-center text-center text-slate-400 gap-2 border border-dashed border-slate-200 rounded-2xl bg-white p-4">
+              <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-3xs uppercase tracking-wider font-extrabold text-slate-400">Sin resultados</span>
+              <span class="text-[9px] max-w-[200px]">No se encontraron productos que coincidan con la búsqueda.</span>
+            </div>
+          `;
+          return;
+        }
+        
+        filteredProducts.forEach((p) => {
+          const isAssociated = associatedIds.includes(p.id);
+          const card = document.createElement('div');
+          
+          card.className = `flex items-center gap-3 p-2.5 rounded-2xl border transition-all ${
+            isAssociated 
+              ? 'border-red-200 bg-red-50/20 shadow-3xs' 
+              : 'border-slate-200 bg-white hover:border-slate-300'
+          }`;
+          
+          card.innerHTML = `
+            <div class="w-8 h-10 rounded overflow-hidden bg-slate-50 shrink-0 border border-slate-200">
+              <img src="${p.image}" class="w-full h-full object-cover" />
+            </div>
+            <div class="min-w-0 flex-grow text-left">
+              <span class="block text-[8px] font-extrabold text-slate-400 uppercase font-mono">SKU: ${p.sku}</span>
+              <span class="block text-xs font-bold text-slate-900 truncate leading-tight">${p.title}</span>
+            </div>
+            <button 
+              type="button" 
+              class="toggle-assoc-btn text-2xs font-extrabold uppercase px-2.5 py-1.5 rounded-lg border transition-all active:scale-95 shrink-0 ${
+                isAssociated
+                  ? 'bg-rose-600 hover:bg-red-700 border-rose-600 text-white shadow-2xs'
+                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+              }"
+            >
+              ${isAssociated ? 'Quitar' : 'Añadir'}
+            </button>
+          `;
+          
+          card.querySelector('.toggle-assoc-btn')?.addEventListener('click', () => {
+            const index = associatedIds.indexOf(p.id);
+            if (index > -1) {
+              associatedIds.splice(index, 1);
+              showToast(`"${p.title}" removido de la carpeta.`);
+            } else {
+              associatedIds.push(p.id);
+              showToast(`"${p.title}" añadido a la carpeta.`);
+            }
+            populateFolderProducts(associatedIds);
+          });
+          
+          gridEl.appendChild(card);
+        });
+      }
+
+      // Search input inside collection properties modal
+      const modalProductSearch = document.getElementById('modal-product-search') as HTMLInputElement;
+      modalProductSearch?.addEventListener('input', () => {
+        populateFolderProducts(currentOpenedFolderIds);
+      });
+
+      // --- Collections Window Modal elements & handlers ---
+      const collectionModal = document.getElementById('collection-modal') as HTMLDivElement;
+      const collectionForm = document.getElementById('collection-form') as HTMLFormElement;
+      const collectionModalTitle = document.getElementById('collection-modal-title') as HTMLHeadingElement;
+      const openNewCollectionModal = document.getElementById('open-new-collection-modal') as HTMLButtonElement;
+      const closeCollectionModal = document.getElementById('close-collection-modal') as HTMLButtonElement;
+      const cancelCollectionModal = document.getElementById('cancel-collection-modal') as HTMLButtonElement;
+      const saveCollectionBtn = document.getElementById('save-collection-btn') as HTMLButtonElement;
+      const deleteCurrentCollectionBtn = document.getElementById('delete-current-collection-btn') as HTMLButtonElement;
+
+      // Handle drop inside the open Folder Window form to add product
+      collectionForm?.addEventListener('dragover', (e) => e.preventDefault());
+      collectionForm?.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const productId = e.dataTransfer?.getData('text/plain');
+        if (!productId) return;
+        
+        if (currentOpenedFolderIds.includes(productId)) {
+          showToast("Este producto ya está en esta colección", "error");
+          return;
+        }
+        
+        currentOpenedFolderIds.push(productId);
+        populateFolderProducts(currentOpenedFolderIds);
+        showToast("Producto colocado en la ventana.");
+      });
+
+      // Open for New Collection folder
+      openNewCollectionModal?.addEventListener('click', () => {
+        collectionForm.reset();
+        collectionModalTitle.textContent = "Nueva Carpeta de Colección";
+        (document.getElementById('form-collection-id') as HTMLInputElement).value = "";
+        deleteCurrentCollectionBtn?.classList.add('hidden');
+        if (modalProductSearch) modalProductSearch.value = "";
+        
+        currentOpenedFolderIds = [];
+        populateFolderProducts(currentOpenedFolderIds);
+        toggleModal(collectionModal, true);
+      });
+
+      closeCollectionModal?.addEventListener('click', () => toggleModal(collectionModal, false));
+      cancelCollectionModal?.addEventListener('click', () => toggleModal(collectionModal, false));
+
+      // Auto-compute collection slug from title
+      const collectionTitleInput = document.getElementById('form-collection-title') as HTMLInputElement;
+      const collectionSlugInput = document.getElementById('form-collection-slug') as HTMLInputElement;
+      collectionTitleInput?.addEventListener('input', () => {
+        const idVal = (document.getElementById('form-collection-id') as HTMLInputElement).value;
+        if (!idVal) {
+          collectionSlugInput.value = collectionTitleInput.value
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/[\s_-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        }
+      });
+
+      // Submit Collection Folder settings Form
+      collectionForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        saveCollectionBtn.disabled = true;
+        const originalBtnText = saveCollectionBtn.innerHTML;
+        saveCollectionBtn.innerHTML = "<span>Guardando...</span>";
+
+        const idVal = (document.getElementById('form-collection-id') as HTMLInputElement).value;
+        const titleVal = (document.getElementById('form-collection-title') as HTMLInputElement).value.trim();
+        const slugVal = (document.getElementById('form-collection-slug') as HTMLInputElement).value.trim();
+        const descVal = (document.getElementById('form-collection-desc') as HTMLTextAreaElement).value.trim();
+        
+        const seoTitleVal = (document.getElementById('form-collection-seo-title') as HTMLInputElement).value.trim() || titleVal;
+        const seoKeywordsVal = (document.getElementById('form-collection-seo-keywords') as HTMLInputElement).value
+          .split(',')
+          .map((k) => k.trim())
+          .filter((k) => k.length > 0);
+        const seoDescVal = (document.getElementById('form-collection-seo-desc') as HTMLTextAreaElement).value.trim() || descVal.substring(0, 150);
+
+        const collectionPayload = {
+          title: titleVal,
+          slug: slugVal,
+          description: descVal,
+          productIds: currentOpenedFolderIds,
+          seo: {
+            title: seoTitleVal,
+            description: seoDescVal,
+            keywords: seoKeywordsVal,
+          },
+        };
+
+        try {
+          if (idVal) {
+            // Edit Mode: updateCollection
+            const { error } = await actions.updateCollection({
+              id: idVal,
+              ...collectionPayload,
+            });
+            if (error) throw error;
+            localStorage.setItem('flexform_pending_changes', 'true');
+            showToast("Carpeta actualizada con éxito.");
+          } else {
+            // New Mode: createCollection
+            const { error } = await actions.createCollection(collectionPayload);
+            if (error) throw error;
+            localStorage.setItem('flexform_pending_changes', 'true');
+            showToast("Carpeta creada con éxito.");
+          }
+          window.location.reload();
+        } catch (err: any) {
+          console.error("Save collection error:", err);
+          showToast("Error al guardar carpeta de colección: " + (err.message || err.code), "error");
+          saveCollectionBtn.disabled = false;
+          saveCollectionBtn.innerHTML = originalBtnText;
+        }
+      });
+
+      // Edit Collection / Open Folder via click
+      document.querySelectorAll('.collection-folder').forEach((folder) => {
+        folder.addEventListener('click', (e) => {
+          const target = e.currentTarget as HTMLDivElement;
+          const colData = JSON.parse(target.dataset.collectionJson || '{}');
+
+          collectionModalTitle.textContent = "Propiedades: Carpeta " + colData.title;
+          (document.getElementById('form-collection-id') as HTMLInputElement).value = colData.id;
+          (document.getElementById('form-collection-title') as HTMLInputElement).value = colData.title;
+          (document.getElementById('form-collection-slug') as HTMLInputElement).value = colData.slug;
+          (document.getElementById('form-collection-desc') as HTMLTextAreaElement).value = colData.description;
+
+          (document.getElementById('form-collection-seo-title') as HTMLInputElement).value = colData.seo?.title || '';
+          (document.getElementById('form-collection-seo-keywords') as HTMLInputElement).value = colData.seo?.keywords?.join(', ') || '';
+          (document.getElementById('form-collection-seo-desc') as HTMLTextAreaElement).value = colData.seo?.description || '';
+
+          if (deleteCurrentCollectionBtn) {
+            deleteCurrentCollectionBtn.classList.remove('hidden');
+            deleteCurrentCollectionBtn.dataset.collectionId = colData.id;
+            deleteCurrentCollectionBtn.dataset.collectionTitle = colData.title;
+          }
+
+          currentOpenedFolderIds = [...(colData.productIds || [])];
+          populateFolderProducts(currentOpenedFolderIds);
+
+          toggleModal(collectionModal, true);
+        });
+      });
+
+      // Delete Current Collection Button in Window
+      deleteCurrentCollectionBtn?.addEventListener('click', async () => {
+        const collectionId = deleteCurrentCollectionBtn.dataset.collectionId || '';
+        const collectionTitle = deleteCurrentCollectionBtn.dataset.collectionTitle || '';
+        if (!collectionId) return;
+
+        if (confirm(`¿Estás seguro de que deseas eliminar la carpeta "${collectionTitle}"? Los productos vinculados no se eliminarán del catálogo.`)) {
+          deleteCurrentCollectionBtn.disabled = true;
+          deleteCurrentCollectionBtn.textContent = "Eliminando...";
+          
+          try {
+            const { error } = await actions.deleteCollection({ id: collectionId });
+            if (error) throw error;
+            localStorage.setItem('flexform_pending_changes', 'true');
+            showToast("Carpeta eliminada.");
+            window.location.reload();
+          } catch (err: any) {
+            console.error("Delete collection error:", err);
+            showToast("Error al eliminar carpeta: " + (err.message || err.code), "error");
+            deleteCurrentCollectionBtn.disabled = false;
+            deleteCurrentCollectionBtn.textContent = "Eliminar Carpeta";
+          }
+        }
+      });
+
+      // --- Drag-and-Drop Dragging Source (Products) ---
+      document.querySelectorAll('.product-draggable').forEach((card) => {
+        card.addEventListener('dragstart', (e) => {
+          const dragEvent = e as DragEvent;
+          dragEvent.dataTransfer?.setData('text/plain', card.getAttribute('data-id') || '');
+          card.classList.add('opacity-40');
+        });
+        card.addEventListener('dragend', () => {
+          card.classList.remove('opacity-40');
+        });
+      });
+
+      // --- Drag-and-Drop Drop Targets (Folders on Desktop) ---
+      document.querySelectorAll('.collection-folder').forEach((folder) => {
+        folder.addEventListener('dragover', (e) => {
+          e.preventDefault(); // crucial to allow drop!
+          folder.classList.add('bg-amber-500/20', 'scale-105');
+        });
+        
+        folder.addEventListener('dragleave', () => {
+          folder.classList.remove('bg-amber-500/20', 'scale-105');
+        });
+        
+        folder.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          folder.classList.remove('bg-amber-500/20', 'scale-105');
+          
+          const dragEvent = e as DragEvent;
+          const productId = dragEvent.dataTransfer?.getData('text/plain');
+          const collectionId = folder.getAttribute('data-id');
+          const colData = JSON.parse(folder.getAttribute('data-collection-json') || '{}');
+          
+          if (!productId || !collectionId) return;
+          
+          // Avoid duplicates
+          const currentIds = colData.productIds || [];
+          if (currentIds.includes(productId)) {
+            showToast("Este producto ya está en esta carpeta", "error");
+            return;
+          }
+          
+          const newIds = [...currentIds, productId];
+          
+          const countBadge = folder.querySelector('.font-mono');
+          if (countBadge) {
+            countBadge.textContent = String(newIds.length);
+          }
+          
+          colData.productIds = newIds;
+          folder.setAttribute('data-collection-json', JSON.stringify(colData));
+          
+          // background save in Firestore
+          try {
+            const { error } = await actions.updateCollection({
+              id: collectionId,
+              title: colData.title,
+              slug: colData.slug,
+              description: colData.description,
+              productIds: newIds,
+              seo: colData.seo || { title: colData.title, description: colData.description, keywords: [] }
+            });
+            
+            if (error) throw error;
+            localStorage.setItem('flexform_pending_changes', 'true');
+            updatePublishButton();
+            showToast(`"${colData.title}" clasificada con éxito.`);
+          } catch (err) {
+            console.error(err);
+            showToast("Error de base de datos al clasificar", "error");
+          }
+        });
+      });
+
+      // Search Collections Client-side logic
+      const searchCollectionsInput = document.getElementById('search-collections') as HTMLInputElement;
+      searchCollectionsInput?.addEventListener('input', () => {
+        const query = searchCollectionsInput.value.toLowerCase().trim();
+        document.querySelectorAll('.collection-folder').forEach((folder) => {
+          const title = folder.getAttribute('data-title') || '';
+          const slug = folder.getAttribute('data-slug') || '';
+          if (title.includes(query) || slug.includes(query)) {
+            (folder as HTMLElement).style.display = '';
+          } else {
+            (folder as HTMLElement).style.display = 'none';
+          }
+        });
+      });
+
+      // --- Publish changes under demand logic ---
+      function markChangesAsPending() {
+        localStorage.setItem('flexform_pending_changes', 'true');
+        updatePublishButton();
+      }
+
+      function updatePublishButton() {
+        const btn = document.getElementById('publish-changes-btn') as HTMLButtonElement;
+        const badge = document.getElementById('publish-badge') as HTMLSpanElement;
+        const text = document.getElementById('publish-btn-text') as HTMLSpanElement;
+        if (!btn || !badge || !text) return;
+
+        const hasPending = localStorage.getItem('flexform_pending_changes') === 'true';
+
+        if (hasPending) {
+          btn.disabled = false;
+          btn.className = "px-4 py-2 bg-amber-50 border border-amber-200 hover:bg-amber-600 hover:text-white hover:border-amber-600 text-amber-800 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-3xs flex items-center gap-2 cursor-pointer";
+          badge.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+          text.textContent = "Publicar Cambios";
+        } else {
+          btn.disabled = true;
+          btn.className = "px-4 py-2 bg-slate-50 border border-slate-100 text-slate-400 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 shadow-3xs flex items-center gap-2 cursor-not-allowed";
+          badge.className = "w-2 h-2 rounded-full bg-emerald-500";
+          text.textContent = "Publicado";
+        }
+      }
+
+      const publishChangesBtn = document.getElementById('publish-changes-btn') as HTMLButtonElement;
+      publishChangesBtn?.addEventListener('click', async () => {
+        const hasPending = localStorage.getItem('flexform_pending_changes') === 'true';
+        if (!hasPending) return;
+
+        if (!confirm('¿Estás seguro de que deseas publicar todos los cambios pendientes? Esto iniciará la reconstrucción de la tienda en Vercel.')) {
+          return;
+        }
+
+        publishChangesBtn.disabled = true;
+        const text = document.getElementById('publish-btn-text') as HTMLSpanElement;
+        text.textContent = "Publicando...";
+
+        try {
+          const { error } = await actions.publishChanges();
+          if (error) throw error;
+
+          localStorage.removeItem('flexform_pending_changes');
+          alert('¡Cambios publicados con éxito! Vercel está reconstruyendo la web pública en este momento.');
+          updatePublishButton();
+        } catch (err: any) {
+          console.error(err);
+          alert('Error al publicar cambios: ' + (err.message || err.code));
+          updatePublishButton();
+        }
+      });
+
+      // Initial state load
+      updatePublishButton();
+    </script>
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-55 flex flex-col gap-3 pointer-events-none"></div>
+
+  </body>
+</html>

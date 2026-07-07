@@ -1,0 +1,15 @@
+---
+export const prerender = false; // Server-rendered (SSR) to delete cookies
+
+// Delete the session cookies
+Astro.cookies.delete('admin_token', {
+  path: '/',
+} as any);
+
+Astro.cookies.delete('session_token', {
+  path: '/',
+} as any);
+
+// Redirect back to the login portal
+return Astro.redirect('/admin/login');
+---

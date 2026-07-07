@@ -1,0 +1,1 @@
+import{b as d}from"./cart.SzUMdohj.js";import"./hoisted.BcEij9qa.js";import"./firebaseClient.CiqJSUyP.js";d.subscribe(s=>{const e=Object.values(s).reduce((i,c)=>i+c.quantity,0),t=document.getElementById("cart-badge");t&&(t.textContent=String(e),e===0?t.classList.add("hidden"):t.classList.remove("hidden"))});

@@ -1,0 +1,56 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  image?: string;
+  canonicalUrl?: string;
+  ogType?: 'website' | 'product';
+  jsonLd?: Record<string, any>;
+}
+
+import { getGeneralSettings } from '../lib/settings';
+
+const {
+  title,
+  description,
+  image = '/images/default-share.jpg',
+  canonicalUrl = Astro.url.href,
+  ogType = 'website',
+  jsonLd,
+} = Astro.props;
+
+const siteName = 'FlexForm Fitness';
+const fullTitle = `${title} | ${siteName}`;
+
+const settings = await getGeneralSettings();
+const faviconUrl = settings.faviconUrl || '/logo.png'; // default fallback to logo.png which we optimized
+---
+
+<!-- Primary Meta Tags -->
+<title>{fullTitle}</title>
+<meta name="title" content={fullTitle} />
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalUrl} />
+<link rel="icon" href={faviconUrl} />
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content={ogType} />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={new URL(image, Astro.url.origin).href} />
+<meta property="og:site_name" content={siteName} />
+
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:url" content={canonicalUrl} />
+<meta property="twitter:title" content={fullTitle} />
+<meta property="twitter:description" content={description} />
+<meta property="twitter:image" content={new URL(image, Astro.url.origin).href} />
+
+<!-- JSON-LD Structured Data -->
+{
+  jsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+  )
+}

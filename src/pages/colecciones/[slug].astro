@@ -1,0 +1,307 @@
+---
+import { db } from '../../lib/firebase';
+import type { Product, ProductCollection } from '../../types';
+import SEO from '../../components/SEO.astro';
+import Navbar from '../../components/Navbar.astro';
+import { mockProducts } from '../../lib/mockData';
+
+export const prerender = true;
+
+// Static path builder fetching collections at build time
+export async function getStaticPaths() {
+  try {
+    const snap = await db.collection('collections').get();
+    
+    if (snap.empty) {
+      console.warn('Warning: No collections found in Firestore during build. Creating a fallback empty path.');
+      return [
+        {
+          params: { slug: 'default-coleccion' },
+          props: { 
+            collection: {
+              id: 'default',
+              title: 'Colección de Muestra',
+              slug: 'default-coleccion',
+              description: 'Esta es una colección de demostración creada automáticamente.',
+              productIds: [],
+              seo: {
+                title: 'Colección de Muestra | FLEX FORM FITNESS',
+                description: 'Esta es una colección de demostración.',
+                keywords: ['deporte', 'fitness']
+              },
+              createdAt: new Date(),
+              updatedAt: new Date()
+            } as ProductCollection
+          }
+        }
+      ];
+    }
+
+    return snap.docs.map((doc) => {
+      const collection = { id: doc.id, ...doc.data() } as ProductCollection;
+      return {
+        params: { slug: collection.slug },
+        props: { collection },
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching static paths for collections:', error);
+    return [];
+  }
+}
+
+interface Props {
+  collection: ProductCollection;
+}
+
+const { collection } = Astro.props;
+
+if (!collection) {
+  return Astro.redirect('/404');
+}
+
+// Fetch only the products that belong to this collection
+let products: Product[] = [];
+try {
+  if (collection.productIds && collection.productIds.length > 0) {
+    // Firestore has a limit of 10 items in "in" queries, so we do chunking or fetch all and filter in memory
+    // Fetching all products is extremely fast and robust for e-commerce scale catalogs
+    const productsSnap = await db.collection('products').get();
+    if (!productsSnap.empty) {
+      const allProducts = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+      products = allProducts.filter((p) => collection.productIds.includes(p.id));
+    }
+  }
+} catch (error) {
+  console.error('Error fetching products for collection:', error);
+}
+
+const getProductColors = (product: Product): string[] => {
+  if (!product.variants || product.variants.length === 0) return [];
+  const colors = new Set<string>();
+  product.variants.forEach((v) => {
+    const parts = v.name.split('/').map((p) => p.trim());
+    if (parts[0]) colors.add(parts[0]);
+  });
+  return Array.from(colors);
+};
+
+const getColorHex = (colorName: string): string => {
+  const name = colorName.toLowerCase().trim();
+  const colorMap: Record<string, string> = {
+    'negro': '#0f172a',
+    'gris': '#94a3b8',
+    'gris-oscuro': '#4b5563',
+    'rosa': '#db2777',
+    'amarillo': '#fbbf24',
+    'azul-metalizado': '#475569',
+    'azul-marino': '#1e3a8a',
+    'azul-claro': '#a5f3fc',
+    'blanco': '#ffffff',
+    'rojo': '#dc2626',
+    'verde': '#16a34a',
+    'naranja': '#ea580c',
+  };
+
+  for (const key in colorMap) {
+    if (name.includes(key)) {
+      return colorMap[key];
+    }
+  }
+  return '#64748b';
+};
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <SEO
+      title={collection.seo.title || `${collection.title} | FLEX FORM FITNESS`}
+      description={collection.seo.description || collection.description}
+      canonicalUrl={canonicalUrl}
+      ogType="website"
+    />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-white text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between w-full overflow-x-hidden">
+    
+    <Navbar />
+
+    <!-- Collection Hero Header Section -->
+    <section class="w-full bg-slate-950 text-white py-16 px-4 md:px-8 relative overflow-hidden">
+      <!-- Ambient red/orange glow background -->
+      <div class="absolute -top-40 -right-40 w-96 h-96 bg-rose-600 rounded-full blur-3xl opacity-10"></div>
+      <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-650 rounded-full blur-3xl opacity-10"></div>
+      
+      <div class="relative max-w-4xl mx-auto text-center flex flex-col items-center gap-4">
+        <!-- Breadcrumb -->
+        <nav class="text-slate-500 text-3xs font-extrabold tracking-widest uppercase flex items-center gap-2 mb-2">
+          <a href="/" class="hover:text-red-500 transition-colors">Inicio</a>
+          <span>/</span>
+          <a href="/#catalogo" class="hover:text-red-500 transition-colors">Colecciones</a>
+          <span>/</span>
+          <span class="text-white">{collection.title}</span>
+        </nav>
+
+        <h1 class="text-3xl md:text-5xl font-black italic tracking-tighter uppercase leading-none">
+          {collection.title}
+        </h1>
+        
+        {collection.description && (
+          <p class="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed mt-2" set:html={collection.description}>
+          </p>
+        )}
+        
+        <span class="text-3xs text-slate-550 font-bold uppercase tracking-widest mt-4">
+          {products.length} {products.length === 1 ? 'Producto' : 'Productos'} Encontrados
+        </span>
+      </div>
+    </section>
+
+    <!-- Products Catalog Grid -->
+    <main class="w-full px-4 md:px-8 py-12 flex-grow">
+      <div class="w-full flex flex-col gap-6">
+        {products.length > 0 ? (
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {products.map((product) => (
+              <div class="product-card group flex flex-col justify-between w-full">
+                {/* Product Image */}
+                <a href={`/productos/${product.slug}`} class="block relative aspect-[3/4] w-full overflow-hidden bg-slate-100 border border-slate-100">
+                  <img
+                    src={product.images[0]}
+                    alt={product.title}
+                    class="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  {product.stock <= 5 && (
+                    <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider">
+                      ÚLTIMAS UNIDADES
+                    </span>
+                  )}
+                </a>
+
+                {/* Product Details (Title, Description, and Price) */}
+                <div class="mt-3 flex flex-col gap-1 w-full">
+                  <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
+                  <a href={`/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
+                    {product.title}
+                  </a>
+                  <p class="text-slate-500 text-xs line-clamp-1">
+                    {product.description}
+                  </p>
+                  
+                  {/* Tiny Color Swatches */}
+                  {getProductColors(product).length > 0 && (
+                    <div class="flex items-center gap-1.5 mt-1">
+                      {getProductColors(product).map((color) => {
+                        const hex = getColorHex(color);
+                        return (
+                          <div 
+                            class="w-3.5 h-3.5 rounded-full border border-slate-200/80 shadow-3xs" 
+                            style={{ backgroundColor: hex }}
+                            title={color}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div class="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100">
+                    <span class="text-sm font-extrabold text-slate-950">
+                      ${(product.price / 100).toFixed(2)}
+                    </span>
+                    <span class="text-[10px] font-bold text-rose-600 group-hover:underline uppercase tracking-wider">
+                      Ver más
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="text-center py-16 flex flex-col items-center gap-4 bg-slate-50 rounded-3xl border border-slate-100 p-8 max-w-md mx-auto">
+            <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18a2.25 2.25 0 012.25 2.25v4.25A2.25 2.25 0 0118 21.75H6a2.25 2.25 0 01-2.25-2.25V15.75a2.25 2.25 0 012.25-2.25z" />
+            </svg>
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Sin productos</h3>
+            <p class="text-xs text-slate-500">No hay productos vinculados a esta colección todavía.</p>
+            <a href="/" class="mt-2 text-xs font-bold text-rose-600 hover:underline uppercase tracking-wider">Volver al inicio</a>
+          </div>
+        )}
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer id="contacto" class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850">
+      <div class="w-full grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+        <div class="flex flex-col gap-4">
+          <a href="/" class="flex flex-col">
+            <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
+              FLEX <span class="text-red-550">FORM</span>
+            </span>
+            <span class="text-[8px] font-extrabold tracking-[0.25em] text-slate-500 uppercase leading-none mt-0.5">
+              FITNESS
+            </span>
+          </a>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            Ropa deportiva de alto rendimiento y accesorios premium diseñados para atletas dedicados.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">COLECCIONES</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href="/#catalogo" class="hover:text-white transition-colors">Hombre</a></li>
+            <li><a href="/#catalogo" class="hover:text-white transition-colors">Mujer</a></li>
+            <li><a href="/" class="hover:text-white transition-colors">Ver Todo</a></li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">SOPORTE</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href="#" class="hover:text-white transition-colors">Envíos y Entregas</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Devoluciones</a></li>
+            <li><a href="/admin/login" class="hover:text-white transition-colors">Acceso de Administrador</a></li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">NEWSLETTER</h4>
+          <p class="text-xs text-slate-500 leading-relaxed">Suscríbete para recibir un 10% de descuento en tu primer pedido y ofertas exclusivas.</p>
+        </div>
+      </div>
+
+      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-3xs md:text-2xs text-slate-550">
+        <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
+      </div>
+    </footer>
+
+    <script>
+      import { cartStore } from '../../stores/cart';
+
+      // Update cart count badge in navbar dynamically
+      cartStore.subscribe((cart) => {
+        const count = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+        const badge = document.getElementById('cart-badge');
+        if (badge) {
+          badge.textContent = String(count);
+          if (count === 0) {
+            badge.classList.add('hidden');
+          } else {
+            badge.classList.remove('hidden');
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
