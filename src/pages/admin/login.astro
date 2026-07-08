@@ -5,7 +5,7 @@ export const prerender = false; // Must be server-rendered (SSR) to check sessio
 
 // Redirect if already logged in and admin
 const user = Astro.locals.user;
-if (user) {
+if (user && user.email) {
   const { admin } = await import('../../lib/firebase');
   const superAdminEmail = (import.meta.env.SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || 'admin@flexform.com').trim().toLowerCase();
   let isAdmin = user.email.trim().toLowerCase() === superAdminEmail;
@@ -45,6 +45,7 @@ if (errorParam === 'unauthorized') {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Iniciar Sesión Admin | FlexForm</title>
+    <meta name="robots" content="noindex, nofollow" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />

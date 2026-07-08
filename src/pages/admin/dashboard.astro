@@ -62,6 +62,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Panel de Administración | FLEX FORM FITNESS</title>
+    <meta name="robots" content="noindex, nofollow" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -1485,7 +1486,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       });
 
       // --- Stripe Promo Codes Management Client-side Logic ---
-      const createPromoBtn = document.getElementById('create-promo-btn');
+      const createPromoBtn = document.getElementById('create-promo-btn') as HTMLButtonElement;
       const promoCodeNameInput = document.getElementById('promo-code-name') as HTMLInputElement;
       const promoCodeTypeSelect = document.getElementById('promo-code-type') as HTMLSelectElement;
       const promoCodeValueInput = document.getElementById('promo-code-value') as HTMLInputElement;
