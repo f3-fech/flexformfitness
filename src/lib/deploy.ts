@@ -14,7 +14,7 @@ export async function triggerRebuild() {
   try {
     console.log('[Deploy Helper] Triggering Vercel rebuild...');
     const response = await fetch(hookUrl, {
-      method: 'POST',
+      method: 'GET',
     });
 
     if (response.ok) {
