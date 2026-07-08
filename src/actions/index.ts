@@ -751,4 +751,49 @@ export const server = {
       }
     },
   }),
+
+  saveUserProfile: defineAction({
+    accept: 'json',
+    input: z.object({
+      name: z.string(),
+      phone: z.string(),
+      address: z.object({
+        line1: z.string(),
+        line2: z.string().nullable().optional(),
+        city: z.string(),
+        state: z.string(),
+        postal_code: z.string(),
+        country: z.string(),
+      }),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user;
+      if (!user || !user.uid) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'Debes iniciar sesión para actualizar tu perfil.',
+        });
+      }
+      try {
+        await db.collection('customers').doc(user.uid).set({
+          name: input.name,
+          phone: input.phone,
+          address: input.address,
+          updatedAt: new Date(),
+        }, { merge: true });
+        
+        await admin.auth().updateUser(user.uid, {
+          displayName: input.name,
+        });
+
+        return { success: true };
+      } catch (error) {
+        console.error('Error saving user profile:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al actualizar el perfil en la base de datos.',
+        });
+      }
+    },
+  }),
 };

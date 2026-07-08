@@ -132,12 +132,12 @@ export const prerender = true; // Pre-rendered static shell, client-side dynamic
       const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
 
       function showError(message: string) {
-        errorBox.textContent = message;
+        errorBox.innerHTML = message;
         errorBox.classList.remove('hidden');
       }
 
       function hideError() {
-        errorBox.textContent = '';
+        errorBox.innerHTML = '';
         errorBox.classList.add('hidden');
       }
 
@@ -178,6 +178,32 @@ export const prerender = true; // Pre-rendered static shell, client-side dynamic
 
         try {
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          
+          // Verify if email has been verified
+          if (!userCredential.user.emailVerified) {
+            const { signOut } = await import('firebase/auth');
+            await signOut(auth);
+            
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            
+            showError('Tu correo electrónico no ha sido verificado. <a href="#" id="resend-verification-btn" class="font-bold underline ml-1 text-rose-600 hover:text-rose-700">Reenviar enlace de verificación</a>');
+            
+            const resendBtn = document.getElementById('resend-verification-btn');
+            resendBtn?.addEventListener('click', async (event) => {
+              event.preventDefault();
+              try {
+                const { sendEmailVerification } = await import('firebase/auth');
+                await sendEmailVerification(userCredential.user);
+                showError('<span class="text-green-600">¡Enlace de verificación reenviado! Revisa tu bandeja de entrada.</span>');
+              } catch (resendErr: any) {
+                console.error('Error resending email verification:', resendErr);
+                showError('Error al reenviar el enlace: ' + (resendErr.message || resendErr.code));
+              }
+            });
+            return;
+          }
+
           await createSession(userCredential.user);
         } catch (error: any) {
           console.error('Email sign in error:', error);
