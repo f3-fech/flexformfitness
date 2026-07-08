@@ -4,6 +4,7 @@ export interface ProductVariant {
   price: number; // in cents
   stock: number;
   image?: string | null;
+  colorHex?: string | null;
 }
 
 export interface ProductSEO {

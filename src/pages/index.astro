@@ -14,15 +14,7 @@ const getGender = (title: string) => {
   return 'unisex';
 };
 
-const getProductColors = (product: Product): string[] => {
-  if (!product.variants || product.variants.length === 0) return [];
-  const colors = new Set<string>();
-  product.variants.forEach((v) => {
-    const parts = v.name.split('/').map((p) => p.trim());
-    if (parts[0]) colors.add(parts[0]);
-  });
-  return Array.from(colors);
-};
+
 
 const getColorHex = (colorName: string): string => {
   const name = colorName.toLowerCase().trim();
@@ -49,16 +41,71 @@ const getColorHex = (colorName: string): string => {
   return '#64748b';
 };
 
+interface SwatchColor {
+  name: string;
+  hex: string;
+  image: string | null;
+}
+
+const getUniqueColors = (product: Product): SwatchColor[] => {
+  if (!product.variants || product.variants.length === 0) return [];
+  const colorMap = new Map<string, SwatchColor>();
+  
+  product.variants.forEach((v) => {
+    const parts = v.name.split('/').map((p) => p.trim());
+    const name = parts[0] || 'Base';
+    
+    if (!colorMap.has(name)) {
+      const hex = v.colorHex || getColorHex(name);
+      colorMap.set(name, {
+        name: name,
+        hex: hex,
+        image: v.image || null
+      });
+    }
+  });
+  
+  return Array.from(colorMap.values());
+};
+
 let products: Product[] = [];
 try {
-  const productsSnap = await db.collection('products').get();
-  if (!productsSnap.empty) {
-    products = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+  // 1. Try to find the homepage collection (matching popular homepage slugs)
+  const collectionsSnap = await db.collection('collections')
+    .where('slug', 'in', ['pagina-de-inicio', 'pagina-inicio', 'inicio'])
+    .limit(1)
+    .get();
+
+  let productIds: string[] = [];
+  if (!collectionsSnap.empty) {
+    const homepageCol = collectionsSnap.docs[0].data();
+    if (homepageCol && Array.isArray(homepageCol.productIds)) {
+      productIds = homepageCol.productIds;
+    }
+  }
+
+  // 2. Fetch products
+  if (productIds.length > 0) {
+    const productsSnap = await db.collection('products')
+      .where('__name__', 'in', productIds.slice(0, 30))
+      .get();
+    
+    const unsortedProducts = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+    // Sort products in the exact order specified in the collection productIds array
+    products = productIds
+      .map(id => unsortedProducts.find(p => p.id === id))
+      .filter((p): p is Product => p !== undefined);
   } else {
-    products = mockProducts;
+    // Fallback: fetch all products if no homepage collection or it is empty
+    const productsSnap = await db.collection('products').get();
+    if (!productsSnap.empty) {
+      products = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+    } else {
+      products = mockProducts;
+    }
   }
 } catch (error) {
-  console.warn('Error fetching products from Firestore. Using mock products fallback.', error);
+  console.warn('Error fetching homepage collection from Firestore. Using mock products fallback.', error);
   products = mockProducts;
 }
 const user = Astro.locals.user;
@@ -146,23 +193,55 @@ const user = Astro.locals.user;
         </div>
 
         {/* 4 columns on desktop, full-width grid, large images (aspect-[3/4]) */}
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
           {products.map((product) => (
             <div class="product-card group flex flex-col justify-between w-full" data-gender={getGender(product.title)}>
-              {/* Product Image */}
-              <a href={`/productos/${product.slug}`} class="block relative aspect-[3/4] w-full overflow-hidden bg-slate-100 border border-slate-100">
-                <img
-                  src={product.images[0]}
-                  alt={product.title}
-                  class="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500"
-                  loading="lazy"
-                />
+              <!-- Product Image Slider -->
+              <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider">
+                <!-- Swipeable Images Container -->
+                <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none">
+                  {product.images.map((imgUrl, imgIdx) => (
+                    <a
+                      href={`/productos/${product.slug}`}
+                      class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                      data-index={imgIdx}
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`${product.title} - Vista ${imgIdx + 1}`}
+                        class="w-full h-full object-cover object-center group-hover:scale-[1.01] transition-transform duration-500"
+                        loading={imgIdx === 0 ? "eager" : "lazy"}
+                      />
+                    </a>
+                  ))}
+                </div>
+
+                <!-- Hover Navigation Arrows (Desktop only) -->
+                <button
+                  type="button"
+                  class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                  title="Imagen anterior"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                  title="Siguiente imagen"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+
                 {product.stock <= 5 && (
-                  <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider">
+                  <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
                     ÚLTIMAS UNIDADES
                   </span>
                 )}
-              </a>
+              </div>
 
               {/* Product Details (Title, Description, and Price) */}
               <div class="mt-3 flex flex-col gap-1 w-full">
@@ -174,19 +253,18 @@ const user = Astro.locals.user;
                   {product.description}
                 </p>
                 
-                {/* Tiny Color Swatches */}
-                {getProductColors(product).length > 0 && (
+                {/* Clickable Swatches */}
+                {getUniqueColors(product).length > 0 && (
                   <div class="flex items-center gap-1.5 mt-1">
-                    {getProductColors(product).map((color) => {
-                      const hex = getColorHex(color);
-                      return (
-                        <div 
-                          class="w-3.5 h-3.5 rounded-full border border-slate-200/80 shadow-3xs" 
-                          style={{ backgroundColor: hex }}
-                          title={color}
-                        />
-                      );
-                    })}
+                    {getUniqueColors(product).map((color) => (
+                      <button 
+                        type="button"
+                        class="color-swatch-btn w-4 h-4 rounded-full border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                        data-variant-image={color.image}
+                      />
+                    ))}
                   </div>
                 )}
 
@@ -346,6 +424,67 @@ const user = Astro.locals.user;
           });
         }
       });
+
+      // Listen to product card images slider arrows & swatches click events
+      document.querySelectorAll('.product-card').forEach((card) => {
+        const slider = card.querySelector('.product-images-slider') as HTMLDivElement;
+        const arrowLeft = card.querySelector('.slider-arrow-left') as HTMLButtonElement;
+        const arrowRight = card.querySelector('.slider-arrow-right') as HTMLButtonElement;
+        const swatches = card.querySelectorAll('.color-swatch-btn') as NodeListOf<HTMLButtonElement>;
+
+        if (slider && arrowLeft && arrowRight) {
+          arrowLeft.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            slider.scrollLeft -= slider.clientWidth;
+          });
+
+          arrowRight.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            slider.scrollLeft += slider.clientWidth;
+          });
+        }
+
+        swatches.forEach((swatch) => {
+          swatch.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const imgUrl = swatch.dataset.variantImage;
+            if (!imgUrl || !slider) return;
+
+            // Find if this image URL exists in the slides
+            const slides = Array.from(slider.querySelectorAll('img'));
+            const matchedIndex = slides.findIndex((img) => {
+              const src = img.getAttribute('src') || '';
+              return src === imgUrl || img.src === imgUrl;
+            });
+
+            if (matchedIndex !== -1) {
+              slider.scrollLeft = matchedIndex * slider.clientWidth;
+            } else {
+              // If not found in slider, swap the first slide's image source to show it!
+              const firstImg = slides[0];
+              if (firstImg) {
+                firstImg.src = imgUrl;
+                slider.scrollLeft = 0; // Go to first slide
+              }
+            }
+          });
+        });
+      });
     </script>
+    <style is:global>
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      .scrollbar-none::-webkit-scrollbar {
+        display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .scrollbar-none {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+    </style>
   </body>
 </html>

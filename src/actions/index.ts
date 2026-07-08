@@ -1,6 +1,7 @@
 import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'zod';
-import { db } from '../lib/firebase';
+import { randomUUID } from 'crypto';
+import { db, admin } from '../lib/firebase';
 import { getGeneralSettings } from '../lib/settings';
 import Stripe from 'stripe';
 
@@ -582,6 +583,170 @@ export const server = {
         throw new ActionError({
           code: 'BAD_REQUEST',
           message: error.message || 'Error al validar el código promocional.',
+        });
+      }
+    },
+  }),
+
+  getDbCart: defineAction({
+    accept: 'json',
+    handler: async (_, context) => {
+      const user = context.locals.user;
+      if (!user || !user.uid) {
+        return {};
+      }
+      try {
+        const cartSnap = await db.collection('carts').doc(user.uid).get();
+        if (cartSnap.exists) {
+          return cartSnap.data()?.items || {};
+        }
+        return {};
+      } catch (error) {
+        console.error('Error fetching DB cart:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al recuperar el carrito de la base de datos.',
+        });
+      }
+    },
+  }),
+
+  saveDbCart: defineAction({
+    accept: 'json',
+    input: z.object({
+      items: z.record(z.any()),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user;
+      if (!user || !user.uid) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'Debes iniciar sesión para guardar el carrito.',
+        });
+      }
+      try {
+        const { items } = input;
+        await db.collection('carts').doc(user.uid).set({
+          items,
+          updatedAt: new Date(),
+        });
+        return { success: true };
+      } catch (error) {
+        console.error('Error saving DB cart:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al guardar el carrito en la base de datos.',
+        });
+      }
+    },
+  }),
+
+  uploadImage: defineAction({
+    accept: 'json',
+    input: z.object({
+      base64Data: z.string(),
+      fileName: z.string(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const { base64Data, fileName } = input;
+        
+        // Decode base64
+        const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Content, 'base64');
+
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        const file = bucket.file(`products/${fileName}`);
+
+        const downloadToken = randomUUID();
+
+        await file.save(buffer, {
+          metadata: {
+            contentType: 'image/webp',
+            metadata: {
+              firebaseStorageDownloadTokens: downloadToken,
+            },
+          },
+        });
+
+        try {
+          await file.makePublic();
+        } catch (aclError) {
+          console.warn('Could not set object ACL (likely uniform bucket access is enabled):', aclError);
+        }
+
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${downloadToken}`;
+
+        return { success: true, url: downloadUrl };
+      } catch (error: any) {
+        console.error('Error in uploadImage action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al subir la imagen al servidor.',
+        });
+      }
+    },
+  }),
+
+  listUploadedImages: defineAction({
+    accept: 'json',
+    handler: async (_, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        
+        // List files in the products/ folder
+        const [files] = await bucket.getFiles({ prefix: 'products/' });
+
+        const images = await Promise.all(
+          files.map(async (file) => {
+            // Ignore folder placeholders
+            if (file.name.endsWith('/')) return null;
+
+            try {
+              const [metadata] = await file.getMetadata();
+              let token = metadata.metadata?.firebaseStorageDownloadTokens;
+
+              // Auto-repair missing tokens
+              if (!token) {
+                token = randomUUID();
+                await file.setMetadata({
+                  metadata: {
+                    firebaseStorageDownloadTokens: token,
+                  },
+                });
+              }
+
+              const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${token}`;
+
+              return {
+                name: file.name.replace('products/', ''),
+                url: downloadUrl,
+                timeCreated: metadata.timeCreated || new Date().toISOString(),
+              };
+            } catch (fileErr) {
+              console.error(`Error loading metadata for file ${file.name}:`, fileErr);
+              return null;
+            }
+          })
+        );
+
+        // Filter out nulls and sort newest-first
+        const validImages = images
+          .filter((img): img is { name: string; url: string; timeCreated: string } => img !== null)
+          .sort((a, b) => new Date(b.timeCreated).getTime() - new Date(a.timeCreated).getTime());
+
+        return { success: true, images: validImages };
+      } catch (error: any) {
+        console.error('Error in listUploadedImages action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al listar las imágenes de Firebase.',
         });
       }
     },
