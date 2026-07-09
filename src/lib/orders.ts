@@ -1,12 +1,12 @@
 import Stripe from 'stripe';
-import { Resend } from 'resend';
+import { sendEmail } from './mail';
 import { db } from './firebase';
 import type { Order, OrderItem, Product } from '../types';
+import { getEmailSettings } from './emailSettings';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20' as any,
 });
-const resend = new Resend(process.env.RESEND_API_KEY || '');
 
 export async function fulfillOrder(sessionId: string) {
   // Prevent duplicate processing (Idempotency)
@@ -134,37 +134,60 @@ export async function fulfillOrder(sessionId: string) {
     transaction.set(orderRef, orderData);
   });
 
-  // 4. Send transactional order confirmation email via Resend
-  if (customerDetails.email && process.env.RESEND_API_KEY) {
+  // 4. Send transactional order confirmation email via Nodemailer (SMTP)
+  if (customerDetails.email) {
     try {
-      const emailContent = `
-        <h1>¡Gracias por tu compra, ${customerDetails.name}!</h1>
-        <p>Hemos recibido tu pedido con el ID: <strong>${session.id}</strong>.</p>
-        <h3>Resumen del Pedido:</h3>
-        <ul>
-          ${items
-            .map(
-              (item) => `
-            <li>
-              ${item.title} ${item.variantName ? `(${item.variantName})` : ''} - 
-              Cantidad: ${item.quantity} - 
-              Precio: $${(item.price / 100).toFixed(2)}
-            </li>`
-            )
-            .join('')}
-        </ul>
-        <p>Total pagado: $${(totalAmount / 100).toFixed(2)}</p>
-        <p>Te enviaremos un correo de confirmación con el código de seguimiento una vez que tu pedido sea enviado.</p>
-      `;
+      // Fetch invoice details if generated
+      let invoicePdfUrl: string | null = null;
+      let hostedInvoiceUrl: string | null = null;
+      if (session.invoice) {
+        try {
+          const invoice = await stripe.invoices.retrieve(session.invoice as string);
+          invoicePdfUrl = invoice.invoice_pdf || null;
+          hostedInvoiceUrl = invoice.hosted_invoice_url || null;
+        } catch (err) {
+          console.error('[FulfillOrder] Error retrieving invoice:', err);
+        }
+      }
 
-      await resend.emails.send({
-        from: 'FlexForm Fitness <orders@flexformfitness.com>', // Set to verified domain sender
+      const emailSettings = await getEmailSettings();
+
+      const itemsHtml = `<ul>
+        ${items
+          .map(
+            (item) => `
+          <li>
+            ${item.title} ${item.variantName ? `(${item.variantName})` : ''} - 
+            Cantidad: ${item.quantity} - 
+            Precio: $${(item.price / 100).toFixed(2)}
+          </li>`
+          )
+          .join('')}
+      </ul>`;
+
+      const invoiceLink = hostedInvoiceUrl 
+        ? `<p>Puedes ver tu factura online aquí: <a href="${hostedInvoiceUrl}" target="_blank">Ver Factura de Stripe</a></p>` 
+        : '';
+
+      const emailContent = emailSettings.orderBody
+        .replace(/{{customerName}}/g, customerDetails.name || 'Cliente')
+        .replace(/{{orderId}}/g, session.id)
+        .replace(/{{orderItems}}/g, itemsHtml)
+        .replace(/{{totalAmount}}/g, `$${(totalAmount / 100).toFixed(2)}`)
+        .replace(/{{invoiceUrl}}/g, invoiceLink);
+
+      const subject = emailSettings.orderSubject
+        .replace(/{{customerName}}/g, customerDetails.name || 'Cliente')
+        .replace(/{{orderId}}/g, session.id.slice(-6).toUpperCase());
+
+      await sendEmail({
         to: customerDetails.email,
-        subject: `Confirmación de pedido - FlexForm Fitness #${session.id.slice(-6).toUpperCase()}`,
+        subject,
         html: emailContent,
+        attachmentUrl: invoicePdfUrl,
       });
     } catch (err) {
-      console.error('[FulfillOrder] Error sending email:', err);
+      console.error('[FulfillOrder] Error sending email via Nodemailer:', err);
     }
   }
 

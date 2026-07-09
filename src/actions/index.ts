@@ -8,10 +8,9 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20' as any,
 });
-import { Resend } from 'resend';
+import { sendEmail } from '../lib/mail';
 import type { Order } from '../types';
-
-const resend = new Resend(process.env.RESEND_API_KEY || '');
+import { getEmailSettings } from '../lib/emailSettings';
 import { triggerRebuild } from '../lib/deploy';
 
 // Schema Definitions
@@ -250,8 +249,7 @@ export const server = {
             <p>¡Gracias por comprar en FlexForm Fitness!</p>
           `;
 
-          await resend.emails.send({
-            from: 'FlexForm Fitness <shipping@flexformfitness.com>',
+          await sendEmail({
             to: order.customerDetails.email,
             subject: `Tu pedido ha sido enviado - FlexForm Fitness #${orderId.slice(-6).toUpperCase()}`,
             html: emailContent,
@@ -840,6 +838,240 @@ export const server = {
         throw new ActionError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Error al actualizar el perfil en la base de datos.',
+        });
+      }
+    },
+  }),
+
+  getEmailSettings: defineAction({
+    accept: 'json',
+    handler: async (_, context) => {
+      await checkAdminAuth(context);
+      try {
+        const settings = await getEmailSettings();
+        return settings;
+      } catch (error: any) {
+        console.error('Error in getEmailSettings action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener la configuración de emails.',
+        });
+      }
+    },
+  }),
+
+  updateEmailSettings: defineAction({
+    accept: 'json',
+    input: z.object({
+      orderSubject: z.string(),
+      orderBody: z.string(),
+      abandonedSubject: z.string(),
+      abandonedBody: z.string(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        await db.collection('settings').doc('email').set({
+          ...input,
+          updatedAt: new Date(),
+        }, { merge: true });
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error in updateEmailSettings action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al guardar la configuración de emails.',
+        });
+      }
+    },
+  }),
+
+  getAbandonedCarts: defineAction({
+    accept: 'json',
+    handler: async (_, context) => {
+      await checkAdminAuth(context);
+      try {
+        const cartsSnap = await db.collection('carts').get();
+        const abandonedCarts: any[] = [];
+
+        // Fetch completed orders to filter users who completed a checkout since cart update
+        const ordersSnap = await db.collection('orders').get();
+        const ordersList = ordersSnap.docs.map(doc => ({
+          email: doc.data().customerDetails?.email || '',
+          createdAt: doc.data().createdAt?.toDate() || new Date(0)
+        }));
+
+        for (const doc of cartsSnap.docs) {
+          const userId = doc.id;
+          const cartData = doc.data();
+          const items = cartData.items || {};
+          const cartUpdatedAt = cartData.updatedAt?.toDate() || new Date(0);
+
+          // If cart has no items, skip it
+          if (Object.keys(items).length === 0) {
+            continue;
+          }
+
+          // Fetch user record from Firebase Auth
+          let userRecord: any;
+          try {
+            userRecord = await admin.auth().getUser(userId);
+          } catch (authErr) {
+            // If user doesn't exist anymore, skip
+            continue;
+          }
+
+          const userEmail = userRecord.email;
+          const userName = userRecord.displayName || 'Cliente';
+
+          if (!userEmail) continue;
+
+          // Check if this user completed an order *after* the cart was last updated
+          const hasPurchasedSince = ordersList.some(order => 
+            order.email.toLowerCase() === userEmail.toLowerCase() && 
+            order.createdAt >= cartUpdatedAt
+          );
+
+          if (hasPurchasedSince) {
+            continue;
+          }
+
+          // Convert cart items map to an array and calculate total
+          const itemsList = Object.values(items);
+          let totalAmount = 0;
+          itemsList.forEach((item: any) => {
+            totalAmount += (item.price || 0) * (item.quantity || 0);
+          });
+
+          abandonedCarts.push({
+            userId,
+            email: userEmail,
+            name: userName,
+            updatedAt: cartUpdatedAt.toISOString(),
+            items: itemsList,
+            totalAmount,
+          });
+        }
+
+        // Sort by newest updatedAt
+        abandonedCarts.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+        return { success: true, carts: abandonedCarts };
+      } catch (error: any) {
+        console.error('Error in getAbandonedCarts action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener los carritos abandonados.',
+        });
+      }
+    },
+  }),
+
+  sendAbandonedCartEmail: defineAction({
+    accept: 'json',
+    input: z.object({
+      userId: z.string(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        const { userId } = input;
+        const cartDoc = await db.collection('carts').doc(userId).get();
+        if (!cartDoc.exists) {
+          throw new Error('No se encontró el carrito del usuario.');
+        }
+
+        const cartData = cartDoc.data();
+        const items = cartData?.items || {};
+        if (Object.keys(items).length === 0) {
+          throw new Error('El carrito del usuario está vacío.');
+        }
+
+        const userRecord = await admin.auth().getUser(userId);
+        const userEmail = userRecord.email;
+        const userName = userRecord.displayName || 'Cliente';
+
+        if (!userEmail) {
+          throw new Error('El usuario no tiene una dirección de correo válida.');
+        }
+
+        const emailSettings = await getEmailSettings();
+        const siteUrl = process.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+
+        // Format items as HTML
+        const itemsList = Object.values(items);
+        const itemsHtml = `<ul>
+          ${itemsList
+            .map(
+              (item: any) => `
+            <li>
+              ${item.title} ${item.variantName ? `(${item.variantName})` : ''} - 
+              Cantidad: ${item.quantity} - 
+              Precio: $${((item.price || 0) / 100).toFixed(2)}
+            </li>`
+            )
+            .join('')}
+        </ul>`;
+
+        const recoveryUrl = `${siteUrl}/carrito`;
+
+        // Replace placeholders
+        const subject = emailSettings.abandonedSubject
+          .replace(/{{customerName}}/g, userName)
+          .replace(/{{recoveryUrl}}/g, recoveryUrl);
+
+        const html = emailSettings.abandonedBody
+          .replace(/{{customerName}}/g, userName)
+          .replace(/{{orderItems}}/g, itemsHtml)
+          .replace(/{{recoveryUrl}}/g, recoveryUrl);
+
+        await sendEmail({
+          to: userEmail,
+          subject,
+          html,
+        });
+
+        console.log(`[sendAbandonedCartEmail] Recovery email sent successfully to ${userEmail}`);
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error in sendAbandonedCartEmail action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al enviar el correo de recuperación.',
+        });
+      }
+    },
+  }),
+
+  sendTestEmail: defineAction({
+    accept: 'json',
+    handler: async (_, context) => {
+      await checkAdminAuth(context);
+      try {
+        const recipient = process.env.SUPERADMIN_EMAIL || process.env.SMTP_USER || 'tech@flexformfitness.com';
+        
+        await sendEmail({
+          to: recipient,
+          subject: 'Prueba de Correo desde el Panel de Administración 🎉',
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+              <h2 style="color: #e11d48; margin-top: 0;">¡Conexión SMTP exitosa!</h2>
+              <p>Este es un correo de prueba enviado desde tu Panel de Administración de FlexForm Fitness.</p>
+              <p>Tu configuración de Nodemailer y Google Workspace está funcionando correctamente.</p>
+              <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+              <small style="color: #666;">Enviado el: ${new Date().toLocaleString()}</small>
+            </div>
+          `,
+        });
+
+        console.log(`[sendTestEmail] Test email sent successfully to ${recipient}`);
+        return { success: true, recipient };
+      } catch (error: any) {
+        console.error('Error in sendTestEmail action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al enviar el correo de prueba.',
         });
       }
     },

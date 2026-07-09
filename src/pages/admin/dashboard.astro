@@ -2,11 +2,13 @@
 import { db } from '../../lib/firebase';
 import type { Product, Order, ProductCollection } from '../../types';
 import { getGeneralSettings } from '../../lib/settings';
+import { getEmailSettings } from '../../lib/emailSettings';
 import Stripe from 'stripe';
 
 export const prerender = false; // Server-rendered to check auth and fetch live data
 
 const settings = await getGeneralSettings();
+const emailSettings = await getEmailSettings();
 const popularCountries = ['ES', 'FR', 'DE', 'IT', 'PT', 'GB', 'US', 'CA', 'MX'];
 const otherCountries = settings.markets.filter((c) => !popularCountries.includes(c));
 
@@ -186,6 +188,13 @@ function getObjectPosition(url: string | undefined): string {
           class="pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all"
         >
           Pedidos
+        </button>
+        <button
+          type="button"
+          id="tab-emails-btn"
+          class="pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all"
+        >
+          Emails
         </button>
         <button
           type="button"
@@ -546,6 +555,155 @@ function getObjectPosition(url: string | undefined): string {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: EMAILS SECTION -->
+      <section id="section-emails" class="w-full hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wider">Gestión de Emails y Marketing</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <!-- Left Side: Sub-navigation sidebar menu -->
+          <div class="md:col-span-1 flex flex-col gap-1 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm h-fit">
+            <button
+              type="button"
+              id="subtab-templates-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+              Plantillas de Email
+            </button>
+            <button
+              type="button"
+              id="subtab-abandoned-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.2 0 .75.75 0 0 1 1.2 0Zm12.75 0a.75.75 0 1 1-1.2 0 .75.75 0 0 1 1.2 0Z" />
+              </svg>
+              Carritos Abandonados
+            </button>
+          </div>
+
+          <!-- Right Side: Forms and Lists -->
+          <div class="md:col-span-3 flex flex-col gap-6">
+            <!-- SUBTAB: EMAIL TEMPLATES FORM -->
+            <form id="form-sub-templates" class="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex flex-col gap-6 w-full">
+              <div>
+                <h3 class="text-base font-extrabold text-slate-900 uppercase tracking-wider mb-1">Configuración de Plantillas</h3>
+                <p class="text-xs text-slate-400">Modifica el asunto y el diseño HTML de tus correos transaccionales y de marketing.</p>
+              </div>
+
+              <!-- Order Confirmation Template -->
+              <div class="border-t border-slate-100 pt-4 flex flex-col gap-4">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-rose-600">1. Confirmación de Pedido (Pedido Realizado)</h4>
+                
+                <div class="flex flex-col gap-1">
+                  <label for="email-order-subject" class="block font-semibold text-slate-500 uppercase tracking-wider text-3xs">Asunto del Correo</label>
+                  <input
+                    type="text"
+                    id="email-order-subject"
+                    name="orderSubject"
+                    value={emailSettings.orderSubject}
+                    class="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:outline-none focus:border-rose-600 focus:bg-white w-full"
+                    required
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label for="email-order-body" class="block font-semibold text-slate-500 uppercase tracking-wider text-3xs">Cuerpo HTML del Correo</label>
+                  <textarea
+                    id="email-order-body"
+                    name="orderBody"
+                    rows="10"
+                    class="px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-mono focus:outline-none focus:border-rose-600 focus:bg-white w-full"
+                    required
+                  >{emailSettings.orderBody}</textarea>
+                  <span class="text-3xs text-slate-400 leading-normal">
+                    Variables dinámicas: <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{customerName}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{orderId}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{orderItems}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{totalAmount}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{invoiceUrl}}"}</code>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Abandoned Cart Template -->
+              <div class="border-t border-slate-100 pt-4 flex flex-col gap-4">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-rose-600">2. Recuperación de Carrito Abandonado</h4>
+                
+                <div class="flex flex-col gap-1">
+                  <label for="email-abandoned-subject" class="block font-semibold text-slate-500 uppercase tracking-wider text-3xs">Asunto del Correo</label>
+                  <input
+                    type="text"
+                    id="email-abandoned-subject"
+                    name="abandonedSubject"
+                    value={emailSettings.abandonedSubject}
+                    class="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:outline-none focus:border-rose-600 focus:bg-white w-full"
+                    required
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label for="email-abandoned-body" class="block font-semibold text-slate-500 uppercase tracking-wider text-3xs">Cuerpo HTML del Correo</label>
+                  <textarea
+                    id="email-abandoned-body"
+                    name="abandonedBody"
+                    rows="10"
+                    class="px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-mono focus:outline-none focus:border-rose-600 focus:bg-white w-full"
+                    required
+                  >{emailSettings.abandonedBody}</textarea>
+                  <span class="text-3xs text-slate-400 leading-normal">
+                    Variables dinámicas: <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{customerName}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{orderItems}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{recoveryUrl}}"}</code>
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  id="send-test-email-btn"
+                  class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  Enviar Email de Prueba
+                </button>
+                <button
+                  type="submit"
+                  id="save-email-settings-btn"
+                  class="px-5 py-3 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 shadow-md active:scale-95 cursor-pointer"
+                >
+                  Guardar Plantillas
+                </button>
+              </div>
+            </form>
+
+            <!-- SUBTAB: ABANDONED CARTS LIST -->
+            <div id="form-sub-abandoned" class="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex flex-col gap-6 w-full hidden">
+              <div>
+                <h3 class="text-base font-extrabold text-slate-900 uppercase tracking-wider mb-1">Carritos Abandonados Detectados</h3>
+                <p class="text-xs text-slate-400">Listado de usuarios registrados con artículos guardados en el carrito que aún no han comprado.</p>
+              </div>
+
+              <div class="overflow-x-auto w-full border border-slate-100 rounded-2xl">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase tracking-wider font-extrabold text-3xs">
+                      <th class="py-4 px-5">Cliente</th>
+                      <th class="py-4 px-5">Última Actividad</th>
+                      <th class="py-4 px-5">Artículos</th>
+                      <th class="py-4 px-5">Total Estimado</th>
+                      <th class="py-4 px-5 text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="abandoned-carts-table-body" class="divide-y divide-slate-50 text-slate-700">
+                    <tr>
+                      <td colspan="5" class="py-8 text-center text-slate-400 font-medium">Cargando carritos abandonados...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -1473,11 +1631,13 @@ function getObjectPosition(url: string | undefined): string {
       const tabProductsBtn = document.getElementById('tab-products-btn') as HTMLButtonElement;
       const tabCollectionsBtn = document.getElementById('tab-collections-btn') as HTMLButtonElement;
       const tabOrdersBtn = document.getElementById('tab-orders-btn') as HTMLButtonElement;
+      const tabEmailsBtn = document.getElementById('tab-emails-btn') as HTMLButtonElement;
       const tabSettingsBtn = document.getElementById('tab-settings-btn') as HTMLButtonElement;
       
       const sectionProducts = document.getElementById('section-products') as HTMLDivElement;
       const sectionCollections = document.getElementById('section-collections') as HTMLDivElement;
       const sectionOrders = document.getElementById('section-orders') as HTMLDivElement;
+      const sectionEmails = document.getElementById('section-emails') as HTMLDivElement;
       const sectionSettings = document.getElementById('section-settings') as HTMLDivElement;
 
       const productModal = document.getElementById('product-modal') as HTMLDivElement;
@@ -1521,41 +1681,49 @@ function getObjectPosition(url: string | undefined): string {
       const adminsContainer = document.getElementById('admins-list-container');
 
        // 1. Tab Navigation Logic
-       function deactivateAllTabs() {
-         tabProductsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-         tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-         tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-         if (tabSettingsBtn) tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-         
-         sectionProducts.classList.add('hidden');
-         sectionCollections.classList.add('hidden');
-         sectionOrders.classList.add('hidden');
-         if (sectionSettings) sectionSettings.classList.add('hidden');
-       }
+        function deactivateAllTabs() {
+          tabProductsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+          tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+          tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+          if (tabEmailsBtn) tabEmailsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+          if (tabSettingsBtn) tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+          
+          sectionProducts.classList.add('hidden');
+          sectionCollections.classList.add('hidden');
+          sectionOrders.classList.add('hidden');
+          if (sectionEmails) sectionEmails.classList.add('hidden');
+          if (sectionSettings) sectionSettings.classList.add('hidden');
+        }
 
-       function activateTab(tabName: string) {
-         deactivateAllTabs();
-         localStorage.setItem('flexform_active_tab', tabName);
-         
-         if (tabName === 'products') {
-           tabProductsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-           sectionProducts.classList.remove('hidden');
-         } else if (tabName === 'collections') {
-           tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-           sectionCollections.classList.remove('hidden');
-         } else if (tabName === 'orders') {
-           tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-           sectionOrders.classList.remove('hidden');
-         } else if (tabName === 'settings' && tabSettingsBtn && sectionSettings) {
-           tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-           sectionSettings.classList.remove('hidden');
-         }
-       }
+        function activateTab(tabName: string) {
+          deactivateAllTabs();
+          localStorage.setItem('flexform_active_tab', tabName);
+          
+          if (tabName === 'products') {
+            tabProductsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+            sectionProducts.classList.remove('hidden');
+          } else if (tabName === 'collections') {
+            tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+            sectionCollections.classList.remove('hidden');
+          } else if (tabName === 'orders') {
+            tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+            sectionOrders.classList.remove('hidden');
+          } else if (tabName === 'emails' && tabEmailsBtn && sectionEmails) {
+            tabEmailsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+            sectionEmails.classList.remove('hidden');
+            const activeSubtab = localStorage.getItem('flexform_active_email_subtab') || 'templates';
+            activateEmailSubtab(activeSubtab);
+          } else if (tabName === 'settings' && tabSettingsBtn && sectionSettings) {
+            tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+            sectionSettings.classList.remove('hidden');
+          }
+        }
 
-       tabProductsBtn?.addEventListener('click', () => activateTab('products'));
-       tabCollectionsBtn?.addEventListener('click', () => activateTab('collections'));
-       tabOrdersBtn?.addEventListener('click', () => activateTab('orders'));
-       tabSettingsBtn?.addEventListener('click', () => activateTab('settings'));
+        tabProductsBtn?.addEventListener('click', () => activateTab('products'));
+        tabCollectionsBtn?.addEventListener('click', () => activateTab('collections'));
+        tabOrdersBtn?.addEventListener('click', () => activateTab('orders'));
+        tabEmailsBtn?.addEventListener('click', () => activateTab('emails'));
+        tabSettingsBtn?.addEventListener('click', () => activateTab('settings'));
 
        // Settings internal subtab navigation
        function deactivateAllSubtabs() {
@@ -1593,6 +1761,195 @@ function getObjectPosition(url: string | undefined): string {
        subtabAdminsBtn?.addEventListener('click', () => activateSubtab('admins'));
        subtabBrandingBtn?.addEventListener('click', () => activateSubtab('branding'));
        subtabCouponsBtn?.addEventListener('click', () => activateSubtab('coupons'));
+
+       // --- Email Settings & Subtab Navigation ---
+       const subtabTemplatesBtn = document.getElementById('subtab-templates-btn') as HTMLButtonElement;
+       const subtabAbandonedBtn = document.getElementById('subtab-abandoned-btn') as HTMLButtonElement;
+       const formSubTemplates = document.getElementById('form-sub-templates') as HTMLFormElement;
+       const formSubAbandoned = document.getElementById('form-sub-abandoned') as HTMLDivElement;
+       const abandonedCartsTableBody = document.getElementById('abandoned-carts-table-body') as HTMLTableSectionElement;
+       const saveEmailSettingsBtn = document.getElementById('save-email-settings-btn') as HTMLButtonElement;
+       const sendTestEmailBtn = document.getElementById('send-test-email-btn') as HTMLButtonElement;
+
+       sendTestEmailBtn?.addEventListener('click', async () => {
+         sendTestEmailBtn.disabled = true;
+         const originalText = sendTestEmailBtn.innerText;
+         sendTestEmailBtn.innerText = 'Enviando...';
+         try {
+           const { data, error } = await actions.sendTestEmail();
+           if (error) throw error;
+           alert(`¡Correo de prueba enviado con éxito a ${data.recipient}!`);
+         } catch (err: any) {
+           console.error(err);
+           alert('Error al enviar el correo de prueba: ' + (err.message || 'Error desconocido'));
+         } finally {
+           sendTestEmailBtn.disabled = false;
+           sendTestEmailBtn.innerText = originalText;
+         }
+       });
+
+       function deactivateAllEmailSubtabs() {
+         if (subtabTemplatesBtn) subtabTemplatesBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+         if (subtabAbandonedBtn) subtabAbandonedBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+
+         if (formSubTemplates) formSubTemplates.classList.add('hidden');
+         if (formSubAbandoned) formSubAbandoned.classList.add('hidden');
+       }
+
+       function activateEmailSubtab(subtabName: string) {
+         deactivateAllEmailSubtabs();
+         localStorage.setItem('flexform_active_email_subtab', subtabName);
+
+         if (subtabName === 'templates' && subtabTemplatesBtn && formSubTemplates) {
+           subtabTemplatesBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+           formSubTemplates.classList.remove('hidden');
+         } else if (subtabName === 'abandoned' && subtabAbandonedBtn && formSubAbandoned) {
+           subtabAbandonedBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+           formSubAbandoned.classList.remove('hidden');
+           loadAbandonedCarts();
+         }
+       }
+
+       subtabTemplatesBtn?.addEventListener('click', () => activateEmailSubtab('templates'));
+       subtabAbandonedBtn?.addEventListener('click', () => activateEmailSubtab('abandoned'));
+
+       formSubTemplates?.addEventListener('submit', async (e) => {
+         e.preventDefault();
+         saveEmailSettingsBtn.disabled = true;
+         const originalText = saveEmailSettingsBtn.innerText;
+         saveEmailSettingsBtn.innerText = 'Guardando...';
+
+         const orderSubject = (document.getElementById('email-order-subject') as HTMLInputElement).value;
+         const orderBody = (document.getElementById('email-order-body') as HTMLTextAreaElement).value;
+         const abandonedSubject = (document.getElementById('email-abandoned-subject') as HTMLInputElement).value;
+         const abandonedBody = (document.getElementById('email-abandoned-body') as HTMLTextAreaElement).value;
+
+         try {
+           const { error } = await actions.updateEmailSettings({
+             orderSubject,
+             orderBody,
+             abandonedSubject,
+             abandonedBody
+           });
+           if (error) throw error;
+           alert('Plantillas de correo guardadas con éxito.');
+         } catch (err: any) {
+           console.error(err);
+           alert('Error al guardar plantillas de correo: ' + (err.message || 'Error desconocido'));
+         } finally {
+           saveEmailSettingsBtn.disabled = false;
+           saveEmailSettingsBtn.innerText = originalText;
+         }
+       });
+
+       async function loadAbandonedCarts() {
+         if (!abandonedCartsTableBody) return;
+         abandonedCartsTableBody.innerHTML = `
+           <tr>
+             <td colspan="5" class="py-8 text-center text-slate-400 font-medium">Cargando carritos abandonados...</td>
+           </tr>
+         `;
+         try {
+           const { data, error } = await actions.getAbandonedCarts();
+           if (error) throw error;
+           
+           const carts = data?.carts || [];
+           if (carts.length === 0) {
+             abandonedCartsTableBody.innerHTML = `
+               <tr>
+                 <td colspan="5" class="py-8 text-center text-slate-400 font-medium">No se detectaron carritos abandonados.</td>
+               </tr>
+             `;
+             return;
+           }
+
+           abandonedCartsTableBody.innerHTML = carts.map((cart: any) => {
+             const updatedAtDate = new Date(cart.updatedAt);
+             const itemsSummary = cart.items.map((item: any) => `
+               <div class="flex items-center gap-2 py-1">
+                 ${item.image ? `<img src="${item.image}" class="w-6 h-6 object-cover rounded" />` : ''}
+                 <span>${item.title} ${item.variantName ? `(${item.variantName})` : ''} <span class="text-slate-400">x${item.quantity}</span></span>
+               </div>
+             `).join('');
+
+             // Human-readable date time ago
+             const diffMs = new Date().getTime() - updatedAtDate.getTime();
+             const diffMins = Math.floor(diffMs / 60000);
+             const diffHours = Math.floor(diffMins / 60);
+             const diffDays = Math.floor(diffHours / 24);
+             let timeAgo = '';
+             if (diffDays > 0) timeAgo = `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+             else if (diffHours > 0) timeAgo = `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+             else timeAgo = `Hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
+
+             return `
+               <tr class="hover:bg-slate-50/50 transition-colors">
+                 <td class="py-4 px-5">
+                   <div class="font-bold text-slate-900">${cart.name}</div>
+                   <div class="text-slate-400 text-3xs">${cart.email}</div>
+                 </td>
+                 <td class="py-4 px-5 text-slate-500 font-mono text-3xs">
+                   <div>${updatedAtDate.toLocaleDateString()}</div>
+                   <div class="text-slate-400">${timeAgo}</div>
+                 </td>
+                 <td class="py-4 px-5 text-slate-600 font-medium">
+                   ${itemsSummary}
+                 </td>
+                 <td class="py-4 px-5 font-bold font-mono text-slate-900">
+                   $${(cart.totalAmount / 100).toFixed(2)}
+                 </td>
+                 <td class="py-4 px-5 text-right">
+                   <button
+                     type="button"
+                     data-user-id="${cart.userId}"
+                     class="send-recovery-email-btn px-3 py-2 bg-rose-600 hover:bg-red-700 text-white rounded-lg text-3xs font-extrabold uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer shadow-xs inline-flex items-center gap-1"
+                   >
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                     </svg>
+                     Enviar Recordatorio
+                   </button>
+                 </td>
+               </tr>
+             `;
+           }).join('');
+
+           // Register listeners for send recordatorio buttons
+           document.querySelectorAll('.send-recovery-email-btn').forEach((btn: any) => {
+             btn.addEventListener('click', async (e: any) => {
+               const userId = btn.getAttribute('data-user-id');
+               btn.disabled = true;
+               const originalText = btn.innerHTML;
+               btn.innerHTML = 'Enviando...';
+               try {
+                 const { error } = await actions.sendAbandonedCartEmail({ userId });
+                 if (error) throw error;
+                 alert('¡Correo de recuperación enviado con éxito!');
+                 btn.className = "px-3 py-2 bg-emerald-600 text-white rounded-lg text-3xs font-extrabold uppercase tracking-wider cursor-default inline-flex items-center gap-1";
+                 btn.innerHTML = `
+                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                   </svg>
+                   Enviado
+                 `;
+               } catch (err: any) {
+                 console.error(err);
+                 alert('Error al enviar el correo: ' + (err.message || 'Error desconocido'));
+                 btn.disabled = false;
+                 btn.innerHTML = originalText;
+               }
+             });
+           });
+
+         } catch (err: any) {
+           console.error('Error loading abandoned carts:', err);
+           abandonedCartsTableBody.innerHTML = `
+             <tr>
+               <td colspan="5" class="py-8 text-center text-rose-600 font-medium">Error al cargar carritos: ${err.message || 'Error desconocido'}</td>
+             </tr>
+           `;
+         }
+       }
 
        // Initialize tabs on page load
        const savedTab = localStorage.getItem('flexform_active_tab') || 'products';
