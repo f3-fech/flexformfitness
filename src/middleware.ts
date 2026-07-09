@@ -10,7 +10,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Only parse cookies on dynamic routes (SSR) to avoid Astro request headers warning during static pre-rendering
   const path = url.pathname;
-  const isSSR = path.startsWith('/admin') || path.startsWith('/carrito') || path.startsWith('/api') || path.startsWith('/_actions');
+  const isSSR = path.startsWith('/admin') ||
+                path.startsWith('/carrito') ||
+                path.startsWith('/mi-cuenta') ||
+                path.startsWith('/checkout') ||
+                path.startsWith('/api') ||
+                path.startsWith('/_actions') ||
+                path === '/products.json';
 
   // Retrieve user session cookie
   const sessionCookie = isSSR ? context.cookies.get('session_token')?.value : undefined;

@@ -62,6 +62,7 @@ const collectionSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   slug: z.string().min(1, 'Slug is required'),
   description: z.string().min(1, 'Description is required'),
+  detailedDescription: z.string().optional().nullable(),
   productIds: z.array(z.string()),
   seo: seoSchema,
 });
@@ -71,6 +72,7 @@ const updateCollectionSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   slug: z.string().min(1, 'Slug is required'),
   description: z.string().min(1, 'Description is required'),
+  detailedDescription: z.string().optional().nullable(),
   productIds: z.array(z.string()),
   seo: seoSchema,
 });
@@ -675,7 +677,8 @@ export const server = {
         try {
           await file.makePublic();
         } catch (aclError) {
-          console.warn('Could not set object ACL (likely uniform bucket access is enabled):', aclError);
+          // Uniform bucket-level access is enabled on Firebase. Individual object ACLs are ignored.
+          // The token-based download URL will still work perfectly for customers.
         }
 
         const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${downloadToken}`;
@@ -686,6 +689,51 @@ export const server = {
         throw new ActionError({
           code: 'INTERNAL_SERVER_ERROR',
           message: error.message || 'Error al subir la imagen al servidor.',
+        });
+      }
+    },
+  }),
+
+  deleteImage: defineAction({
+    accept: 'json',
+    input: z.object({
+      url: z.string().url(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const { url } = input;
+        
+        // Extract filePath in Firebase Storage from URL
+        const match = url.match(/\/o\/([^?#]+)/);
+        if (!match || !match[1]) {
+          throw new Error('Formato de URL de almacenamiento inválido.');
+        }
+
+        const filePath = decodeURIComponent(match[1]);
+
+        // Guard: Only allow deleting files in products folder that are cropped to avoid accidental deletions of main assets
+        if (!filePath.startsWith('products/crop_')) {
+          throw new Error('Sólo está permitido eliminar imágenes recortadas temporales.');
+        }
+
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        const file = bucket.file(filePath);
+
+        const [exists] = await file.exists();
+        if (exists) {
+          await file.delete();
+          console.log(`Successfully deleted orphaned cropped image from Storage: ${filePath}`);
+        }
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error in deleteImage action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al eliminar la imagen del servidor.',
         });
       }
     },

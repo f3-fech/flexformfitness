@@ -49,6 +49,15 @@ if (!product) {
   return Astro.redirect('/404');
 }
 
+const getObjectPosition = (url: string | undefined): string => {
+  if (!url) return 'center';
+  const match = url.match(/#pos=([a-zA-Z0-9%_-]+)/);
+  if (match && match[1]) {
+    return match[1].replace('_', ' ');
+  }
+  return 'center';
+};
+
 const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
 const canonicalUrl = `${siteUrl}/productos/${product.slug}`;
 
@@ -112,9 +121,14 @@ const productJsonLd = {
                 <button
                   type="button"
                   class="w-16 h-20 sm:w-[80px] sm:h-[106px] shrink-0 rounded-xl overflow-hidden bg-white border border-slate-200 hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all duration-200 shadow-2xs"
-                  onclick={`document.getElementById('main-product-image').src = '${img}'`}
+                  onclick={`
+                    const mainImg = document.getElementById('main-product-image');
+                    mainImg.src = '${img}';
+                    const match = '${img}'.match(/#pos=([a-zA-Z0-9%_-]+)/);
+                    mainImg.style.objectPosition = match ? match[1].replace('_', ' ') : 'center';
+                  `}
                 >
-                  <img src={img} alt={`${product.title} vista ${idx + 1}`} class="w-full h-full object-cover object-center" />
+                  <img src={img} alt={`${product.title} vista ${idx + 1}`} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(img)}`} />
                 </button>
               ))}
             </div>
@@ -125,7 +139,8 @@ const productJsonLd = {
             <img
               src={product.images[0]}
               alt={product.title}
-              class="w-full h-full object-cover object-center transition-all duration-300 rounded-2xl"
+              class="w-full h-full object-cover transition-all duration-300 rounded-2xl"
+              style={`object-position: ${getObjectPosition(product.images[0])}`}
               id="main-product-image"
             />
           </div>

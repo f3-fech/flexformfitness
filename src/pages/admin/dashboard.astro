@@ -54,6 +54,15 @@ const paidOrders = orders.filter((o) => o.paymentStatus === 'paid');
 const totalRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 const pendingShipmentsCount = paidOrders.filter((o) => o.shippingStatus === 'pending').length;
 const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paidOrders.length) : 0;
+
+function getObjectPosition(url: string | undefined): string {
+  if (!url) return 'center';
+  const match = url.match(/#pos=([a-zA-Z0-9%_-]+)/);
+  if (match && match[1]) {
+    return match[1].replace('_', ' ');
+  }
+  return 'center';
+}
 ---
 
 <!doctype html>
@@ -66,6 +75,9 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <!-- Cropper.js CDN for photoshop-style visual image cropping -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-screen font-sans antialiased flex flex-col w-full">
     
@@ -230,8 +242,8 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
                   products.map((product) => (
                     <tr class="product-row hover:bg-slate-50 transition-colors" data-title={product.title.toLowerCase()} data-slug={product.slug.toLowerCase()}>
                       <td class="p-4 pl-6">
-                        <div class="w-12 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
-                          <img src={product.images[0]} alt={product.title} class="w-full h-full object-cover" />
+                        <div class="w-20 h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-3xs transition-all duration-300 hover:scale-[1.06] hover:shadow-xs">
+                          <img src={product.images[0]} alt={product.title} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(product.images[0])}`} />
                         </div>
                       </td>
                       <td class="p-4">
@@ -388,7 +400,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
                   
                   <!-- Tiny Image -->
                   <div class="w-9 h-12 rounded overflow-hidden bg-white shrink-0 border border-slate-200">
-                    <img src={p.images[0]} class="w-full h-full object-cover" />
+                    <img src={p.images[0]} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(p.images[0])}`} />
                   </div>
                   
                   <div class="flex-1 min-w-0">
@@ -463,12 +475,13 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
                   </tr>
                 ) : (
                   orders.map((order) => (
-                    <tr class="order-row hover:bg-slate-50 transition-colors"
+                    <tr class="order-row hover:bg-slate-50 transition-colors cursor-pointer"
                       data-id={order.id.toLowerCase()}
                       data-name={order.customerDetails.name.toLowerCase()}
                       data-email={order.customerDetails.email.toLowerCase()}
                       data-payment-status={order.paymentStatus}
                       data-shipping-status={order.shippingStatus}
+                      data-order={JSON.stringify(order)}
                     >
                       <td class="p-4 pl-6">
                         <span class="block font-bold font-mono text-slate-900 text-xs">{order.id.slice(-8).toUpperCase()}...</span>
@@ -935,7 +948,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
     <!-- MODAL: COLLECTION FORM (CREATE / EDIT) -->
     <!-- MODAL: WINDOW FOLDER VIEW & EDIT -->
     <div id="collection-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
-      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] h-[92vh] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
         
         <!-- Window Title Bar (Windows-like layout) -->
         <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center select-none shrink-0">
@@ -958,80 +971,129 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           </div>
         </div>
         
-        <form id="collection-form" class="flex-grow overflow-hidden flex flex-col lg:flex-row text-xs">
+        <!-- Modal Tab Bar -->
+        <div class="px-6 bg-slate-50 border-b border-slate-200 flex gap-4 shrink-0 select-none">
+          <button type="button" id="coll-tab-info" class="py-3 px-1 border-b-2 border-rose-600 text-rose-600 font-extrabold text-xs uppercase tracking-wider focus:outline-none transition-all cursor-pointer">
+            1. Propiedades y SEO
+          </button>
+          <button type="button" id="coll-tab-products" class="py-3 px-1 border-b-2 border-transparent text-slate-400 hover:text-slate-900 font-extrabold text-xs uppercase tracking-wider focus:outline-none transition-all cursor-pointer">
+            2. Organizar Productos
+          </button>
+        </div>
+
+        <form id="collection-form" class="flex-grow overflow-hidden flex flex-col text-xs bg-slate-50/35">
           <!-- Hidden id field -->
           <input type="hidden" name="id" id="form-collection-id" />
 
-          <!-- LEFT COLUMN: Folder Settings & SEO -->
-          <div class="w-full lg:w-2/5 p-6 overflow-y-auto border-r border-slate-200 flex flex-col gap-5">
-            <div class="border-b border-slate-200 pb-2 mb-1">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Ajustes de Carpeta (Colección)</span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="form-collection-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Nombre Carpeta</label>
-                <input type="text" name="title" id="form-collection-title" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold" placeholder="Ej: Camisetas Mujeres Gym" />
+          <!-- SECTION 1: Folder Settings & SEO -->
+          <div id="coll-sec-info" class="w-full flex-grow overflow-y-auto p-6 flex flex-col lg:flex-row gap-6">
+            <!-- Left Side: Basic Settings -->
+            <div class="w-full lg:w-1/2 flex flex-col gap-5">
+              <div class="border-b border-slate-200 pb-2">
+                <span class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">Ajustes Básicos</span>
               </div>
-              
-              <div>
-                <label for="form-collection-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Ruta URL (Slug)</label>
-                <input type="text" name="slug" id="form-collection-slug" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" placeholder="camisetas-mujeres-gym" />
-              </div>
-            </div>
-
-            <div>
-              <label for="form-collection-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Texto SEO / Descripción (HTML permitido)</label>
-              <textarea name="description" id="form-collection-desc" rows="4" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-sans" placeholder="Redacta un texto introductorio optimizado para SEO..."></textarea>
-            </div>
-
-            <!-- SEO Metadata Section -->
-            <div class="border-t border-slate-200 pt-4 flex flex-col gap-4">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Metadatos para Google (SEO)</span>
               
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label for="form-collection-seo-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Título de Página (Title)</label>
-                  <input type="text" id="form-collection-seo-title" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600" placeholder="Ej: Ropa de Gym de Mujer" />
+                  <label for="form-collection-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Nombre Carpeta</label>
+                  <input type="text" name="title" id="form-collection-title" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold shadow-3xs" placeholder="Ej: Camisetas Mujeres Gym" />
                 </div>
+                
                 <div>
-                  <label for="form-collection-seo-keywords" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Palabras Clave (Comas)</label>
-                  <input type="text" id="form-collection-seo-keywords" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" placeholder="gym, ropa, camisetas" />
+                  <label for="form-collection-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Ruta URL (Slug)</label>
+                  <input type="text" name="slug" id="form-collection-slug" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono shadow-3xs" placeholder="camisetas-mujeres-gym" />
                 </div>
               </div>
+
               <div>
-                <label for="form-collection-seo-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción de Búsqueda (Meta Description)</label>
-                <textarea id="form-collection-seo-desc" rows="2" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal" placeholder="Resumen para motores de búsqueda..."></textarea>
+                <label for="form-collection-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Texto SEO / Descripción Corta (HTML permitido)</label>
+                <div class="flex items-center gap-1 bg-slate-100 p-1.5 rounded-t-xl border border-slate-200 border-b-0 shrink-0">
+                  <button type="button" onclick="applyFormatting('form-collection-desc', 'h2')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Insertar H2">H2</button>
+                  <button type="button" onclick="applyFormatting('form-collection-desc', 'h3')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Insertar H3">H3</button>
+                  <button type="button" onclick="applyFormatting('form-collection-desc', 'strong')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] font-black text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Negrita">B</button>
+                  <button type="button" onclick="applyFormatting('form-collection-desc', 'em')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] italic text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Itálica">I</button>
+                  <button type="button" onclick="applyFormatting('form-collection-desc', 'p')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Párrafo">P</button>
+                  <button type="button" onclick="applyFormatting('form-collection-desc', 'ul')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Lista de viñetas">Lista</button>
+                  <button type="button" onclick="applyFormatting('form-collection-desc', 'link')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Enlace">Enlace</button>
+                </div>
+                <textarea name="description" id="form-collection-desc" rows="4" required class="w-full px-3.5 py-2.5 rounded-b-xl rounded-t-none border border-slate-200 border-t-0 bg-white text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-sans shadow-3xs" placeholder="Redacta un texto introductorio optimizado para SEO..."></textarea>
+              </div>
+
+              <div>
+                <label for="form-collection-detailed-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Contenido SEO Adicional / Detalles (HTML permitido)</label>
+                <div class="flex items-center gap-1 bg-slate-100 p-1.5 rounded-t-xl border border-slate-200 border-b-0 shrink-0">
+                  <button type="button" onclick="applyFormatting('form-collection-detailed-desc', 'h2')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Insertar H2">H2</button>
+                  <button type="button" onclick="applyFormatting('form-collection-detailed-desc', 'h3')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] font-bold text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Insertar H3">H3</button>
+                  <button type="button" onclick="applyFormatting('form-collection-detailed-desc', 'strong')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] font-black text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Negrita">B</button>
+                  <button type="button" onclick="applyFormatting('form-collection-detailed-desc', 'em')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] italic text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Itálica">I</button>
+                  <button type="button" onclick="applyFormatting('form-collection-detailed-desc', 'p')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Párrafo">P</button>
+                  <button type="button" onclick="applyFormatting('form-collection-detailed-desc', 'ul')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Lista de viñetas">Lista</button>
+                  <button type="button" onclick="applyFormatting('form-collection-detailed-desc', 'link')" class="px-2 py-0.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-[10px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer" title="Enlace">Enlace</button>
+                </div>
+                <textarea name="detailedDescription" id="form-collection-detailed-desc" rows="6" class="w-full px-3.5 py-2.5 rounded-b-xl rounded-t-none border border-slate-200 border-t-0 bg-white text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-sans shadow-3xs" placeholder="Redacta un texto extenso con detalles, FAQs, guías de compra u otra información para posicionar..."></textarea>
+              </div>
+            </div>
+
+            <!-- Right Side: SEO Metadata -->
+            <div class="w-full lg:w-1/2 flex flex-col gap-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-3xs">
+              <div class="border-b border-slate-200 pb-2">
+                <span class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">Metadatos para Google (SEO)</span>
+              </div>
+              
+              <div>
+                <label for="form-collection-seo-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Título de Página (Title Tag)</label>
+                <input type="text" id="form-collection-seo-title" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold shadow-3xs" placeholder="Ej: Ropa de Gym de Mujer | FLEX FORM FITNESS" />
+              </div>
+
+              <div>
+                <label for="form-collection-seo-keywords" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Palabras Clave (Meta Keywords - Separadas por comas)</label>
+                <input type="text" id="form-collection-seo-keywords" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono font-semibold shadow-3xs" placeholder="gym, ropa, camisetas" />
+              </div>
+
+              <div>
+                <label for="form-collection-seo-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción en Buscadores (Meta Description)</label>
+                <textarea id="form-collection-seo-desc" rows="4" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-medium shadow-3xs" placeholder="Escribe un resumen atractivo para captar clics en Google..."></textarea>
               </div>
             </div>
           </div>
 
-          <!-- RIGHT COLUMN: Products Selection Area (White themed!) -->
-          <div class="w-full lg:w-3/5 p-6 flex flex-col gap-4 overflow-hidden bg-slate-50 border-l border-slate-200">
-            <div class="border-b border-slate-200 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
-              <div>
-                <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">Selección de Productos</span>
-                <span class="text-[10px] text-slate-500 font-bold" id="folder-items-count">0 asociados</span>
+          <!-- SECTION 2: Organize Products Catalog -->
+          <div id="coll-sec-products" class="w-full flex-grow overflow-hidden flex flex-col lg:flex-row gap-6 p-6 hidden">
+            <!-- Left Column: Products in this Collection (Draggable sorting!) -->
+            <div class="w-full lg:w-1/2 flex flex-col gap-3 overflow-hidden border border-slate-200 bg-white rounded-2xl p-4 shadow-3xs">
+              <div class="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
+                <div>
+                  <h4 class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">En esta Colección</h4>
+                  <p class="text-[9px] text-slate-400 font-bold select-none mt-0.5" id="coll-current-count">0 asociados</p>
+                </div>
+                <span class="bg-rose-50 text-rose-600 text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded shadow-3xs font-mono">Orden de Salida</span>
               </div>
               
-              <!-- Search box for modal products list -->
-              <input 
-                type="text" 
-                id="modal-product-search" 
-                placeholder="Filtrar por título o SKU..." 
-                class="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs focus:outline-none focus:border-rose-600 w-full sm:w-48 font-semibold shadow-2xs"
-              />
+              <!-- Draggable Container for Current Collection Items -->
+              <div id="coll-current-list" class="flex-grow overflow-y-auto flex flex-col gap-2 pr-1 min-h-[250px] bg-slate-50/50 rounded-xl p-2 border border-dashed border-slate-200">
+                <!-- Dynamically populated from JS -->
+              </div>
             </div>
 
-            <!-- Scrollable Grid of All Products in catalog -->
-            <div class="flex-grow overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-3" id="modal-products-grid">
-              <!-- Dynamically populated from JS -->
-            </div>
-            
-            <!-- Toast notification container for inline action feedback inside modal -->
-            <div class="p-3 rounded-2xl bg-white border border-slate-200 text-slate-500 text-[10px] shrink-0 flex items-center justify-between">
-              <span class="font-medium">Arrastrar y soltar también está habilitado aquí.</span>
-              <span class="text-slate-400 font-mono">Total Catálogo: {products.length}</span>
+            <!-- Right Column: Catalog of Available Products -->
+            <div class="w-full lg:w-1/2 flex flex-col gap-3 overflow-hidden border border-slate-200 bg-white rounded-2xl p-4 shadow-3xs">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-slate-100 shrink-0">
+                <div>
+                  <h4 class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">Disponible en Catálogo</h4>
+                  <p class="text-[9px] text-slate-400 font-bold select-none mt-0.5">Haz click en [+] para añadir</p>
+                </div>
+                <input 
+                  type="text" 
+                  id="coll-catalog-search" 
+                  placeholder="Buscar en catálogo..." 
+                  class="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-[10px] focus:outline-none focus:border-rose-600 w-full sm:w-40 font-semibold shadow-3xs"
+                />
+              </div>
+
+              <!-- Available Products List -->
+              <div id="coll-available-list" class="flex-grow overflow-y-auto flex flex-col gap-2 pr-1 min-h-[250px]">
+                <!-- Dynamically populated from JS -->
+              </div>
             </div>
           </div>
         </form>
@@ -1111,6 +1173,17 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
                   <label for="form-stock" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Stock General (Auto-calculado)</label>
                   <input type="number" name="stock" id="form-stock" readonly class="w-full px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed focus:outline-none font-mono" />
                 </div>
+              </div>
+
+              <!-- SECTION: COLLECTIONS CHECKBOXES -->
+              <div class="border-t border-slate-200 pt-4 flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  Colecciones
+                </h4>
+                <div id="product-collections-container" class="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1 bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-3xs">
+                  <!-- Dynamically populated collection checkboxes from JS -->
+                </div>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Selecciona las colecciones en las que deseas incluir este producto.</p>
               </div>
             </div>
 
@@ -1225,6 +1298,27 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       </div>
     </div>
 
+    <!-- MODAL: ORDER DETAILS -->
+    <div id="order-details-modal" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+        <!-- Title Bar -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center select-none shrink-0">
+          <span class="text-xs font-black tracking-widest text-slate-800 uppercase font-mono">Detalles del Pedido</span>
+          <button type="button" id="close-order-details-modal" class="text-slate-400 hover:text-slate-700 text-lg font-bold">×</button>
+        </div>
+        
+        <!-- Content Area -->
+        <div id="order-details-content" class="p-6 overflow-y-auto flex-grow flex flex-col gap-6 text-xs text-slate-700">
+          <!-- Dynamically populated via JavaScript -->
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+          <button type="button" id="close-order-details-btn" class="px-5 py-2.5 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL: SHIP ORDER (SHIPPING DETAILS) -->
     <div id="ship-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
       <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in">
@@ -1258,11 +1352,111 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       </div>
     </div>
 
+    <!-- MODAL: IMAGE CROP/ALIGNMENT -->
+    <div id="crop-modal" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+        <!-- Title Bar -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center select-none shrink-0">
+          <span class="text-xs font-extrabold tracking-widest text-slate-800 uppercase font-mono">Recortar Imagen de Portada (3:4)</span>
+          <button type="button" id="close-crop-modal" class="w-5 h-5 flex items-center justify-center rounded bg-slate-100 hover:bg-rose-600 hover:text-white text-slate-500 text-xs font-bold transition-all">×</button>
+        </div>
+        
+        <!-- Modal Body -->
+        <div class="p-6 flex flex-col items-center gap-4 overflow-hidden flex-grow bg-slate-50/50">
+          <!-- Cropper Container -->
+          <div class="w-full flex-grow min-h-[320px] max-h-[450px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 flex items-center justify-center relative">
+            <img id="crop-preview-img" class="max-w-full max-h-[400px] block" crossorigin="anonymous" src="" />
+          </div>
+          <p class="text-[9px] text-slate-400 select-none text-center">Arrastra el recuadro para mover el área de recorte o arrastra las esquinas para redimensionarla. El aspecto está fijado en 3:4.</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
+          <button type="button" id="cancel-crop-btn" class="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-650 hover:text-slate-900 rounded-xl text-xs font-bold uppercase transition-all select-none cursor-pointer">Cancelar</button>
+          <button type="button" id="save-crop-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold uppercase transition-all select-none cursor-pointer">Recortar y Guardar</button>
+        </div>
+      </div>
+    </div>
+    <!-- Pass server collections to client side -->
+    <div id="collections-data-provider" data-collections={JSON.stringify(collections)} class="hidden"></div>
+
      <!-- Client-side Interactive Logic -->
     <script>
       import { actions } from 'astro:actions';
       import { auth } from '../../lib/firebaseClient';
       import { signOut } from 'firebase/auth';
+
+       // Get object-position from image URL hash
+        function getObjectPosition(url: string | undefined): string {
+          if (!url) return 'center';
+          const match = url.match(/#pos=([a-zA-Z0-9%_-]+)/);
+          if (match && match[1]) {
+            return match[1].replace('_', ' ');
+          }
+          return 'center';
+        }
+
+        // Get collections from the data provider
+        const collectionsDataEl = document.getElementById('collections-data-provider');
+        const dbCollections = JSON.parse(collectionsDataEl?.getAttribute('data-collections') || '[]');
+
+        function renderProductCollections(productId: string | null) {
+          const container = document.getElementById('product-collections-container');
+          if (!container) return;
+
+          container.innerHTML = '';
+
+          if (dbCollections.length === 0) {
+            container.innerHTML = `<span class="text-slate-400 font-medium">No hay colecciones creadas en la tienda.</span>`;
+            return;
+          }
+
+          dbCollections.forEach((col: any) => {
+            const isAssociated = productId ? (col.productIds || []).includes(productId) : false;
+            
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-100 cursor-pointer select-none transition-colors border border-transparent hover:border-slate-200';
+            label.innerHTML = `
+              <input type="checkbox" name="product-col-assoc" value="${col.id}" ${isAssociated ? 'checked' : ''} class="w-3.5 h-3.5 text-rose-600 border-slate-355 rounded-sm focus:ring-rose-500 cursor-pointer" />
+              <div class="flex flex-col">
+                <span class="font-bold text-slate-800 text-[11px] leading-tight">${col.title}</span>
+                <span class="text-[9px] text-slate-400 font-mono mt-0.5 leading-none">Slug: ${col.slug}</span>
+              </div>
+            `;
+            container.appendChild(label);
+          });
+        }
+
+       // Global format text helper for textareas
+       (window as any).applyFormatting = function(textareaId: string, tag: string) {
+         const textarea = document.getElementById(textareaId) as HTMLTextAreaElement;
+         if (!textarea) return;
+
+         const start = textarea.selectionStart;
+         const end = textarea.selectionEnd;
+         const text = textarea.value;
+         const selectedText = text.substring(start, end);
+
+         let replacement = "";
+         if (tag === 'link') {
+           const url = prompt("Introduce la URL del enlace:", "https://");
+           if (url === null) return;
+           replacement = `<a href="${url}">${selectedText || 'Enlace'}</a>`;
+         } else if (tag === 'ul') {
+           replacement = `<ul>\n  <li>${selectedText || 'Elemento 1'}</li>\n  <li>Elemento 2</li>\n</ul>`;
+         } else {
+           replacement = `<${tag}>${selectedText}</${tag}>`;
+         }
+
+         textarea.value = text.substring(0, start) + replacement + text.substring(end);
+         
+         // Trigger input event to update form state
+         textarea.dispatchEvent(new Event('input', { bubbles: true }));
+         
+         textarea.focus();
+         const newCursorPos = start + replacement.length;
+         textarea.setSelectionRange(newCursorPos, newCursorPos);
+       };
 
       // Elements
       const logoutBtn = document.querySelector('a[href="/admin/logout"]');
@@ -1300,6 +1494,17 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       const cancelShipModal = document.getElementById('cancel-ship-modal') as HTMLButtonElement;
       const saveShipBtn = document.getElementById('save-ship-btn') as HTMLButtonElement;
 
+      const orderDetailsModal = document.getElementById('order-details-modal') as HTMLDivElement;
+      const closeOrderDetailsModal = document.getElementById('close-order-details-modal') as HTMLButtonElement;
+      const closeOrderDetailsBtn = document.getElementById('close-order-details-btn') as HTMLButtonElement;
+
+      // Crop Modal Elements
+      const cropModal = document.getElementById('crop-modal') as HTMLDivElement;
+      const closeCropModal = document.getElementById('close-crop-modal') as HTMLButtonElement;
+      const cancelCropBtn = document.getElementById('cancel-crop-btn') as HTMLButtonElement;
+      const saveCropBtn = document.getElementById('save-crop-btn') as HTMLButtonElement;
+      const cropPreviewImg = document.getElementById('crop-preview-img') as HTMLImageElement;
+
       // Settings Elements & Subtabs
       const subtabShippingBtn = document.getElementById('subtab-shipping-btn') as HTMLButtonElement;
       const subtabAdminsBtn = document.getElementById('subtab-admins-btn') as HTMLButtonElement;
@@ -1315,79 +1520,86 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       const newAdminEmailInput = document.getElementById('new-admin-email') as HTMLInputElement;
       const adminsContainer = document.getElementById('admins-list-container');
 
-      // 1. Tab Navigation Logic
-      function deactivateAllTabs() {
-        tabProductsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-        tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-        tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-        if (tabSettingsBtn) tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
-        
-        sectionProducts.classList.add('hidden');
-        sectionCollections.classList.add('hidden');
-        sectionOrders.classList.add('hidden');
-        if (sectionSettings) sectionSettings.classList.add('hidden');
-      }
+       // 1. Tab Navigation Logic
+       function deactivateAllTabs() {
+         tabProductsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+         tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+         tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+         if (tabSettingsBtn) tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+         
+         sectionProducts.classList.add('hidden');
+         sectionCollections.classList.add('hidden');
+         sectionOrders.classList.add('hidden');
+         if (sectionSettings) sectionSettings.classList.add('hidden');
+       }
 
-      tabProductsBtn?.addEventListener('click', () => {
-        deactivateAllTabs();
-        tabProductsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-        sectionProducts.classList.remove('hidden');
-      });
+       function activateTab(tabName: string) {
+         deactivateAllTabs();
+         localStorage.setItem('flexform_active_tab', tabName);
+         
+         if (tabName === 'products') {
+           tabProductsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+           sectionProducts.classList.remove('hidden');
+         } else if (tabName === 'collections') {
+           tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+           sectionCollections.classList.remove('hidden');
+         } else if (tabName === 'orders') {
+           tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+           sectionOrders.classList.remove('hidden');
+         } else if (tabName === 'settings' && tabSettingsBtn && sectionSettings) {
+           tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+           sectionSettings.classList.remove('hidden');
+         }
+       }
 
-      tabCollectionsBtn?.addEventListener('click', () => {
-        deactivateAllTabs();
-        tabCollectionsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-        sectionCollections.classList.remove('hidden');
-      });
+       tabProductsBtn?.addEventListener('click', () => activateTab('products'));
+       tabCollectionsBtn?.addEventListener('click', () => activateTab('collections'));
+       tabOrdersBtn?.addEventListener('click', () => activateTab('orders'));
+       tabSettingsBtn?.addEventListener('click', () => activateTab('settings'));
 
-      tabOrdersBtn?.addEventListener('click', () => {
-        deactivateAllTabs();
-        tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-        sectionOrders.classList.remove('hidden');
-      });
+       // Settings internal subtab navigation
+       function deactivateAllSubtabs() {
+         if (subtabShippingBtn) subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+         if (subtabAdminsBtn) subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+         if (subtabBrandingBtn) subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+         if (subtabCouponsBtn) subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
 
-      tabSettingsBtn?.addEventListener('click', () => {
-        deactivateAllTabs();
-        tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
-        sectionSettings.classList.remove('hidden');
-      });
+         if (formSubShipping) formSubShipping.classList.add('hidden');
+         if (formSubAdmins) formSubAdmins.classList.add('hidden');
+         if (formSubBranding) formSubBranding.classList.add('hidden');
+         if (formSubCoupons) formSubCoupons.classList.add('hidden');
+       }
 
-      // Settings internal subtab navigation
-      function deactivateAllSubtabs() {
-        if (subtabShippingBtn) subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
-        if (subtabAdminsBtn) subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
-        if (subtabBrandingBtn) subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
-        if (subtabCouponsBtn) subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+       function activateSubtab(subtabName: string) {
+         deactivateAllSubtabs();
+         localStorage.setItem('flexform_active_subtab', subtabName);
 
-        if (formSubShipping) formSubShipping.classList.add('hidden');
-        if (formSubAdmins) formSubAdmins.classList.add('hidden');
-        if (formSubBranding) formSubBranding.classList.add('hidden');
-        if (formSubCoupons) formSubCoupons.classList.add('hidden');
-      }
+         if (subtabName === 'shipping' && subtabShippingBtn && formSubShipping) {
+           subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+           formSubShipping.classList.remove('hidden');
+         } else if (subtabName === 'admins' && subtabAdminsBtn && formSubAdmins) {
+           subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+           formSubAdmins.classList.remove('hidden');
+         } else if (subtabName === 'branding' && subtabBrandingBtn && formSubBranding) {
+           subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+           formSubBranding.classList.remove('hidden');
+         } else if (subtabName === 'coupons' && subtabCouponsBtn && formSubCoupons) {
+           subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+           formSubCoupons.classList.remove('hidden');
+         }
+       }
 
-      subtabShippingBtn?.addEventListener('click', () => {
-        deactivateAllSubtabs();
-        subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
-        formSubShipping?.classList.remove('hidden');
-      });
+       subtabShippingBtn?.addEventListener('click', () => activateSubtab('shipping'));
+       subtabAdminsBtn?.addEventListener('click', () => activateSubtab('admins'));
+       subtabBrandingBtn?.addEventListener('click', () => activateSubtab('branding'));
+       subtabCouponsBtn?.addEventListener('click', () => activateSubtab('coupons'));
 
-      subtabAdminsBtn?.addEventListener('click', () => {
-        deactivateAllSubtabs();
-        subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
-        formSubAdmins?.classList.remove('hidden');
-      });
+       // Initialize tabs on page load
+       const savedTab = localStorage.getItem('flexform_active_tab') || 'products';
+       activateTab(savedTab);
 
-      subtabBrandingBtn?.addEventListener('click', () => {
-        deactivateAllSubtabs();
-        subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
-        formSubBranding?.classList.remove('hidden');
-      });
-
-      subtabCouponsBtn?.addEventListener('click', () => {
-        deactivateAllSubtabs();
-        subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
-        formSubCoupons?.classList.remove('hidden');
-      });
+       const savedSubtab = localStorage.getItem('flexform_active_subtab') || 'shipping';
+       activateSubtab(savedSubtab);
 
       // --- Country Selector Quick Preset Actions ---
       const presetEuropeBtn = document.getElementById('preset-europe-btn');
@@ -1649,10 +1861,56 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       function toggleModal(modal: HTMLDivElement, open: boolean) {
         if (open) {
           modal.classList.remove('hidden');
+          // Inline style overflow & height lock
+          document.body.style.overflow = 'hidden';
+          document.body.style.height = '100vh';
+          document.documentElement.style.overflow = 'hidden';
+          document.documentElement.style.height = '100vh';
         } else {
           modal.classList.add('hidden');
+          // Check if any other modal is still open before unlocking scroll
+          const anyOpen = Array.from(document.querySelectorAll('#collection-modal, #product-modal, #gallery-modal, #ship-modal, #crop-modal, #order-details-modal'))
+            .some(m => !m.classList.contains('hidden'));
+          if (!anyOpen) {
+            document.body.style.overflow = '';
+            document.body.style.height = '';
+            document.documentElement.style.overflow = '';
+            document.documentElement.style.height = '';
+          }
         }
       }
+
+      // Prevent background scrolling bleed when modal is open
+      const handleWheel = (e: WheelEvent) => {
+        const anyOpen = Array.from(document.querySelectorAll('#collection-modal, #product-modal, #gallery-modal, #ship-modal, #crop-modal, #order-details-modal'))
+          .some(m => !m.classList.contains('hidden'));
+        if (!anyOpen) return;
+        
+        const target = e.target as HTMLElement;
+        const isInsideModalCard = target.closest(
+          '#collection-modal > div, #product-modal > div, #gallery-modal > div, #ship-modal > div, #crop-modal > div, #order-details-modal > div'
+        );
+        if (!isInsideModalCard) {
+          e.preventDefault();
+        }
+      };
+
+      const handleTouch = (e: TouchEvent) => {
+        const anyOpen = Array.from(document.querySelectorAll('#collection-modal, #product-modal, #gallery-modal, #ship-modal, #crop-modal, #order-details-modal'))
+          .some(m => !m.classList.contains('hidden'));
+        if (!anyOpen) return;
+        
+        const target = e.target as HTMLElement;
+        const isInsideModalCard = target.closest(
+          '#collection-modal > div, #product-modal > div, #gallery-modal > div, #ship-modal > div, #crop-modal > div, #order-details-modal > div'
+        );
+        if (!isInsideModalCard) {
+          e.preventDefault();
+        }
+      };
+
+      document.addEventListener('wheel', handleWheel, { passive: false });
+      document.addEventListener('touchmove', handleTouch, { passive: false });
 
       // 3. New Product Mode setup
       openNewProductModal?.addEventListener('click', () => {
@@ -1671,6 +1929,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           { size: 'm', sku: '', price: '', stock: '10' }
         ]);
         updateGeneralStockSum();
+        renderProductCollections(null);
         toggleModal(productModal, true);
       });
 
@@ -1679,9 +1938,198 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       closeShipModal?.addEventListener('click', () => toggleModal(shipModal, false));
       cancelShipModal?.addEventListener('click', () => toggleModal(shipModal, false));
 
+      // Crop Modal Event Listeners
+      let cropperInstance: any = null;
+      let currentCropIndex = -1;
+      let currentCropUrl = "";
+
+      function getOriginalUrl(url: string | undefined): string {
+        if (!url) return "";
+        const match = url.match(/#org=(.+)$/);
+        if (match && match[1]) {
+          return match[1];
+        }
+        return url.split('#')[0];
+      }
+
+      function openCropModal(imageUrl: string, imageIndex: number) {
+        currentCropIndex = imageIndex;
+        currentCropUrl = imageUrl;
+        
+        const originalUrl = getOriginalUrl(imageUrl);
+        
+        if (cropPreviewImg) {
+          if (cropperInstance) {
+            cropperInstance.destroy();
+            cropperInstance = null;
+          }
+          
+          // Load the image through our same-origin API proxy to bypass CORS
+          cropPreviewImg.crossOrigin = "anonymous";
+          cropPreviewImg.src = `/api/proxy-image?url=${encodeURIComponent(originalUrl)}`;
+          
+          cropPreviewImg.onload = () => {
+            // @ts-ignore
+            cropperInstance = new (window as any).Cropper(cropPreviewImg, {
+              aspectRatio: 3 / 4,
+              viewMode: 1,
+              autoCropArea: 0.9,
+              responsive: true,
+              restore: true,
+              guides: true,
+              center: true,
+              highlight: true,
+              cropBoxMovable: true,
+              cropBoxResizable: true,
+              toggleDragModeOnDblclick: false,
+              checkCrossOrigin: true
+            });
+            cropPreviewImg.onload = null;
+          };
+
+          cropPreviewImg.onerror = () => {
+            console.error("Cropper failed to load image via proxy:", originalUrl);
+            alert("Error al cargar la imagen original para recortar. Verifique que el enlace sea correcto.");
+            closeCrop();
+          };
+        }
+        
+        toggleModal(cropModal, true);
+      }
+
+      saveCropBtn?.addEventListener('click', () => {
+        if (cropperInstance && currentCropIndex !== -1 && currentCropUrl) {
+          saveCropBtn.disabled = true;
+          const originalText = saveCropBtn.innerHTML;
+          saveCropBtn.innerHTML = "Guardando...";
+          
+          const croppedCanvas = cropperInstance.getCroppedCanvas({
+            maxWidth: 1200,
+            maxHeight: 1600,
+            imageSmoothingQuality: 'high'
+          });
+          
+          if (!croppedCanvas) {
+            alert("Error al recortar la imagen.");
+            saveCropBtn.disabled = false;
+            saveCropBtn.innerHTML = originalText;
+            return;
+          }
+
+          croppedCanvas.toBlob(async (blob: Blob | null) => {
+            if (!blob) {
+              alert("Error al generar el archivo de imagen.");
+              saveCropBtn.disabled = false;
+              saveCropBtn.innerHTML = originalText;
+              return;
+            }
+
+            try {
+              const base64Data = await blobToBase64(blob);
+              const fileName = `crop_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.webp`;
+
+              const { data, error } = await actions.uploadImage({ base64Data, fileName });
+              if (error || !data?.success || !data?.url) {
+                throw new Error(error?.message || 'Error al subir la imagen recortada.');
+              }
+
+              // Delete the old cropped image file from Storage to prevent orphaned file accumulation
+              const oldCroppedUrl = currentCropUrl.split('#')[0];
+              if (oldCroppedUrl.includes('/crop_')) {
+                try {
+                  // Call deleteImage silently so that even if it fails, it doesn't block saving the new crop
+                  await actions.deleteImage({ url: oldCroppedUrl });
+                } catch (delErr) {
+                  console.warn("Failed to delete old cropped image file:", delErr);
+                }
+              }
+
+              // Get original uncropped image URL
+              const originalUrl = getOriginalUrl(currentCropUrl);
+              // Combine: cropped image url + original image url reference in hash
+              const newUrl = `${data.url}#org=${originalUrl}`;
+
+              productImages[currentCropIndex] = newUrl;
+              renderProductMedia();
+              
+              closeCrop();
+            } catch (err: any) {
+              console.error("Cropper save error:", err);
+              alert("Error al guardar el recorte: " + err.message);
+            } finally {
+              saveCropBtn.disabled = false;
+              saveCropBtn.innerHTML = originalText;
+            }
+          }, 'image/webp', 0.92);
+        }
+      });
+ 
+       const closeCrop = () => {
+         if (cropperInstance) {
+           cropperInstance.destroy();
+           cropperInstance = null;
+         }
+         toggleModal(cropModal, false);
+       };
+ 
+       closeCropModal?.addEventListener('click', closeCrop);
+       cancelCropBtn?.addEventListener('click', closeCrop);
+
       // Auto-compute slug from title
       const titleInput = document.getElementById('form-title') as HTMLInputElement;
       const slugInput = document.getElementById('form-slug') as HTMLInputElement;
+
+      function cleanSkuPart(val: string): string {
+        return val
+          .toUpperCase()
+          .trim()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/[\s_-]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      }
+
+      function updateAllSKUs() {
+        if (!slugInput) return;
+        const slugVal = cleanSkuPart(slugInput.value);
+        const productBranches = document.querySelectorAll('.color-branch');
+        
+        productBranches.forEach((branch) => {
+          const colorNameInput = branch.querySelector('.color-name') as HTMLInputElement;
+          if (!colorNameInput) return;
+          const colorVal = cleanSkuPart(colorNameInput.value);
+          const sizeRows = branch.querySelectorAll('.size-row');
+          
+          sizeRows.forEach((row) => {
+            const sizeInput = row.querySelector('.size-name') as HTMLInputElement;
+            const skuInput = row.querySelector('.size-sku') as HTMLInputElement;
+            if (!sizeInput || !skuInput) return;
+            const sizeVal = cleanSkuPart(sizeInput.value);
+            
+            const parts = [slugVal, colorVal, sizeVal].filter(Boolean);
+            skuInput.value = parts.join('-');
+          });
+        });
+      }
+
+      function updateSKUsForBranch(branchEl: HTMLElement) {
+        if (!slugInput) return;
+        const slugVal = cleanSkuPart(slugInput.value);
+        const colorNameInput = branchEl.querySelector('.color-name') as HTMLInputElement;
+        if (!colorNameInput) return;
+        const colorVal = cleanSkuPart(colorNameInput.value);
+        
+        const sizeRows = branchEl.querySelectorAll('.size-row');
+        sizeRows.forEach((row) => {
+          const sizeInput = row.querySelector('.size-name') as HTMLInputElement;
+          const skuInput = row.querySelector('.size-sku') as HTMLInputElement;
+          if (!sizeInput || !skuInput) return;
+          const sizeVal = cleanSkuPart(sizeInput.value);
+          
+          const parts = [slugVal, colorVal, sizeVal].filter(Boolean);
+          skuInput.value = parts.join('-');
+        });
+      }
+
       titleInput?.addEventListener('input', () => {
         const idVal = (document.getElementById('form-product-id') as HTMLInputElement).value;
         if (!idVal) {
@@ -1691,7 +2139,12 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
             .replace(/[^\w\s-]/g, '')
             .replace(/[\s_-]+/g, '-')
             .replace(/^-+|-+$/g, '');
+          updateAllSKUs();
         }
+      });
+
+      slugInput?.addEventListener('input', () => {
+        updateAllSKUs();
       });
 
       // --- Server-side Upload using Astro Actions ---
@@ -1701,7 +2154,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           img.src = URL.createObjectURL(file);
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const maxDimension = 1000;
+            const maxDimension = 2000;
             let width = img.width;
             let height = img.height;
 
@@ -1737,7 +2190,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
                 }
               },
               'image/webp',
-              0.8 // WebP 80% quality
+              0.92 // WebP 92% quality for high detail e-commerce
             );
           };
           img.onerror = (err) => reject(err);
@@ -1794,13 +2247,19 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           }
           card.setAttribute('draggable', 'true');
           card.dataset.index = idx.toString();
-
+ 
           card.innerHTML = `
-            <img src="${url}" class="w-full h-full object-cover pointer-events-none" />
+            <img src="${url}" class="w-full h-full object-cover pointer-events-none" style="object-position: ${getObjectPosition(url)}" />
             ${idx === 0 ? '<span class="absolute top-1.5 left-1.5 bg-rose-600 text-white text-[7px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded shadow-3xs">Portada</span>' : ''}
             <button type="button" class="remove-media-item-btn absolute top-1 right-1 bg-slate-900/60 hover:bg-rose-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity" title="Eliminar Imagen">×</button>
           `;
-
+ 
+          // Double-click to adjust crop position
+          card.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            openCropModal(url, idx);
+          });
+ 
           // Remove item
           card.querySelector('.remove-media-item-btn')?.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1871,10 +2330,10 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
 
       function toggleGalleryModal(show: boolean) {
         if (show) {
-          galleryModal?.classList.remove('hidden');
+          toggleModal(galleryModal, true);
           loadGalleryImages();
         } else {
-          galleryModal?.classList.add('hidden');
+          toggleModal(galleryModal, false);
           selectedImageUrl = "";
           insertGalleryBtn.disabled = true;
         }
@@ -1956,14 +2415,20 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       cancelGalleryModal?.addEventListener('click', () => toggleGalleryModal(false));
 
       insertGalleryBtn?.addEventListener('click', () => {
-        if (selectedImageUrl && activeImageInput && activeImagePreview) {
-          activeImageInput.value = selectedImageUrl;
-          
-          // Trigger input event to let the form logic update previews if needed
-          activeImageInput.dispatchEvent(new Event('input'));
-          
-          // Update preview directly
-          activeImagePreview.innerHTML = `<img src="${selectedImageUrl}" class="w-full h-full object-contain" />`;
+        if (selectedImageUrl) {
+          if (activeImageInput && activeImagePreview) {
+            activeImageInput.value = selectedImageUrl;
+            
+            // Trigger input event to let the form logic update previews if needed
+            activeImageInput.dispatchEvent(new Event('input'));
+            
+            // Update preview directly
+            activeImagePreview.innerHTML = `<img src="${selectedImageUrl}" class="w-full h-full object-contain" />`;
+          } else {
+            // Append to main product media gallery
+            productImages.push(selectedImageUrl);
+            renderProductMedia();
+          }
           toggleGalleryModal(false);
         }
       });
@@ -2151,6 +2616,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           if (guessedHex && guessedHex !== '#64748b') {
             colorHexInput.value = guessedHex;
           }
+          updateSKUsForBranch(card);
         });
         imgInput.addEventListener('input', () => {
           const url = imgInput.value.trim();
@@ -2202,6 +2668,20 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           updateGeneralStockSum();
         });
 
+        function setupSizeRow(rowEl: HTMLTableRowElement) {
+          rowEl.querySelector('.size-stock')?.addEventListener('input', updateGeneralStockSum);
+          
+          const sizeNameInput = rowEl.querySelector('.size-name') as HTMLInputElement;
+          sizeNameInput?.addEventListener('input', () => {
+            updateSKUsForBranch(card);
+          });
+          
+          rowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
+            rowEl.remove();
+            updateGeneralStockSum();
+          });
+        }
+
         // Bind add size row click handler
         const sizesContainer = card.querySelector('.sizes-container') as HTMLTableSectionElement;
         const addSizeRowBtn = card.querySelector('.add-size-row-btn') as HTMLButtonElement;
@@ -2211,13 +2691,9 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           const sizeRowEl = tempTbody.firstElementChild as HTMLTableRowElement;
           sizesContainer.appendChild(sizeRowEl);
           
-          sizeRowEl.querySelector('.size-stock')?.addEventListener('input', updateGeneralStockSum);
+          setupSizeRow(sizeRowEl);
+          updateSKUsForBranch(card);
           updateGeneralStockSum();
-          
-          sizeRowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
-            sizeRowEl.remove();
-            updateGeneralStockSum();
-          });
         });
 
         // Pre-populate sizes if any
@@ -2228,12 +2704,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
             const sizeRowEl = tempTbody.firstElementChild as HTMLTableRowElement;
             sizesContainer.appendChild(sizeRowEl);
             
-            sizeRowEl.querySelector('.size-stock')?.addEventListener('input', updateGeneralStockSum);
-            
-            sizeRowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
-              sizeRowEl.remove();
-              updateGeneralStockSum();
-            });
+            setupSizeRow(sizeRowEl);
           });
         } else {
           // Add default size row
@@ -2242,12 +2713,8 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           const sizeRowEl = tempTbody.firstElementChild as HTMLTableRowElement;
           sizesContainer.appendChild(sizeRowEl);
           
-          sizeRowEl.querySelector('.size-stock')?.addEventListener('input', updateGeneralStockSum);
-          
-          sizeRowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
-            sizeRowEl.remove();
-            updateGeneralStockSum();
-          });
+          setupSizeRow(sizeRowEl);
+          updateSKUsForBranch(card);
         }
       }
 
@@ -2311,6 +2778,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           }
           
           updateGeneralStockSum();
+          renderProductCollections(productData.id);
           toggleModal(productModal, true);
         });
       });
@@ -2378,6 +2846,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
         };
 
         try {
+          let targetProductId = idVal;
           if (idVal) {
             // Edit Mode: updateProduct
             const { error } = await actions.updateProduct({
@@ -2386,14 +2855,74 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
             });
             if (error) throw error;
             localStorage.setItem('flexform_pending_changes', 'true');
-            alert("Producto actualizado con éxito.");
           } else {
             // New Mode: createProduct
-            const { error } = await actions.createProduct(productPayload);
+            const { data, error } = await actions.createProduct(productPayload);
             if (error) throw error;
+            if (data?.productId) {
+              targetProductId = data.productId;
+            }
             localStorage.setItem('flexform_pending_changes', 'true');
-            alert("Producto creado con éxito.");
           }
+
+          // Update product-collection associations
+          if (targetProductId) {
+            const checkedCollectionIds = Array.from(document.querySelectorAll('input[name="product-col-assoc"]:checked'))
+              .map((el) => (el as HTMLInputElement).value);
+
+            const initialCollectionIds = dbCollections
+              .filter((col: any) => (col.productIds || []).includes(targetProductId))
+              .map((col: any) => col.id);
+
+            const collectionsToAdd = checkedCollectionIds.filter((id: string) => !initialCollectionIds.includes(id));
+            const collectionsToRemove = initialCollectionIds.filter((id: string) => !checkedCollectionIds.includes(id));
+
+            const updatePromises = [];
+
+            // Add to new collections
+            for (const colId of collectionsToAdd) {
+              const col = dbCollections.find((c: any) => c.id === colId);
+              if (col) {
+                const newProductIds = [...(col.productIds || []), targetProductId];
+                updatePromises.push(
+                  actions.updateCollection({
+                    id: col.id,
+                    title: col.title,
+                    slug: col.slug,
+                    description: col.description,
+                    detailedDescription: col.detailedDescription || null,
+                    productIds: newProductIds,
+                    seo: col.seo
+                  })
+                );
+              }
+            }
+
+            // Remove from old collections
+            for (const colId of collectionsToRemove) {
+              const col = dbCollections.find((c: any) => c.id === colId);
+              if (col) {
+                const newProductIds = (col.productIds || []).filter((pid: string) => pid !== targetProductId);
+                updatePromises.push(
+                  actions.updateCollection({
+                    id: col.id,
+                    title: col.title,
+                    slug: col.slug,
+                    description: col.description,
+                    detailedDescription: col.detailedDescription || null,
+                    productIds: newProductIds,
+                    seo: col.seo
+                  })
+                );
+              }
+            }
+
+            if (updatePromises.length > 0) {
+              await Promise.all(updatePromises);
+            }
+          }
+
+          alert("Producto guardado con éxito.");
           window.location.reload();
         } catch (err: any) {
           console.error("Save product action error:", err);
@@ -2401,6 +2930,141 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           saveProductBtn.disabled = false;
           saveProductBtn.innerHTML = originalBtnText;
         }
+      });
+
+      // 5.5 Order Details Modal setup
+      closeOrderDetailsModal?.addEventListener('click', () => toggleModal(orderDetailsModal, false));
+      closeOrderDetailsBtn?.addEventListener('click', () => toggleModal(orderDetailsModal, false));
+
+      function renderOrderDetails(order: any) {
+        const contentEl = document.getElementById('order-details-content');
+        if (!contentEl) return;
+
+        const dateStr = new Date(order.createdAt).toLocaleDateString() + ' ' + new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const address = order.customerDetails?.address || {};
+
+        const itemsHTML = (order.items || []).map((item: any) => `
+          <div class="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
+            ${item.image ? `<img src="${item.image}" class="w-10 h-10 rounded-lg object-cover border border-slate-150 shrink-0" />` : '<div class="w-10 h-10 bg-slate-50 border border-slate-150 rounded-lg shrink-0 flex items-center justify-center text-slate-400 font-bold uppercase tracking-wider text-3xs">F</div>'}
+            <div class="flex-grow min-w-0">
+              <span class="block font-bold text-slate-800 truncate">${item.title}</span>
+              ${item.variantName ? `<span class="block text-brand-600 text-3xs font-semibold">${item.variantName}</span>` : ''}
+              ${item.variantSku ? `<span class="block text-slate-400 text-[9px] font-mono font-extrabold uppercase">SKU: ${item.variantSku}</span>` : ''}
+            </div>
+            <div class="text-right shrink-0">
+              <span class="block font-bold text-slate-900">$${(item.price / 100).toFixed(2)}</span>
+              <span class="block text-slate-400 text-3xs">Cant: ${item.quantity}</span>
+            </div>
+          </div>
+        `).join('');
+
+        contentEl.innerHTML = `
+          <div class="flex flex-col gap-1 border-b border-slate-100 pb-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-900 font-mono">ID: ${order.id}</span>
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-wider">${dateStr}</span>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <span class="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${
+                order.paymentStatus === 'paid' 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                  : 'bg-amber-50 border-amber-200 text-amber-700'
+              }">
+                Pago: ${order.paymentStatus}
+              </span>
+              <span class="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${
+                order.shippingStatus === 'shipped' 
+                  ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                  : order.shippingStatus === 'delivered'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : 'bg-slate-50 border-slate-200 text-slate-600'
+              }">
+                Envío: ${order.shippingStatus}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <h4 class="text-2xs font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/60 pb-1 mb-1">Datos del Cliente</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-3xs font-medium">
+              <div>
+                <span class="block text-slate-400 font-bold uppercase tracking-wider">Nombre completo</span>
+                <span class="block text-slate-800 text-xs font-bold mt-0.5">${order.customerDetails?.name || 'No especificado'}</span>
+              </div>
+              <div>
+                <span class="block text-slate-400 font-bold uppercase tracking-wider">Correo electrónico</span>
+                <span class="block text-slate-800 text-xs font-bold mt-0.5">${order.customerDetails?.email || 'No especificado'}</span>
+              </div>
+              <div>
+                <span class="block text-slate-400 font-bold uppercase tracking-wider">Teléfono</span>
+                <span class="block text-slate-800 text-xs font-bold mt-0.5">${order.customerDetails?.phone || 'No especificado'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <h4 class="text-2xs font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/60 pb-1 mb-1">Dirección de Envío</h4>
+            <div class="grid grid-cols-1 gap-2 text-xs">
+              <div>
+                <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Dirección</span>
+                <span class="block text-slate-800 font-semibold mt-0.5">
+                  ${address.line1 || 'No especificada'}
+                  ${address.line2 ? `<br/><span class="text-slate-500 font-medium">${address.line2}</span>` : ''}
+                </span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                <div>
+                  <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Ciudad</span>
+                  <span class="block text-slate-800 font-semibold mt-0.5">${address.city || 'No especificada'}</span>
+                </div>
+                <div>
+                  <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Provincia / Región</span>
+                  <span class="block text-slate-800 font-semibold mt-0.5">${address.state || 'No especificada'}</span>
+                </div>
+                <div>
+                  <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Código Postal</span>
+                  <span class="block text-slate-850 font-bold font-mono mt-0.5">${address.postal_code || 'No especificado'}</span>
+                </div>
+                <div>
+                  <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">País</span>
+                  <span class="block text-slate-800 font-semibold mt-0.5">${address.country || 'No especificado'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <h4 class="text-2xs font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1.5 mb-1">Productos Comprados</h4>
+            <div class="flex flex-col gap-1">
+              ${itemsHTML}
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 border-t border-slate-100 pt-4 mt-2">
+            <div class="flex justify-between items-baseline font-extrabold text-slate-900 text-sm">
+              <span class="uppercase tracking-widest text-3xs text-slate-400">Total del Pedido</span>
+              <span class="text-lg text-emerald-600 font-mono">$${(order.totalAmount / 100).toFixed(2)}</span>
+            </div>
+            ${order.trackingNumber ? `
+              <div class="flex justify-between items-center bg-blue-50/50 border border-blue-100/50 p-2.5 rounded-xl text-3xs font-bold text-blue-700 mt-2">
+                <span>CÓDIGO DE SEGUIMIENTO:</span>
+                <span class="font-mono text-xs">${order.trackingNumber}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      document.querySelectorAll('.order-row').forEach((row) => {
+        row.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('.ship-order-btn') || target.tagName === 'BUTTON') {
+            return;
+          }
+          const orderData = JSON.parse((row as HTMLTableRowElement).dataset.order || '{}');
+          renderOrderDetails(orderData);
+          toggleModal(orderDetailsModal, true);
+        });
       });
 
       // 6. Open Ship Order Modal
@@ -2563,47 +3227,91 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       // Track active opened folder list
       let currentOpenedFolderIds: string[] = [];
 
-      // Render items inside the Folder Window Modal (Filterable Grid of All Products)
-      function populateFolderProducts(associatedIds: string[]) {
-        const gridEl = document.getElementById('modal-products-grid');
-        const countEl = document.getElementById('folder-items-count');
-        if (!gridEl || !countEl) return;
-        
-        const searchQuery = (document.getElementById('modal-product-search') as HTMLInputElement)?.value.toLowerCase().trim() || '';
-        
-        gridEl.innerHTML = '';
-        
-        const filteredProducts = allProducts.filter((p) => {
-          return p.title.toLowerCase().includes(searchQuery) || p.sku.toLowerCase().includes(searchQuery);
-        });
-        
-        const totalAssociatedCount = allProducts.filter((p) => associatedIds.includes(p.id)).length;
-        countEl.textContent = `${totalAssociatedCount} ${totalAssociatedCount === 1 ? 'producto asociado' : 'productos asociados'}`;
-        
-        if (filteredProducts.length === 0) {
-          gridEl.innerHTML = `
-            <div class="col-span-full py-12 flex flex-col items-center justify-center text-center text-slate-400 gap-2 border border-dashed border-slate-200 rounded-2xl bg-white p-4">
-              <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span class="text-3xs uppercase tracking-wider font-extrabold text-slate-400">Sin resultados</span>
-              <span class="text-[9px] max-w-[200px]">No se encontraron productos que coincidan con la búsqueda.</span>
-            </div>
-          `;
-          return;
+      // Tab switching logic for collection properties modal
+      const collTabInfo = document.getElementById('coll-tab-info') as HTMLButtonElement;
+      const collTabProducts = document.getElementById('coll-tab-products') as HTMLButtonElement;
+      const collSecInfo = document.getElementById('coll-sec-info') as HTMLDivElement;
+      const collSecProducts = document.getElementById('coll-sec-products') as HTMLDivElement;
+
+      function switchCollectionTab(tab: 'info' | 'products') {
+        if (tab === 'info') {
+          collTabInfo?.classList.add('border-rose-600', 'text-rose-600');
+          collTabInfo?.classList.remove('border-transparent', 'text-slate-400');
+          collTabProducts?.classList.add('border-transparent', 'text-slate-400');
+          collTabProducts?.classList.remove('border-rose-600', 'text-rose-600');
+
+          collSecInfo?.classList.remove('hidden');
+          collSecProducts?.classList.add('hidden');
+        } else {
+          collTabProducts?.classList.add('border-rose-600', 'text-rose-600');
+          collTabProducts?.classList.remove('border-transparent', 'text-slate-400');
+          collTabInfo?.classList.add('border-transparent', 'text-slate-400');
+          collTabInfo?.classList.remove('border-rose-600', 'text-rose-600');
+
+          collSecProducts?.classList.remove('hidden');
+          collSecInfo?.classList.add('hidden');
         }
+      }
+
+      collTabInfo?.addEventListener('click', () => switchCollectionTab('info'));
+      collTabProducts?.addEventListener('click', () => switchCollectionTab('products'));
+
+      // Helper function to find sibling insert positions during dragging
+      function getDragAfterElement(container: HTMLElement, y: number) {
+        const draggableElements = Array.from(container.querySelectorAll('[draggable="true"]:not(.opacity-40)'));
         
-        filteredProducts.forEach((p) => {
-          const isAssociated = associatedIds.includes(p.id);
-          const card = document.createElement('div');
-          
-          card.className = `flex items-center gap-3 p-2.5 rounded-2xl border transition-all ${
-            isAssociated 
-              ? 'border-red-200 bg-red-50/20 shadow-3xs' 
-              : 'border-slate-200 bg-white hover:border-slate-300'
-          }`;
-          
-          card.innerHTML = `
+        return draggableElements.reduce((closest: { offset: number; element: Element | null }, child) => {
+          const box = child.getBoundingClientRect();
+          const offset = y - box.top - box.height / 2;
+          if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+          } else {
+            return closest;
+          }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+      }
+
+      // Render items inside the Folder Window Modal tabs
+      function populateFolderProducts(associatedIds: string[]) {
+        const currentListEl = document.getElementById('coll-current-list');
+        const availableListEl = document.getElementById('coll-available-list');
+        const currentCountEl = document.getElementById('coll-current-count');
+        
+        if (!currentListEl || !availableListEl) return;
+        
+        // Clean both panels
+        currentListEl.innerHTML = '';
+        availableListEl.innerHTML = '';
+        
+        // Update current count
+        const count = associatedIds.length;
+        if (currentCountEl) {
+          currentCountEl.textContent = `${count} ${count === 1 ? 'producto asociado' : 'productos asociados'} (Arrastra para ordenar)`;
+        }
+
+        // Get filter text for available catalog products pool
+        const searchQuery = (document.getElementById('coll-catalog-search') as HTMLInputElement)?.value.toLowerCase().trim() || '';
+
+        // Helper: Find product metadata by ID
+        const getProductMeta = (id: string) => {
+          return allProducts.find((p) => p.id === id);
+        };
+
+        // 1. Render currently associated products in output order
+        associatedIds.forEach((id, index) => {
+          const p = getProductMeta(id);
+          if (!p) return;
+
+          const item = document.createElement('div');
+          item.className = 'flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-355 shadow-3xs cursor-grab active:cursor-grabbing transition-all select-none';
+          item.draggable = true;
+          item.dataset.id = p.id;
+          item.dataset.index = String(index);
+
+          item.innerHTML = `
+            <div class="flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-500 font-mono text-[9px] font-bold shrink-0 border border-slate-200">
+              ${index + 1}
+            </div>
             <div class="w-8 h-10 rounded overflow-hidden bg-slate-50 shrink-0 border border-slate-200">
               <img src="${p.image}" class="w-full h-full object-cover" />
             </div>
@@ -2613,35 +3321,154 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
             </div>
             <button 
               type="button" 
-              class="toggle-assoc-btn text-2xs font-extrabold uppercase px-2.5 py-1.5 rounded-lg border transition-all active:scale-95 shrink-0 ${
-                isAssociated
-                  ? 'bg-rose-600 hover:bg-red-700 border-rose-600 text-white shadow-2xs'
-                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-              }"
+              class="remove-assoc-btn text-2xs font-extrabold uppercase px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600 text-slate-500 transition-all active:scale-95 shrink-0"
             >
-              ${isAssociated ? 'Quitar' : 'Añadir'}
+              Quitar
             </button>
           `;
-          
-          card.querySelector('.toggle-assoc-btn')?.addEventListener('click', () => {
-            const index = associatedIds.indexOf(p.id);
-            if (index > -1) {
-              associatedIds.splice(index, 1);
-              showToast(`"${p.title}" removido de la carpeta.`);
-            } else {
-              associatedIds.push(p.id);
-              showToast(`"${p.title}" añadido a la carpeta.`);
-            }
+
+          // Remove click handler
+          item.querySelector('.remove-assoc-btn')?.addEventListener('click', () => {
+            associatedIds.splice(index, 1);
+            showToast(`"${p.title}" removido de la colección.`);
             populateFolderProducts(associatedIds);
           });
-          
-          gridEl.appendChild(card);
+
+          // Drag Events
+          item.addEventListener('dragstart', (e) => {
+            const dragEvent = e as DragEvent;
+            dragEvent.dataTransfer?.setData('text/plain', p.id);
+            dragEvent.dataTransfer?.setData('source-index', String(index));
+            item.classList.add('opacity-40');
+          });
+
+          item.addEventListener('dragend', () => {
+            item.classList.remove('opacity-40');
+          });
+
+          currentListEl.appendChild(item);
         });
+
+        // 2. Render available catalog products
+        const availableProducts = allProducts.filter((p) => !associatedIds.includes(p.id));
+        const filteredAvailable = availableProducts.filter((p) => {
+          return p.title.toLowerCase().includes(searchQuery) || p.sku.toLowerCase().includes(searchQuery);
+        });
+
+        if (filteredAvailable.length === 0) {
+          availableListEl.innerHTML = `
+            <div class="py-8 flex flex-col items-center justify-center text-center text-slate-400 gap-1 border border-dashed border-slate-200 rounded-xl bg-slate-50 p-4">
+              <span class="text-3xs uppercase tracking-wider font-extrabold text-slate-400">Sin resultados</span>
+              <span class="text-[9px]">No hay más productos disponibles para añadir.</span>
+            </div>
+          `;
+        } else {
+          filteredAvailable.forEach((p) => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white transition-all select-none cursor-grab active:cursor-grabbing';
+            item.draggable = true;
+            item.dataset.id = p.id;
+
+            item.innerHTML = `
+              <div class="w-8 h-10 rounded overflow-hidden bg-slate-50 shrink-0 border border-slate-200">
+                <img src="${p.image}" class="w-full h-full object-cover" />
+              </div>
+              <div class="min-w-0 flex-grow text-left">
+                <span class="block text-[8px] font-extrabold text-slate-400 uppercase font-mono">SKU: ${p.sku}</span>
+                <span class="block text-xs font-bold text-slate-900 truncate leading-tight">${p.title}</span>
+              </div>
+              <button 
+                type="button" 
+                class="add-assoc-btn text-2xs font-extrabold uppercase px-2.5 py-1.5 rounded-lg border border-rose-600 bg-rose-600 hover:bg-red-700 text-white shadow-3xs transition-all active:scale-95 shrink-0"
+              >
+                Añadir
+              </button>
+            `;
+
+            // Add click handler
+            item.querySelector('.add-assoc-btn')?.addEventListener('click', () => {
+              associatedIds.push(p.id);
+              showToast(`"${p.title}" añadido.`);
+              populateFolderProducts(associatedIds);
+            });
+
+            // Drag Start from available list to drag-and-drop insert
+            item.addEventListener('dragstart', (e) => {
+              const dragEvent = e as DragEvent;
+              dragEvent.dataTransfer?.setData('text/plain', p.id);
+              dragEvent.dataTransfer?.setData('source-index', '');
+              item.classList.add('opacity-40');
+            });
+
+            item.addEventListener('dragend', () => {
+              item.classList.remove('opacity-40');
+            });
+
+            availableListEl.appendChild(item);
+          });
+        }
       }
 
-      // Search input inside collection properties modal
-      const modalProductSearch = document.getElementById('modal-product-search') as HTMLInputElement;
-      modalProductSearch?.addEventListener('input', () => {
+      // Search input inside collection catalog pool
+      const collCatalogSearch = document.getElementById('coll-catalog-search') as HTMLInputElement;
+      collCatalogSearch?.addEventListener('input', () => {
+        populateFolderProducts(currentOpenedFolderIds);
+      });
+
+      // Bind drag and drop events on currentListEl container ONCE at startup
+      const collCurrentList = document.getElementById('coll-current-list') as HTMLDivElement;
+      
+      collCurrentList?.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const draggingEl = collCurrentList.querySelector('.opacity-40') as HTMLElement;
+        if (!draggingEl) return;
+
+        const afterElement = getDragAfterElement(collCurrentList, e.clientY);
+        if (afterElement == null) {
+          collCurrentList.appendChild(draggingEl);
+        } else {
+          collCurrentList.insertBefore(draggingEl, afterElement);
+        }
+      });
+
+      collCurrentList?.addEventListener('drop', (e) => {
+        e.preventDefault();
+        
+        const dragEvent = e as DragEvent;
+        const productId = dragEvent.dataTransfer?.getData('text/plain');
+        const sourceIndexStr = dragEvent.dataTransfer?.getData('source-index');
+
+        if (!productId) return;
+
+        // Case A: Dragging from available pool to insert
+        if (!currentOpenedFolderIds.includes(productId)) {
+          const afterElement = getDragAfterElement(collCurrentList, dragEvent.clientY) as HTMLElement | null;
+          if (afterElement) {
+            const targetIndex = parseInt(afterElement.dataset.index || '0');
+            currentOpenedFolderIds.splice(targetIndex, 0, productId);
+          } else {
+            currentOpenedFolderIds.push(productId);
+          }
+          showToast("Producto añadido a la colección.");
+        } else if (sourceIndexStr !== undefined && sourceIndexStr !== '') {
+          // Case B: Reordering within collection
+          const sourceIndex = parseInt(sourceIndexStr);
+          const afterElement = getDragAfterElement(collCurrentList, dragEvent.clientY) as HTMLElement | null;
+          
+          const item = currentOpenedFolderIds.splice(sourceIndex, 1)[0];
+          
+          if (afterElement) {
+            let targetIndex = parseInt(afterElement.dataset.index || '0');
+            if (targetIndex > sourceIndex) {
+              targetIndex -= 1;
+            }
+            currentOpenedFolderIds.splice(targetIndex, 0, item);
+          } else {
+            currentOpenedFolderIds.push(item);
+          }
+          showToast("Orden de catálogo actualizado.");
+        }
+
         populateFolderProducts(currentOpenedFolderIds);
       });
 
@@ -2655,31 +3482,15 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
       const saveCollectionBtn = document.getElementById('save-collection-btn') as HTMLButtonElement;
       const deleteCurrentCollectionBtn = document.getElementById('delete-current-collection-btn') as HTMLButtonElement;
 
-      // Handle drop inside the open Folder Window form to add product
-      collectionForm?.addEventListener('dragover', (e) => e.preventDefault());
-      collectionForm?.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const productId = e.dataTransfer?.getData('text/plain');
-        if (!productId) return;
-        
-        if (currentOpenedFolderIds.includes(productId)) {
-          showToast("Este producto ya está en esta colección", "error");
-          return;
-        }
-        
-        currentOpenedFolderIds.push(productId);
-        populateFolderProducts(currentOpenedFolderIds);
-        showToast("Producto colocado en la ventana.");
-      });
-
       // Open for New Collection folder
       openNewCollectionModal?.addEventListener('click', () => {
         collectionForm.reset();
         collectionModalTitle.textContent = "Nueva Carpeta de Colección";
         (document.getElementById('form-collection-id') as HTMLInputElement).value = "";
         deleteCurrentCollectionBtn?.classList.add('hidden');
-        if (modalProductSearch) modalProductSearch.value = "";
+        if (collCatalogSearch) collCatalogSearch.value = "";
         
+        switchCollectionTab('info');
         currentOpenedFolderIds = [];
         populateFolderProducts(currentOpenedFolderIds);
         toggleModal(collectionModal, true);
@@ -2714,6 +3525,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
         const titleVal = (document.getElementById('form-collection-title') as HTMLInputElement).value.trim();
         const slugVal = (document.getElementById('form-collection-slug') as HTMLInputElement).value.trim();
         const descVal = (document.getElementById('form-collection-desc') as HTMLTextAreaElement).value.trim();
+        const detailedDescVal = (document.getElementById('form-collection-detailed-desc') as HTMLTextAreaElement).value.trim();
         
         const seoTitleVal = (document.getElementById('form-collection-seo-title') as HTMLInputElement).value.trim() || titleVal;
         const seoKeywordsVal = (document.getElementById('form-collection-seo-keywords') as HTMLInputElement).value
@@ -2726,6 +3538,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           title: titleVal,
           slug: slugVal,
           description: descVal,
+          detailedDescription: detailedDescVal || null,
           productIds: currentOpenedFolderIds,
           seo: {
             title: seoTitleVal,
@@ -2771,6 +3584,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
           (document.getElementById('form-collection-title') as HTMLInputElement).value = colData.title;
           (document.getElementById('form-collection-slug') as HTMLInputElement).value = colData.slug;
           (document.getElementById('form-collection-desc') as HTMLTextAreaElement).value = colData.description;
+          (document.getElementById('form-collection-detailed-desc') as HTMLTextAreaElement).value = colData.detailedDescription || '';
 
           (document.getElementById('form-collection-seo-title') as HTMLInputElement).value = colData.seo?.title || '';
           (document.getElementById('form-collection-seo-keywords') as HTMLInputElement).value = colData.seo?.keywords?.join(', ') || '';
@@ -2782,6 +3596,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
             deleteCurrentCollectionBtn.dataset.collectionTitle = colData.title;
           }
 
+          switchCollectionTab('info');
           currentOpenedFolderIds = [...(colData.productIds || [])];
           populateFolderProducts(currentOpenedFolderIds);
 
@@ -2872,6 +3687,7 @@ const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paid
               title: colData.title,
               slug: colData.slug,
               description: colData.description,
+              detailedDescription: colData.detailedDescription || null,
               productIds: newIds,
               seo: colData.seo || { title: colData.title, description: colData.description, keywords: [] }
             });

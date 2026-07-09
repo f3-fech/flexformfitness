@@ -179,6 +179,7 @@ export const CartList: React.FC<CartListProps> = ({ shippingPrice = 499, freeShi
             </button>
           </div>
         ))}
+
       </div>
 
       {/* Summary sidebar */}

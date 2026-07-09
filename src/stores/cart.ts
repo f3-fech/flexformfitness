@@ -224,6 +224,29 @@ export function updateQuantity(key: string, quantity: number) {
 /**
  * Empty the cart
  */
-export function clearCart() {
+export async function clearCart() {
+  if (!isAuthInitialized) {
+    await new Promise<void>((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged(() => {
+        unsubscribe();
+        resolve();
+      });
+    });
+  }
+
+  // Clear in-memory store
   cartStore.set({});
+
+  // Clear session storage and local storage
+  if (currentUid) {
+    sessionStorage.removeItem(`flexform_cart_cache_${currentUid}`);
+    // Clear in database
+    try {
+      await actions.saveDbCart({ items: {} });
+    } catch (err) {
+      console.error('Error clearing DB cart:', err);
+    }
+  } else {
+    localStorage.removeItem('flexform_cart');
+  }
 }

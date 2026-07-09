@@ -14,6 +14,15 @@ const getGender = (title: string) => {
   return 'unisex';
 };
 
+const getObjectPosition = (url: string | undefined): string => {
+  if (!url) return 'center';
+  const match = url.match(/#pos=([a-zA-Z0-9%_-]+)/);
+  if (match && match[1]) {
+    return match[1].replace('_', ' ');
+  }
+  return 'center';
+};
+
 
 
 const getColorHex = (colorName: string): string => {
@@ -209,7 +218,8 @@ const user = Astro.locals.user;
                       <img
                         src={imgUrl}
                         alt={`${product.title} - Vista ${imgIdx + 1}`}
-                        class="w-full h-full object-cover object-center group-hover:scale-[1.01] transition-transform duration-500"
+                        class="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-500"
+                        style={`object-position: ${getObjectPosition(imgUrl)}`}
                         loading={imgIdx === 0 ? "eager" : "lazy"}
                       />
                     </a>

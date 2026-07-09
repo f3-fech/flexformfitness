@@ -69,6 +69,7 @@ export interface ProductCollection {
   title: string;
   slug: string;
   description: string;
+  detailedDescription?: string | null;
   productIds: string[];
   seo: ProductSEO;
   createdAt: any;

@@ -1,9 +1,26 @@
 ---
 import SEO from '../../components/SEO.astro';
+import { db } from '../../lib/firebase';
+import { fulfillOrder } from '../../lib/orders';
 
 export const prerender = false;
 
 const sessionId = Astro.url.searchParams.get('session_id') || 'SIN_ID';
+
+if (sessionId && sessionId !== 'SIN_ID') {
+  try {
+    // Check if the order is already in Firestore (webhook completed it)
+    const orderDoc = await db.collection('orders').doc(sessionId).get();
+    if (!orderDoc.exists) {
+      // Fulfill the order synchronously right here on the server
+      if (sessionId.startsWith('cs_')) {
+        await fulfillOrder(sessionId);
+      }
+    }
+  } catch (err) {
+    console.error('[Success Page] Error verifying or fulfilling order:', err);
+  }
+}
 ---
 
 <!doctype html>
@@ -60,7 +77,7 @@ const sessionId = Astro.url.searchParams.get('session_id') || 'SIN_ID';
       <p>&copy; {new Date().getFullYear()} FlexForm Fitness. Todos los derechos reservados.</p>
     </footer>
 
-    {/* Clear local cart state upon successful checkout */}
+    <!-- Clear local cart state upon successful checkout -->
     <script>
       import { clearCart } from '../../stores/cart';
       clearCart();

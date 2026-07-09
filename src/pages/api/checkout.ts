@@ -85,6 +85,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // 4. Load General Settings to determine shipping and markets
     const settings = await getGeneralSettings();
     const subtotal = sanitizedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
     const shippingCost = (subtotal >= settings.freeShippingMin || subtotal === 0) ? 0 : settings.shippingPrice;
 
     // Add estimated 8% tax as a line item if greater than 0
