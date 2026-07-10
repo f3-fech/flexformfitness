@@ -1,9 +1,9 @@
 ---
-import { db } from '../../lib/firebase';
-import type { Product, ProductCollection } from '../../types';
-import SEO from '../../components/SEO.astro';
-import Navbar from '../../components/Navbar.astro';
-import { mockProducts } from '../../lib/mockData';
+import { db } from '../../../lib/firebase';
+import type { Product, ProductCollection } from '../../../types';
+import SEO from '../../../components/SEO.astro';
+import Navbar from '../../../components/Navbar.astro';
+import { mockProducts } from '../../../lib/mockData';
 
 export const prerender = true;
 
@@ -13,36 +13,38 @@ export async function getStaticPaths() {
     const snap = await db.collection('collections').get();
     
     if (snap.empty) {
-      console.warn('Warning: No collections found in Firestore during build. Creating a fallback empty path.');
+      const fallbackCol = {
+        id: 'default',
+        title: 'Colección de Muestra',
+        slug: 'default-coleccion',
+        description: 'Esta es una colección de demostración creada automáticamente.',
+        productIds: [],
+        seo: {
+          title: 'Colección de Muestra | FLEX FORM FITNESS',
+          description: 'Esta es una colección de demostración.',
+          keywords: ['deporte', 'fitness']
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as ProductCollection;
       return [
-        {
-          params: { slug: 'default-coleccion' },
-          props: { 
-            collection: {
-              id: 'default',
-              title: 'Colección de Muestra',
-              slug: 'default-coleccion',
-              description: 'Esta es una colección de demostración creada automáticamente.',
-              productIds: [],
-              seo: {
-                title: 'Colección de Muestra | FLEX FORM FITNESS',
-                description: 'Esta es una colección de demostración.',
-                keywords: ['deporte', 'fitness']
-              },
-              createdAt: new Date(),
-              updatedAt: new Date()
-            } as ProductCollection
-          }
-        }
+        { params: { lang: 'es', slug: 'default-coleccion' }, props: { collection: fallbackCol } },
+        { params: { lang: 'en', slug: 'default-coleccion' }, props: { collection: fallbackCol } }
       ];
     }
 
-    return snap.docs.map((doc) => {
+    return snap.docs.flatMap((doc) => {
       const collection = { id: doc.id, ...doc.data() } as ProductCollection;
-      return {
-        params: { slug: collection.slug },
-        props: { collection },
-      };
+      return [
+        {
+          params: { lang: 'es', slug: collection.slug },
+          props: { collection },
+        },
+        {
+          params: { lang: 'en', slug: collection.slug },
+          props: { collection },
+        }
+      ];
     });
   } catch (error) {
     console.error('Error fetching static paths for collections:', error);
@@ -60,12 +62,13 @@ if (!collection) {
   return Astro.redirect('/404');
 }
 
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
 // Fetch only the products that belong to this collection
 let products: Product[] = [];
 try {
   if (collection.productIds && collection.productIds.length > 0) {
-    // Firestore has a limit of 10 items in "in" queries, so we do chunking or fetch all and filter in memory
-    // Fetching all products is extremely fast and robust for e-commerce scale catalogs
     const productsSnap = await db.collection('products').get();
     if (!productsSnap.empty) {
       const allProducts = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
@@ -85,23 +88,31 @@ const getObjectPosition = (url: string | undefined): string => {
   return 'center';
 };
 
-
-
 const getColorHex = (colorName: string): string => {
   const name = colorName.toLowerCase().trim();
   const colorMap: Record<string, string> = {
     'negro': '#0f172a',
+    'black': '#0f172a',
     'gris': '#94a3b8',
+    'grey': '#94a3b8',
+    'gray': '#94a3b8',
     'gris-oscuro': '#4b5563',
     'rosa': '#db2777',
+    'pink': '#db2777',
     'amarillo': '#fbbf24',
+    'yellow': '#fbbf24',
     'azul-metalizado': '#475569',
     'azul-marino': '#1e3a8a',
+    'navy': '#1e3a8a',
     'azul-claro': '#a5f3fc',
     'blanco': '#ffffff',
+    'white': '#ffffff',
     'rojo': '#dc2626',
+    'red': '#dc2626',
     'verde': '#16a34a',
+    'green': '#16a34a',
     'naranja': '#ea580c',
+    'orange': '#ea580c',
   };
 
   for (const key in colorMap) {
@@ -140,18 +151,25 @@ const getUniqueColors = (product: Product): SwatchColor[] => {
 };
 
 const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
-const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
+const canonicalUrl = `${siteUrl}/${lang}/colecciones/${collection.slug}`;
+
+const collectionTitle = isEn ? (collection.title_en || collection.title) : collection.title;
+const collectionDescription = isEn ? (collection.description_en || collection.description) : collection.description;
+const collectionDetailedDescription = isEn ? (collection.detailedDescription_en || collection.detailedDescription) : collection.detailedDescription;
+
+const seoTitle = isEn ? (collection.seo_en?.title || collection.seo?.title || `${collectionTitle} | FLEX FORM FITNESS`) : (collection.seo?.title || `${collectionTitle} | FLEX FORM FITNESS`);
+const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?.description || collectionDescription) : (collection.seo?.description || collectionDescription);
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <SEO
-      title={collection.seo.title || `${collection.title} | FLEX FORM FITNESS`}
-      description={collection.seo.description || collection.description}
+      title={seoTitle}
+      description={seoDescription}
       canonicalUrl={canonicalUrl}
       ogType="website"
     />
@@ -173,24 +191,24 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
       <div class="relative max-w-4xl mx-auto text-center flex flex-col items-center gap-4">
         <!-- Breadcrumb -->
         <nav class="text-slate-500 text-3xs font-extrabold tracking-widest uppercase flex items-center gap-2 mb-2">
-          <a href="/" class="hover:text-red-500 transition-colors">Inicio</a>
+          <a href={`/${lang}`} class="hover:text-red-500 transition-colors">{isEn ? "Home" : "Inicio"}</a>
           <span>/</span>
-          <a href="/#catalogo" class="hover:text-red-500 transition-colors">Colecciones</a>
+          <a href={`/${lang}#catalogo`} class="hover:text-red-500 transition-colors">{isEn ? "Collections" : "Colecciones"}</a>
           <span>/</span>
-          <span class="text-white">{collection.title}</span>
+          <span class="text-white">{collectionTitle}</span>
         </nav>
 
         <h1 class="text-3xl md:text-5xl font-black italic tracking-tighter uppercase leading-none">
-          {collection.title}
+          {collectionTitle}
         </h1>
         
-        {collection.description && (
-          <p class="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed mt-2" set:html={collection.description}>
+        {collectionDescription && (
+          <p class="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed mt-2" set:html={collectionDescription}>
           </p>
         )}
         
         <span class="text-3xs text-slate-550 font-bold uppercase tracking-widest mt-4">
-          {products.length} {products.length === 1 ? 'Producto' : 'Productos'} Encontrados
+          {products.length} {products.length === 1 ? (isEn ? 'Product Found' : 'Producto Encontrado') : (isEn ? 'Products Found' : 'Productos Encontrados')}
         </span>
       </div>
     </section>
@@ -203,22 +221,23 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
             {products.map((product) => (
               <div class="product-card group flex flex-col justify-between w-full">
                 {/* Product Image */}
-              <!-- Product Image Slider -->
-              <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider">
+              <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
                 <!-- Swipeable Images Container -->
-                <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none">
+                <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
                   {product.images.map((imgUrl, imgIdx) => (
                     <a
-                      href={`/productos/${product.slug}`}
+                      href={`/${lang}/productos/${product.slug}`}
                       class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
                       data-index={imgIdx}
+                      style="aspect-ratio: 3/4;"
                     >
                       <img
                         src={imgUrl}
-                        alt={`${product.title} - Vista ${imgIdx + 1}`}
-                        class="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-500"
+                        alt={`${isEn ? (product.title_en || product.title) : product.title} - Vista ${imgIdx + 1}`}
+                        class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
                         style={`object-position: ${getObjectPosition(imgUrl)}`}
                         loading={imgIdx === 0 ? "eager" : "lazy"}
+                        onload="this.classList.remove('opacity-0')"
                       />
                     </a>
                   ))}
@@ -228,7 +247,7 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
                 <button
                   type="button"
                   class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
-                  title="Imagen anterior"
+                  title={isEn ? "Previous image" : "Imagen anterior"}
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -237,7 +256,7 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
                 <button
                   type="button"
                   class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
-                  title="Siguiente imagen"
+                  title={isEn ? "Next image" : "Siguiente imagen"}
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -246,7 +265,7 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
 
                 {product.stock <= 5 && (
                   <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
-                    ÚLTIMAS UNIDADES
+                    {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
                   </span>
                 )}
               </div>
@@ -254,11 +273,11 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
               {/* Product Details (Title, Description, and Price) */}
               <div class="mt-3 flex flex-col gap-1 w-full">
                 <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
-                <a href={`/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
-                  {product.title}
+                <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
+                  {isEn ? (product.title_en || product.title) : product.title}
                 </a>
                 <p class="text-slate-500 text-xs line-clamp-1">
-                  {product.description}
+                  {isEn ? (product.description_en || product.description) : product.description}
                 </p>
                 
                 {/* Clickable Swatches */}
@@ -281,7 +300,7 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
                       ${(product.price / 100).toFixed(2)}
                     </span>
                     <span class="text-[10px] font-bold text-rose-600 group-hover:underline uppercase tracking-wider">
-                      Ver más
+                      {isEn ? "View details" : "Ver más"}
                     </span>
                   </div>
                 </div>
@@ -293,19 +312,19 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
             <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18a2.25 2.25 0 012.25 2.25v4.25A2.25 2.25 0 0118 21.75H6a2.25 2.25 0 01-2.25-2.25V15.75a2.25 2.25 0 012.25-2.25z" />
             </svg>
-            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Sin productos</h3>
-            <p class="text-xs text-slate-500">No hay productos vinculados a esta colección todavía.</p>
-            <a href="/" class="mt-2 text-xs font-bold text-rose-600 hover:underline uppercase tracking-wider">Volver al inicio</a>
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">{isEn ? "No products" : "Sin productos"}</h3>
+            <p class="text-xs text-slate-500">{isEn ? "No products are linked to this collection yet." : "No hay productos vinculados a esta colección todavía."}</p>
+            <a href={`/${lang}`} class="mt-2 text-xs font-bold text-rose-600 hover:underline uppercase tracking-wider">{isEn ? "Back home" : "Volver al inicio"}</a>
           </div>
         )}
       </div>
     </main>
 
     <!-- Additional SEO / Detailed content block -->
-    {collection.detailedDescription && (
+    {collectionDetailedDescription && (
       <section class="w-full bg-slate-50 border-t border-b border-slate-100 py-16 px-4 md:px-8">
         <div class="max-w-4xl mx-auto text-slate-700 text-sm md:text-base leading-relaxed font-normal">
-          <div set:html={collection.detailedDescription} class="seo-detailed-content flex flex-col"></div>
+          <div set:html={collectionDetailedDescription} class="seo-detailed-content flex flex-col"></div>
         </div>
       </section>
     )}
@@ -314,7 +333,7 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
     <footer id="contacto" class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850">
       <div class="w-full grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
         <div class="flex flex-col gap-4">
-          <a href="/" class="flex flex-col">
+          <a href={`/${lang}`} class="flex flex-col">
             <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
               FLEX <span class="text-red-550">FORM</span>
             </span>
@@ -323,25 +342,25 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
             </span>
           </a>
           <p class="text-xs text-slate-500 leading-relaxed">
-            Ropa deportiva de alto rendimiento y accesorios premium diseñados para atletas dedicados.
+            {isEn ? "High-performance sportswear and premium accessories designed for dedicated athletes." : "Ropa deportiva de alto rendimiento y accesorios premium diseñados para atletas dedicados."}
           </p>
         </div>
 
         <div class="flex flex-col gap-3">
-          <h4 class="text-xs font-bold text-white tracking-widest uppercase">COLECCIONES</h4>
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "COLLECTIONS" : "COLECCIONES"}</h4>
           <ul class="text-xs flex flex-col gap-2">
-            <li><a href="/#catalogo" class="hover:text-white transition-colors">Hombre</a></li>
-            <li><a href="/#catalogo" class="hover:text-white transition-colors">Mujer</a></li>
-            <li><a href="/" class="hover:text-white transition-colors">Ver Todo</a></li>
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Men" : "Hombre"}</a></li>
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Women" : "Mujer"}</a></li>
+            <li><a href={`/${lang}`} class="hover:text-white transition-colors">{isEn ? "View all" : "Ver Todo"}</a></li>
           </ul>
         </div>
 
         <div class="flex flex-col gap-3">
-          <h4 class="text-xs font-bold text-white tracking-widest uppercase">SOPORTE</h4>
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
           <ul class="text-xs flex flex-col gap-2">
-            <li><a href="#" class="hover:text-white transition-colors">Envíos y Entregas</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Devoluciones</a></li>
-            <li><a href="/admin/login" class="hover:text-white transition-colors">Acceso de Administrador</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
+            <li><a href="/admin/login" class="hover:text-white transition-colors">{isEn ? "Admin Login" : "Acceso de Administrador"}</a></li>
           </ul>
         </div>
 
@@ -357,7 +376,7 @@ const canonicalUrl = `${siteUrl}/colecciones/${collection.slug}`;
     </footer>
 
     <script>
-      import { cartStore } from '../../stores/cart';
+      import { cartStore } from '../../../stores/cart';
 
       // Update cart count badge in navbar dynamically
       cartStore.subscribe((cart) => {

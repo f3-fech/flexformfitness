@@ -10,13 +10,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Only parse cookies on dynamic routes (SSR) to avoid Astro request headers warning during static pre-rendering
   const path = url.pathname;
-  const isSSR = path.startsWith('/admin') ||
-                path.startsWith('/carrito') ||
-                path.startsWith('/mi-cuenta') ||
-                path.startsWith('/checkout') ||
-                path.startsWith('/api') ||
-                path.startsWith('/_actions') ||
-                path === '/products.json';
+  const cleanPath = path.replace(/^\/(es|en)(?=\/|$)/, '');
+
+  const isSSR = cleanPath.startsWith('/admin') ||
+                cleanPath.startsWith('/carrito') ||
+                cleanPath.startsWith('/mi-cuenta') ||
+                cleanPath.startsWith('/checkout') ||
+                cleanPath.startsWith('/api') ||
+                cleanPath.startsWith('/_actions') ||
+                cleanPath === '/products.json';
 
   // Retrieve user session cookie
   const sessionCookie = isSSR ? context.cookies.get('session_token')?.value : undefined;
@@ -26,6 +28,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       context.locals.user = {
         uid: decodedClaims.uid,
         email: decodedClaims.email,
+        email_verified: decodedClaims.email_verified,
         name: decodedClaims.name || decodedClaims.email?.split('@')[0] || 'Usuario',
         picture: decodedClaims.picture || undefined,
       };
@@ -38,6 +41,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
             context.locals.user = {
               uid: payload.uid || payload.user_id || 'mock-uid',
               email: payload.email || 'mock@flexform.com',
+              email_verified: payload.email_verified ?? true, // assume verified in dev fallback
               name: payload.name || payload.email?.split('@')[0] || 'Usuario Dev',
               picture: payload.picture || undefined,
             };

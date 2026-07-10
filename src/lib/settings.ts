@@ -7,6 +7,7 @@ export interface GeneralSettings {
   admins: string[];            // admin email list
   logoUrl?: string;
   faviconUrl?: string;
+  heroVideoUrl?: string;
 }
 
 export const defaultSettings: GeneralSettings = {
@@ -16,6 +17,7 @@ export const defaultSettings: GeneralSettings = {
   admins: [],
   logoUrl: '/logo.png',
   faviconUrl: '/favicon.ico',
+  heroVideoUrl: 'https://firebasestorage.googleapis.com/v0/b/flexformfitness-673f4.firebasestorage.app/o/assets%2Fhero.mp4?alt=media&token=d2387591-833c-42d9-8342-45f30551a908',
 };
 
 export async function getGeneralSettings(): Promise<GeneralSettings> {
@@ -30,6 +32,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         admins: data.admins || defaultSettings.admins,
         logoUrl: data.logoUrl || defaultSettings.logoUrl,
         faviconUrl: data.faviconUrl || defaultSettings.faviconUrl,
+        heroVideoUrl: data.heroVideoUrl || defaultSettings.heroVideoUrl,
       };
     }
   } catch (error) {

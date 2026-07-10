@@ -5,6 +5,7 @@ declare namespace App {
     user?: {
       uid: string;
       email?: string;
+      email_verified?: boolean;
       name?: string;
       picture?: string;
     } | null;

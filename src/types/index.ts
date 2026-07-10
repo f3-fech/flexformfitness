@@ -16,13 +16,16 @@ export interface ProductSEO {
 export interface Product {
   id: string; // Firestore document ID
   title: string;
+  title_en?: string;
   slug: string; // URL slug
   description: string;
+  description_en?: string;
   price: number; // base price in cents
   images: string[];
   stock: number; // overall stock (or base item stock)
   variants: ProductVariant[];
   seo: ProductSEO;
+  seo_en?: ProductSEO;
   createdAt: any; // admin.firestore.Timestamp or Date
   updatedAt: any; // admin.firestore.Timestamp or Date
 }
@@ -58,20 +61,30 @@ export interface Order {
   customerDetails: CustomerDetails;
   items: OrderItem[];
   totalAmount: number; // total amount in cents
-  paymentStatus: 'pending' | 'paid' | 'failed';
-  shippingStatus: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  shippingStatus: 'pending' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   trackingNumber: string | null;
   createdAt: any; // admin.firestore.Timestamp or Date
+  returnRequest?: {
+    reason: string;
+    images: string[];
+    status: 'pending' | 'approved' | 'rejected';
+    requestedAt: string;
+  } | null;
 }
 
 export interface ProductCollection {
   id: string;
   title: string;
+  title_en?: string;
   slug: string;
   description: string;
+  description_en?: string;
   detailedDescription?: string | null;
+  detailedDescription_en?: string | null;
   productIds: string[];
   seo: ProductSEO;
+  seo_en?: ProductSEO;
   createdAt: any;
   updatedAt: any;
 }

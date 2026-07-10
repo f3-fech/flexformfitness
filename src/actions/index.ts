@@ -30,50 +30,64 @@ const seoSchema = z.object({
 
 const createProductSchema = z.object({
   title: z.string().min(1, 'Title is required'),
+  title_en: z.string().optional(),
   slug: z.string().min(1, 'Slug is required'),
   description: z.string().min(1, 'Description is required'),
+  description_en: z.string().optional(),
   price: z.number().int().nonnegative('Base price must be positive (in cents)'),
   images: z.array(z.string().url('Image must be a valid URL')).min(1, 'At least one image is required'),
   stock: z.number().int().nonnegative('General stock must be positive'),
   variants: z.array(variantSchema),
   seo: seoSchema,
+  seo_en: seoSchema.optional(),
 });
 
 const updateProductSchema = z.object({
   id: z.string().min(1, 'Product ID is required'),
   title: z.string().optional(),
+  title_en: z.string().optional(),
   slug: z.string().optional(),
   description: z.string().optional(),
+  description_en: z.string().optional(),
   price: z.number().int().nonnegative().optional(),
   images: z.array(z.string().url()).optional(),
   stock: z.number().int().nonnegative().optional(),
   variants: z.array(variantSchema).optional(),
   seo: seoSchema.optional(),
+  seo_en: seoSchema.optional(),
 });
 
 const updateShippingSchema = z.object({
   orderId: z.string().min(1, 'Order ID is required'),
-  shippingStatus: z.enum(['pending', 'shipped', 'delivered', 'cancelled']),
-  trackingNumber: z.string().min(1, 'Tracking number is required'),
+  shippingStatus: z.enum(['pending', 'shipped', 'delivered', 'cancelled', 'returned']),
+  trackingNumber: z.string().optional().nullable(),
 });
 
 const collectionSchema = z.object({
   title: z.string().min(1, 'Title is required'),
+  title_en: z.string().optional(),
   slug: z.string().min(1, 'Slug is required'),
   description: z.string().min(1, 'Description is required'),
+  description_en: z.string().optional(),
   detailedDescription: z.string().optional().nullable(),
+  detailedDescription_en: z.string().optional().nullable(),
   productIds: z.array(z.string()),
   seo: seoSchema,
+  seo_en: seoSchema.optional(),
 });
 
 const updateCollectionSchema = z.object({
   id: z.string().min(1, 'Collection ID is required'),
   title: z.string().min(1, 'Title is required'),
+  title_en: z.string().optional(),
   slug: z.string().min(1, 'Slug is required'),
   description: z.string().min(1, 'Description is required'),
+  description_en: z.string().optional(),
   detailedDescription: z.string().optional().nullable(),
+  detailedDescription_en: z.string().optional().nullable(),
   productIds: z.array(z.string()),
   seo: seoSchema,
+  seo_en: seoSchema.optional(),
 });
 
 // Admin Authorization Guard Helper
@@ -233,25 +247,22 @@ export const server = {
 
         // Trigger shipping confirmation email via Resend if email is provided
         if (order.customerDetails.email && shippingStatus === 'shipped') {
+          const emailSettings = await getEmailSettings();
           const trackingLink = `https://www.packagetrackr.com/?number=${trackingNumber}`; // Customize track url
           
-          const emailContent = `
-            <h1>¡Tu pedido ha sido enviado!</h1>
-            <p>Hola, ${order.customerDetails.name}. Nos complace informarte que tu pedido <strong>${orderId}</strong> ha sido enviado.</p>
-            <hr />
-            <p><strong>Detalles de envío:</strong></p>
-            <ul>
-              <li><strong>Código de Seguimiento:</strong> ${trackingNumber}</li>
-              <li><strong>Estado actual:</strong> En tránsito</li>
-            </ul>
-            <p>Puedes seguir tu envío haciendo clic en el siguiente enlace:</p>
-            <p><a href="${trackingLink}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:#8b5cf6;color:white;text-decoration:none;border-radius:5px;">Seguir Pedido</a></p>
-            <p>¡Gracias por comprar en FlexForm Fitness!</p>
-          `;
+          const emailContent = emailSettings.shippedBody
+            .replace(/{{customerName}}/g, order.customerDetails.name || 'Cliente')
+            .replace(/{{orderId}}/g, orderId)
+            .replace(/{{trackingNumber}}/g, trackingNumber || '')
+            .replace(/{{trackingUrl}}/g, trackingLink);
+
+          const subject = emailSettings.shippedSubject
+            .replace(/{{customerName}}/g, order.customerDetails.name || 'Cliente')
+            .replace(/{{orderId}}/g, orderId.slice(-6).toUpperCase());
 
           await sendEmail({
             to: order.customerDetails.email,
-            subject: `Tu pedido ha sido enviado - FlexForm Fitness #${orderId.slice(-6).toUpperCase()}`,
+            subject,
             html: emailContent,
           });
         }
@@ -266,6 +277,201 @@ export const server = {
         });
       }
     },
+  }),
+
+  deleteOrder: defineAction({
+    accept: 'json',
+    input: z.object({
+      orderId: z.string().min(1, 'Order ID is required'),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      const { orderId } = input;
+
+      try {
+        const orderRef = db.collection('orders').doc(orderId);
+        const orderSnap = await orderRef.get();
+
+        if (!orderSnap.exists) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: 'Order not found.',
+          });
+        }
+
+        await orderRef.delete();
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error in deleteOrder action:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: error.message || 'Failed to delete order.',
+        });
+      }
+    },
+  }),
+
+  requestOrderReturn: defineAction({
+    accept: 'json',
+    input: z.object({
+      orderId: z.string().min(1),
+      reason: z.string().min(1),
+      images: z.array(z.string().url()),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user;
+      if (!user) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'Debes iniciar sesión para solicitar una devolución.',
+        });
+      }
+
+      const { orderId, reason, images } = input;
+
+      try {
+        const orderRef = db.collection('orders').doc(orderId);
+        const orderSnap = await orderRef.get();
+
+        if (!orderSnap.exists) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: 'Pedido no encontrado.',
+          });
+        }
+
+        const order = orderSnap.data();
+        if (!order) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: 'Pedido no encontrado.',
+          });
+        }
+
+        // Ensure this order belongs to the user
+        if (order.userId !== user.uid && order.customerDetails?.email !== user.email) {
+          throw new ActionError({
+            code: 'FORBIDDEN',
+            message: 'No tienes permiso para modificar este pedido.',
+          });
+        }
+
+        await orderRef.update({
+          returnRequest: {
+            reason,
+            images,
+            status: 'pending',
+            requestedAt: new Date().toISOString()
+          },
+          updatedAt: new Date()
+        });
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error requesting return:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: error.message || 'Error al solicitar la devolución.',
+        });
+      }
+    }
+  }),
+
+  uploadReturnImage: defineAction({
+    accept: 'json',
+    input: z.object({
+      base64Data: z.string(),
+      fileName: z.string(),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user;
+      if (!user) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'Debes iniciar sesión para subir imágenes.',
+        });
+      }
+
+      try {
+        const { base64Data, fileName } = input;
+        const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Content, 'base64');
+        const bucketName = process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        const file = bucket.file(`returns/${user.uid}_${Date.now()}_${fileName}`);
+
+        const downloadToken = randomUUID();
+        await file.save(buffer, {
+          metadata: {
+            contentType: 'image/webp',
+            metadata: {
+              firebaseStorageDownloadTokens: downloadToken,
+            },
+          },
+        });
+
+        try {
+          await file.makePublic();
+        } catch (aclError) {
+          // Uniform bucket-level access is enabled on Firebase. Individual object ACLs are ignored.
+        }
+
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${downloadToken}`;
+        return { success: true, url: downloadUrl };
+      } catch (error: any) {
+        console.error('Error uploading return image:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al subir la imagen.',
+        });
+      }
+    }
+  }),
+
+  updateReturnStatus: defineAction({
+    accept: 'json',
+    input: z.object({
+      orderId: z.string().min(1),
+      status: z.enum(['approved', 'rejected']),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      const { orderId, status } = input;
+
+      try {
+        const orderRef = db.collection('orders').doc(orderId);
+        const orderSnap = await orderRef.get();
+        if (!orderSnap.exists) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: 'Pedido no encontrado.',
+          });
+        }
+
+        const updateData: any = {
+          'returnRequest.status': status,
+          updatedAt: new Date()
+        };
+
+        if (status === 'approved') {
+          updateData.shippingStatus = 'returned';
+          updateData.paymentStatus = 'refunded';
+        }
+
+        await orderRef.update(updateData);
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error updating return status:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: error.message || 'Error al actualizar el estado de devolución.',
+        });
+      }
+    }
   }),
 
   // Action to delete a product from Firestore
@@ -430,6 +636,7 @@ export const server = {
       admins: z.array(z.string()),
       logoUrl: z.string().optional(),
       faviconUrl: z.string().optional(),
+      heroVideoUrl: z.string().optional(),
     }),
     handler: async (input, context) => {
       await checkAdminAuth(context);
@@ -646,12 +853,13 @@ export const server = {
     input: z.object({
       base64Data: z.string(),
       fileName: z.string(),
+      folder: z.string().optional(),
     }),
     handler: async (input, context) => {
       await checkAdminAuth(context);
 
       try {
-        const { base64Data, fileName } = input;
+        const { base64Data, fileName, folder = 'products' } = input;
         
         // Decode base64
         const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, "");
@@ -659,7 +867,9 @@ export const server = {
 
         const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
         const bucket = admin.storage().bucket(bucketName);
-        const file = bucket.file(`products/${fileName}`);
+        
+        const pathPrefix = folder.endsWith('/') ? folder : `${folder}/`;
+        const file = bucket.file(`${pathPrefix}${fileName}`);
 
         const downloadToken = randomUUID();
 
@@ -746,8 +956,8 @@ export const server = {
         const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
         const bucket = admin.storage().bucket(bucketName);
         
-        // List files in the products/ folder
-        const [files] = await bucket.getFiles({ prefix: 'products/' });
+        // List files in the products/gallery/ folder to save API list overhead and only get standard images
+        const [files] = await bucket.getFiles({ prefix: 'products/gallery/' });
 
         const images = await Promise.all(
           files.map(async (file) => {
@@ -771,7 +981,7 @@ export const server = {
               const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${token}`;
 
               return {
-                name: file.name.replace('products/', ''),
+                name: file.name.replace('products/gallery/', ''),
                 url: downloadUrl,
                 timeCreated: metadata.timeCreated || new Date().toISOString(),
               };
@@ -793,6 +1003,164 @@ export const server = {
         throw new ActionError({
           code: 'INTERNAL_SERVER_ERROR',
           message: error.message || 'Error al listar las imágenes de Firebase.',
+        });
+      }
+    },
+  }),
+
+  uploadVideo: defineAction({
+    accept: 'json',
+    input: z.object({
+      base64Data: z.string(),
+      fileName: z.string(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const { base64Data, fileName } = input;
+        
+        // Decode base64
+        const base64Content = base64Data.replace(/^data:[^;]+;base64,/, "");
+        const buffer = Buffer.from(base64Content, 'base64');
+
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        const file = bucket.file(`videos/${fileName}`);
+
+        const downloadToken = randomUUID();
+        const fileExt = fileName.split('.').pop()?.toLowerCase() || 'mp4';
+        const contentType = fileExt === 'webm' ? 'video/webm' : 'video/mp4';
+
+        await file.save(buffer, {
+          metadata: {
+            contentType: contentType,
+            metadata: {
+              firebaseStorageDownloadTokens: downloadToken,
+            },
+          },
+        });
+
+        try {
+          await file.makePublic();
+        } catch (aclError) {
+          // Ignore uniformity issue
+        }
+
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${downloadToken}`;
+
+        return { success: true, url: downloadUrl };
+      } catch (error: any) {
+        console.error('Error in uploadVideo action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al subir el video al servidor.',
+        });
+      }
+    },
+  }),
+
+  deleteVideo: defineAction({
+    accept: 'json',
+    input: z.object({
+      url: z.string().url(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const { url } = input;
+        
+        // Extract filePath in Firebase Storage from URL
+        const match = url.match(/\/o\/([^?#]+)/);
+        if (!match || !match[1]) {
+          throw new Error('Formato de URL de almacenamiento inválido.');
+        }
+
+        const filePath = decodeURIComponent(match[1]);
+
+        // Guard: Only allow deleting files in videos folder
+        if (!filePath.startsWith('videos/')) {
+          throw new Error('Sólo está permitido eliminar videos de la carpeta videos.');
+        }
+
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        const file = bucket.file(filePath);
+
+        const [exists] = await file.exists();
+        if (exists) {
+          await file.delete();
+          console.log(`Successfully deleted video from Storage: ${filePath}`);
+        }
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error in deleteVideo action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al eliminar el video del servidor.',
+        });
+      }
+    },
+  }),
+
+  listUploadedVideos: defineAction({
+    accept: 'json',
+    handler: async (_, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        
+        // List files in the videos/ folder
+        const [files] = await bucket.getFiles({ prefix: 'videos/' });
+
+        const videos = await Promise.all(
+          files.map(async (file) => {
+            // Ignore folder placeholders
+            if (file.name.endsWith('/')) return null;
+
+            try {
+              const [metadata] = await file.getMetadata();
+              let token = metadata.metadata?.firebaseStorageDownloadTokens;
+
+              // Auto-repair missing tokens
+              if (!token) {
+                token = randomUUID();
+                await file.setMetadata({
+                  metadata: {
+                    firebaseStorageDownloadTokens: token,
+                  },
+                });
+              }
+
+              const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${token}`;
+
+              return {
+                name: file.name.replace('videos/', ''),
+                url: downloadUrl,
+                timeCreated: metadata.timeCreated || new Date().toISOString(),
+              };
+            } catch (fileErr) {
+              console.error(`Error loading metadata for file ${file.name}:`, fileErr);
+              return null;
+            }
+          })
+        );
+
+        // Filter out nulls and sort newest-first
+        const validVideos = videos
+          .filter((vid): vid is { name: string; url: string; timeCreated: string } => vid !== null)
+          .sort((a, b) => new Date(b.timeCreated).getTime() - new Date(a.timeCreated).getTime());
+
+        return { success: true, videos: validVideos };
+      } catch (error: any) {
+        console.error('Error in listUploadedVideos action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al listar los videos de Firebase.',
         });
       }
     },
@@ -867,6 +1235,8 @@ export const server = {
       orderBody: z.string(),
       abandonedSubject: z.string(),
       abandonedBody: z.string(),
+      shippedSubject: z.string(),
+      shippedBody: z.string(),
     }),
     handler: async (input, context) => {
       await checkAdminAuth(context);
@@ -886,47 +1256,181 @@ export const server = {
     },
   }),
 
-  getAbandonedCarts: defineAction({
+  getOrdersList: defineAction({
     accept: 'json',
-    handler: async (_, context) => {
+    input: z.object({
+      search: z.string().optional(),
+      limit: z.number().default(50),
+      lastVisibleId: z.string().optional(),
+      paymentStatus: z.string().optional(),
+      shippingStatus: z.string().optional(),
+    }),
+    handler: async (input, context) => {
       await checkAdminAuth(context);
       try {
-        const cartsSnap = await db.collection('carts').get();
+        const { search, limit, lastVisibleId, paymentStatus, shippingStatus } = input;
+        let query = db.collection('orders') as any;
+
+        // Apply filters
+        if (paymentStatus) {
+          query = query.where('paymentStatus', '==', paymentStatus);
+        }
+
+        // Handle shipping/return filters
+        if (shippingStatus) {
+          if (shippingStatus === 'return_pending') {
+            query = query.where('returnRequest.status', '==', 'pending');
+          } else {
+            query = query.where('shippingStatus', '==', shippingStatus);
+          }
+        }
+
+        // Apply search query (prefix match on order ID or email)
+        if (search && search.trim() !== '') {
+          const term = search.trim().toLowerCase();
+          if (term.startsWith('cs_') || term.length > 10) {
+            query = query.where('id', '>=', term).where('id', '<=', term + '\uf8ff');
+          } else {
+            query = query.where('customerDetails.email', '>=', term).where('customerDetails.email', '<=', term + '\uf8ff');
+          }
+        } else {
+          // If no search, we sort by newest createdAt by default
+          query = query.orderBy('createdAt', 'desc');
+        }
+
+        // Pagination cursor
+        if (lastVisibleId) {
+          const lastDoc = await db.collection('orders').doc(lastVisibleId).get();
+          if (lastDoc.exists) {
+            query = query.startAfter(lastDoc);
+          }
+        }
+
+        // Retrieve limit + 1
+        const snap = await query.limit(limit + 1).get();
+        const docs = snap.docs;
+        const hasMore = docs.length > limit;
+        const items = hasMore ? docs.slice(0, limit) : docs;
+
+        const orders = items.map((doc: any) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+          };
+        });
+
+        const nextVisibleId = hasMore && items.length > 0 ? items[items.length - 1].id : null;
+
+        return {
+          success: true,
+          orders,
+          nextVisibleId,
+          hasMore,
+        };
+      } catch (error: any) {
+        console.error('Error in getOrdersList action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener la lista de pedidos.',
+        });
+      }
+    }
+  }),
+
+  getAbandonedCarts: defineAction({
+    accept: 'json',
+    input: z.object({
+      limit: z.number().default(20),
+      lastVisibleId: z.string().optional(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        const { limit, lastVisibleId } = input;
+        
+        let query = db.collection('carts') as any;
+        query = query.orderBy('updatedAt', 'desc');
+
+        if (lastVisibleId) {
+          const lastDoc = await db.collection('carts').doc(lastVisibleId).get();
+          if (lastDoc.exists) {
+            query = query.startAfter(lastDoc);
+          }
+        }
+
+        // Overfetch slightly to account for possible empty/purchased carts
+        const snap = await query.limit(limit + 5).get();
+        const docs = snap.docs;
+        const hasMore = docs.length > limit;
+        const items = docs.slice(0, limit);
+
         const abandonedCarts: any[] = [];
 
-        // Fetch completed orders to filter users who completed a checkout since cart update
-        const ordersSnap = await db.collection('orders').get();
-        const ordersList = ordersSnap.docs.map(doc => ({
-          email: doc.data().customerDetails?.email || '',
-          createdAt: doc.data().createdAt?.toDate() || new Date(0)
-        }));
+        const userUids = items.map((doc: any) => doc.id);
+        const userRecordsPromises = userUids.map(async (uid: string) => {
+          try {
+            return await admin.auth().getUser(uid);
+          } catch {
+            return null;
+          }
+        });
+        const userRecords = await Promise.all(userRecordsPromises);
+        const userEmails = userRecords.map(r => r?.email).filter(Boolean) as string[];
 
-        for (const doc of cartsSnap.docs) {
+        let ordersList: any[] = [];
+        if (userEmails.length > 0) {
+          // Chunk emails into groups of 30 if needed (but limit is 20, so userEmails <= 20)
+          const ordersSnap = await db.collection('orders')
+            .where('customerDetails.email', 'in', userEmails)
+            .get();
+          
+          ordersList = ordersSnap.docs.map(doc => ({
+            email: doc.data().customerDetails?.email || '',
+            createdAt: doc.data().createdAt?.toDate() || new Date(0)
+          }));
+        }
+
+        const consentsMap: { [email: string]: any } = {};
+        if (userEmails.length > 0) {
+          const consentsSnap = await db.collection('marketing_consents')
+            .where('email', 'in', userEmails.map(e => e.toLowerCase().trim()))
+            .get();
+          consentsSnap.docs.forEach(doc => {
+            consentsMap[doc.id.toLowerCase().trim()] = doc.data();
+          });
+        }
+
+        const customersMap: { [uid: string]: any } = {};
+        if (userUids.length > 0) {
+          const customersSnap = await db.collection('customers')
+            .where(admin.firestore.FieldPath.documentId(), 'in', userUids)
+            .get();
+          customersSnap.docs.forEach(doc => {
+            customersMap[doc.id] = doc.data();
+          });
+        }
+
+        for (let i = 0; i < items.length; i++) {
+          const doc = items[i];
           const userId = doc.id;
+          const userRecord = userRecords[i];
+          if (!userRecord) continue;
+
           const cartData = doc.data();
-          const items = cartData.items || {};
+          const cartItems = cartData.items || {};
           const cartUpdatedAt = cartData.updatedAt?.toDate() || new Date(0);
 
-          // If cart has no items, skip it
-          if (Object.keys(items).length === 0) {
-            continue;
-          }
-
-          // Fetch user record from Firebase Auth
-          let userRecord: any;
-          try {
-            userRecord = await admin.auth().getUser(userId);
-          } catch (authErr) {
-            // If user doesn't exist anymore, skip
+          if (Object.keys(cartItems).length === 0) {
             continue;
           }
 
           const userEmail = userRecord.email;
           const userName = userRecord.displayName || 'Cliente';
-
           if (!userEmail) continue;
 
-          // Check if this user completed an order *after* the cart was last updated
           const hasPurchasedSince = ordersList.some(order => 
             order.email.toLowerCase() === userEmail.toLowerCase() && 
             order.createdAt >= cartUpdatedAt
@@ -936,8 +1440,18 @@ export const server = {
             continue;
           }
 
-          // Convert cart items map to an array and calculate total
-          const itemsList = Object.values(items);
+          let marketingConsent = true;
+          const customerData = customersMap[userId];
+          if (customerData && customerData.marketingConsent !== undefined) {
+            marketingConsent = customerData.marketingConsent;
+          } else {
+            const consentData = consentsMap[userEmail.toLowerCase().trim()];
+            if (consentData) {
+              marketingConsent = consentData.consent ?? true;
+            }
+          }
+
+          const itemsList = Object.values(cartItems);
           let totalAmount = 0;
           itemsList.forEach((item: any) => {
             totalAmount += (item.price || 0) * (item.quantity || 0);
@@ -950,13 +1464,18 @@ export const server = {
             updatedAt: cartUpdatedAt.toISOString(),
             items: itemsList,
             totalAmount,
+            marketingConsent,
           });
         }
 
-        // Sort by newest updatedAt
-        abandonedCarts.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        const nextVisibleId = hasMore && items.length > 0 ? items[items.length - 1].id : null;
 
-        return { success: true, carts: abandonedCarts };
+        return { 
+          success: true, 
+          carts: abandonedCarts,
+          nextVisibleId,
+          hasMore
+        };
       } catch (error: any) {
         console.error('Error in getAbandonedCarts action:', error);
         throw new ActionError({
@@ -1020,10 +1539,20 @@ export const server = {
           .replace(/{{customerName}}/g, userName)
           .replace(/{{recoveryUrl}}/g, recoveryUrl);
 
-        const html = emailSettings.abandonedBody
+        const unsubscribeUrl = `${siteUrl}/desuscribir?email=${encodeURIComponent(userEmail)}`;
+        let html = emailSettings.abandonedBody
           .replace(/{{customerName}}/g, userName)
           .replace(/{{orderItems}}/g, itemsHtml)
           .replace(/{{recoveryUrl}}/g, recoveryUrl);
+
+        if (html.includes('{{unsubscribeUrl}}')) {
+          html = html.replace(/{{unsubscribeUrl}}/g, unsubscribeUrl);
+        } else {
+          html += `<p style="font-size: 11px; color: #94a3b8; text-align: center; margin-top: 40px; font-family: sans-serif;">
+            Recibiste este correo porque dejaste artículos en tu carrito. Si no deseas recibir más correos promocionales o de recuperación, puedes 
+            <a href="${unsubscribeUrl}" style="color: #64748b; text-decoration: underline;">darte de baja aquí</a>.
+          </p>`;
+        }
 
         await sendEmail({
           to: userEmail,
@@ -1072,6 +1601,255 @@ export const server = {
         throw new ActionError({
           code: 'INTERNAL_SERVER_ERROR',
           message: error.message || 'Error al enviar el correo de prueba.',
+        });
+      }
+    },
+  }),
+
+  saveMarketingConsent: defineAction({
+    accept: 'json',
+    input: z.object({
+      email: z.string().email(),
+      consent: z.boolean(),
+      name: z.string().optional(),
+      userId: z.string().optional(),
+    }),
+    handler: async (input) => {
+      try {
+        const consentData = {
+          email: input.email.toLowerCase().trim(),
+          name: input.name || '',
+          consent: input.consent,
+          updatedAt: new Date(),
+        };
+
+        if (input.userId) {
+          await db.collection('customers').doc(input.userId).set({
+            email: input.email.toLowerCase().trim(),
+            name: input.name || '',
+            marketingConsent: input.consent,
+            updatedAt: new Date(),
+          }, { merge: true });
+        }
+
+        await db.collection('marketing_consents').doc(input.email.toLowerCase().trim()).set(consentData);
+
+        console.log(`[saveMarketingConsent] Registered consent for ${input.email}: ${input.consent}`);
+        return { success: true };
+      } catch (err: any) {
+        console.error('Error saving marketing consent:', err);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: err.message || 'Error al guardar el consentimiento de marketing.',
+        });
+      }
+    },
+  }),
+
+  getUsersList: defineAction({
+    accept: 'json',
+    input: z.object({
+      search: z.string().optional(),
+      limit: z.number().default(50),
+      lastVisibleId: z.string().optional(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        const { search, limit, lastVisibleId } = input;
+        
+        let query = db.collection('customers') as any;
+
+        if (search && search.trim() !== '') {
+          const term = search.trim();
+          const lowerTerm = term.toLowerCase();
+          
+          if (lowerTerm.includes('@')) {
+            query = query.where('email', '>=', lowerTerm).where('email', '<=', lowerTerm + '\uf8ff');
+          } else {
+            // Query name_lowercase directly, enabling case-insensitive prefix search
+            query = query.where('name_lowercase', '>=', lowerTerm).where('name_lowercase', '<=', lowerTerm + '\uf8ff');
+          }
+        } else {
+          // Sort by newest updatedAt by default
+          query = query.orderBy('updatedAt', 'desc');
+        }
+
+        // Pagination cursor using startAfter
+        if (lastVisibleId) {
+          const lastDoc = await db.collection('customers').doc(lastVisibleId).get();
+          if (lastDoc.exists) {
+            query = query.startAfter(lastDoc);
+          }
+        }
+
+        // Retrieve limit + 1 elements to determine if there is a next page
+        const snap = await query.limit(limit + 1).get();
+        const docs = snap.docs;
+        const hasMore = docs.length > limit;
+        const items = hasMore ? docs.slice(0, limit) : docs;
+
+        const users = items.map((doc: any) => {
+          const data = doc.data();
+          return {
+            uid: doc.id,
+            email: data.email || '',
+            name: data.name || 'Cliente sin nombre',
+            phone: data.phone || null,
+            updatedAt: data.updatedAt?.toDate()?.toISOString() || null,
+            marketingConsent: data.marketingConsent ?? false,
+          };
+        });
+
+        const nextVisibleId = hasMore && items.length > 0 ? items[items.length - 1].id : null;
+
+        return {
+          success: true,
+          users,
+          nextVisibleId,
+          hasMore,
+        };
+      } catch (error: any) {
+        console.error('Error in getUsersList action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener la lista de usuarios.',
+        });
+      }
+    }
+  }),
+
+  exportUsersList: defineAction({
+    accept: 'json',
+    input: z.object({}),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        const snap = await db.collection('customers').orderBy('updatedAt', 'desc').get();
+        
+        const users = snap.docs.map((doc: any) => {
+          const data = doc.data();
+          return {
+            uid: doc.id,
+            email: data.email || '',
+            name: data.name || 'Cliente sin nombre',
+            phone: data.phone || null,
+            updatedAt: data.updatedAt?.toDate()?.toISOString() || null,
+            marketingConsent: data.marketingConsent ?? false,
+          };
+        });
+
+        return {
+          success: true,
+          users,
+        };
+      } catch (error: any) {
+        console.error('Error in exportUsersList action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al exportar la lista de usuarios.',
+        });
+      }
+    }
+  }),
+
+  // Action to fetch a single order's details securely (prevents PII exposure in DOM)
+  getOrderDetails: defineAction({
+    accept: 'json',
+    input: z.object({
+      orderId: z.string().min(1, 'Order ID is required'),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const orderDoc = await db.collection('orders').doc(input.orderId).get();
+
+        if (!orderDoc.exists) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: `Order not found: ${input.orderId}`,
+          });
+        }
+
+        const orderData = orderDoc.data();
+        const order = {
+          id: orderDoc.id,
+          ...orderData,
+          createdAt: orderData?.createdAt?.toDate ? orderData.createdAt.toDate().toISOString() : orderData?.createdAt,
+          updatedAt: orderData?.updatedAt?.toDate ? orderData.updatedAt.toDate().toISOString() : orderData?.updatedAt,
+        };
+
+        return { success: true, order };
+      } catch (error: any) {
+        console.error('Error in getOrderDetails action:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener los detalles del pedido.',
+        });
+      }
+    },
+  }),
+
+  getUserDetails: defineAction({
+    accept: 'json',
+    input: z.object({
+      userId: z.string().min(1, 'User ID is required'),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const userDoc = await db.collection('customers').doc(input.userId).get();
+
+        if (!userDoc.exists) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: `User not found: ${input.userId}`,
+          });
+        }
+
+        const userData = userDoc.data();
+        const email = userData?.email;
+        let orders: any[] = [];
+        if (email) {
+          const ordersSnap = await db.collection('orders')
+            .where('customerDetails.email', '==', email)
+            .get();
+          
+          orders = ordersSnap.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+            };
+          });
+
+          // Sort orders by date descending
+          orders.sort((a, b) => {
+            const dateA = new Date(a.createdAt);
+            const dateB = new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime();
+          });
+        }
+
+        const user = {
+          uid: userDoc.id,
+          ...userData,
+          createdAt: userData?.createdAt?.toDate ? userData.createdAt.toDate().toISOString() : userData?.createdAt,
+          updatedAt: userData?.updatedAt?.toDate ? userData.updatedAt.toDate().toISOString() : userData?.updatedAt,
+        };
+
+        return { success: true, user, orders };
+      } catch (error: any) {
+        console.error('Error in getUserDetails action:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener los detalles del usuario.',
         });
       }
     },

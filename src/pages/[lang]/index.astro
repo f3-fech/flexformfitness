@@ -1,0 +1,558 @@
+---
+import { db } from '../../lib/firebase';
+import type { Product } from '../../types';
+import SEO from '../../components/SEO.astro';
+import Navbar from '../../components/Navbar.astro';
+import { mockProducts } from '../../lib/mockData';
+import { getGeneralSettings } from '../../lib/settings';
+
+export const prerender = true;
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: 'es' } },
+    { params: { lang: 'en' } }
+  ];
+}
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
+const getGender = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes('mujer') || t.includes('women')) return 'mujer';
+  if (t.includes('hombre') || t.includes('men')) return 'hombre';
+  return 'unisex';
+};
+
+const getObjectPosition = (url: string | undefined): string => {
+  if (!url) return 'center';
+  const match = url.match(/#pos=([a-zA-Z0-9%_-]+)/);
+  if (match && match[1]) {
+    return match[1].replace('_', ' ');
+  }
+  return 'center';
+};
+
+const getColorHex = (colorName: string): string => {
+  const name = colorName.toLowerCase().trim();
+  const colorMap: Record<string, string> = {
+    'negro': '#0f172a',
+    'black': '#0f172a',
+    'gris': '#94a3b8',
+    'grey': '#94a3b8',
+    'gray': '#94a3b8',
+    'gris-oscuro': '#4b5563',
+    'rosa': '#db2777',
+    'pink': '#db2777',
+    'amarillo': '#fbbf24',
+    'yellow': '#fbbf24',
+    'azul-metalizado': '#475569',
+    'azul-marino': '#1e3a8a',
+    'navy': '#1e3a8a',
+    'azul-claro': '#a5f3fc',
+    'blanco': '#ffffff',
+    'white': '#ffffff',
+    'rojo': '#dc2626',
+    'red': '#dc2626',
+    'verde': '#16a34a',
+    'green': '#16a34a',
+    'naranja': '#ea580c',
+    'orange': '#ea580c',
+  };
+
+  for (const key in colorMap) {
+    if (name.includes(key)) {
+      return colorMap[key];
+    }
+  }
+  return '#64748b';
+};
+
+interface SwatchColor {
+  name: string;
+  hex: string;
+  image: string | null;
+}
+
+const getUniqueColors = (product: Product): SwatchColor[] => {
+  if (!product.variants || product.variants.length === 0) return [];
+  const colorMap = new Map<string, SwatchColor>();
+  
+  product.variants.forEach((v) => {
+    const parts = v.name.split('/').map((p) => p.trim());
+    const name = parts[0] || 'Base';
+    
+    if (!colorMap.has(name)) {
+      const hex = v.colorHex || getColorHex(name);
+      colorMap.set(name, {
+        name: name,
+        hex: hex,
+        image: v.image || null
+      });
+    }
+  });
+  
+  return Array.from(colorMap.values());
+};
+
+let products: Product[] = [];
+try {
+  const collectionsSnap = await db.collection('collections')
+    .where('slug', 'in', ['pagina-de-inicio', 'pagina-inicio', 'inicio'])
+    .limit(1)
+    .get();
+
+  let productIds: string[] = [];
+  if (!collectionsSnap.empty) {
+    const homepageCol = collectionsSnap.docs[0].data();
+    if (homepageCol && Array.isArray(homepageCol.productIds)) {
+      productIds = homepageCol.productIds;
+    }
+  }
+
+  if (productIds.length > 0) {
+    const productsSnap = await db.collection('products')
+      .where('__name__', 'in', productIds.slice(0, 30))
+      .get();
+    
+    const unsortedProducts = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+    products = productIds
+      .map(id => unsortedProducts.find(p => p.id === id))
+      .filter((p): p is Product => p !== undefined);
+  } else {
+    const productsSnap = await db.collection('products').get();
+    if (!productsSnap.empty) {
+      products = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+    } else {
+      products = mockProducts;
+    }
+  }
+} catch (error) {
+  console.warn('Error fetching homepage collection from Firestore. Using mock products fallback.', error);
+  products = mockProducts;
+}
+const settings = await getGeneralSettings();
+const heroVideoUrl = settings.heroVideoUrl || 'https://firebasestorage.googleapis.com/v0/b/flexformfitness-673f4.firebasestorage.app/o/assets%2Fhero.mp4?alt=media&token=d2387591-833c-42d9-8342-45f30551a908';
+const user = Astro.locals.user;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <SEO
+      title={isEn ? "Official Store | FLEX FORM FITNESS" : "Tienda Oficial | FLEX FORM FITNESS"}
+      description={isEn ? "Explore the official activewear collection of FLEX FORM FITNESS. High-performance shirts, leggings, joggers, and hoodies." : "Explora la colección oficial de ropa deportiva técnica de FLEX FORM FITNESS. Camisetas, mallas, joggers y sudaderas de alto rendimiento."}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-white text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between w-full overflow-x-hidden">
+    
+    <Navbar />
+
+    <!-- Hero Video Section (Edge to Edge / Full Width) -->
+    <section class="w-full h-[75vh] md:h-[85vh] relative overflow-hidden bg-slate-950">
+      <!-- Background Video Loop -->
+      <video
+        autoplay
+        loop
+        muted
+        playsinline
+        class="absolute inset-0 w-full h-full object-cover object-center opacity-85 scale-102"
+      >
+        <source src={heroVideoUrl} type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+      
+      <!-- Subtle Overlay -->
+      <div class="absolute inset-0 bg-slate-950/30"></div>
+
+      <!-- Centered Logo and Text Overlay -->
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+        <div class="relative select-none pointer-events-none mb-8">
+          <!-- Massive Logo Overlay Text -->
+          <div class="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black italic tracking-tighter text-white/20 uppercase leading-none">
+            FLEX FORM
+          </div>
+          <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black italic tracking-wider text-red-600 uppercase -mt-2 md:-mt-4 text-center">
+            FITNESS
+          </div>
+          <!-- Overlaid white secondary text -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-xs sm:text-sm md:text-base font-bold tracking-[0.2em] text-white uppercase bg-slate-950/30 px-4 py-2 border border-white/10 rounded-md backdrop-blur-xs">
+              F3 · FlexFormFitness
+            </span>
+          </div>
+        </div>
+
+        <!-- Ghost Button (White border, transparent background) -->
+        <a href="#catalogo" class="px-8 py-3.5 border-2 border-white text-white font-bold uppercase tracking-widest hover:bg-white hover:text-slate-950 transition-all duration-300 text-xs md:text-sm shadow-lg active:scale-95">
+          {isEn ? "Shop now" : "Comprar ahora"}
+        </a>
+      </div>
+    </section>
+
+    <!-- Main Products Catalog (Full Width Container) -->
+    <main id="catalogo" class="w-full px-4 md:px-8 py-12 flex-grow">
+      <div class="w-full flex flex-col gap-6">
+        <!-- Title & Filters -->
+        <div class="w-full border-b border-slate-100 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+            {isEn ? "Product Catalog" : "Catálogo de Productos"}
+          </h2>
+          
+          <div class="flex gap-6 text-xs font-extrabold tracking-widest uppercase">
+            <button type="button" class="filter-tab-btn border-b-2 border-rose-600 text-rose-600 pb-2 px-1 focus:outline-none transition-all duration-200" data-filter="all">
+              {isEn ? "All" : "Todos"}
+            </button>
+            <button type="button" class="filter-tab-btn border-b-2 border-transparent text-slate-400 hover:text-slate-900 pb-2 px-1 focus:outline-none transition-all duration-200" data-filter="hombre">
+              {isEn ? "Men" : "Hombre"}
+            </button>
+            <button type="button" class="filter-tab-btn border-b-2 border-transparent text-slate-400 hover:text-slate-900 pb-2 px-1 focus:outline-none transition-all duration-200" data-filter="mujer">
+              {isEn ? "Women" : "Mujer"}
+            </button>
+          </div>
+        </div>
+
+        {/* 4 columns on desktop, full-width grid, large images (aspect-[3/4]) */}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          {products.map((product) => (
+            <div class="product-card group flex flex-col justify-between w-full" data-gender={getGender(isEn ? (product.title_en || product.title) : product.title)}>
+              <!-- Product Image Slider -->
+              <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
+                <!-- Swipeable Images Container -->
+                <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                  {product.images.map((imgUrl, imgIdx) => (
+                    <a
+                      href={`/${lang}/productos/${product.slug}`}
+                      class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                      data-index={imgIdx}
+                      style="aspect-ratio: 3/4;"
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`${isEn ? (product.title_en || product.title) : product.title} - Vista ${imgIdx + 1}`}
+                        class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
+                        style={`object-position: ${getObjectPosition(imgUrl)}`}
+                        loading={imgIdx === 0 ? "eager" : "lazy"}
+                        onload="this.classList.remove('opacity-0')"
+                      />
+                    </a>
+                  ))}
+                </div>
+
+                <!-- Hover Navigation Arrows (Desktop only) -->
+                <button
+                  type="button"
+                  class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                  title={isEn ? "Previous image" : "Imagen anterior"}
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                  title={isEn ? "Next image" : "Siguiente imagen"}
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+
+                {product.stock <= 5 && (
+                  <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
+                    {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
+                  </span>
+                )}
+              </div>
+
+              {/* Product Details (Title, Description, and Price) */}
+              <div class="mt-3 flex flex-col gap-1 w-full">
+                <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
+                <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
+                  {isEn ? (product.title_en || product.title) : product.title}
+                </a>
+                <p class="text-slate-500 text-xs line-clamp-1">
+                  {isEn ? (product.description_en || product.description) : product.description}
+                </p>
+                
+                {/* Clickable Swatches */}
+                {getUniqueColors(product).length > 0 && (
+                  <div class="flex items-center gap-1.5 mt-1">
+                    {getUniqueColors(product).map((color) => (
+                      <button 
+                        type="button"
+                        class="color-swatch-btn w-4 h-4 rounded-full border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                        data-variant-image={color.image}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <div class="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100">
+                  <span class="text-sm font-extrabold text-slate-950">
+                    ${(product.price / 100).toFixed(2)}
+                  </span>
+                  <span class="text-[10px] font-bold text-rose-600 group-hover:underline uppercase tracking-wider">
+                    {isEn ? "View details" : "Ver más"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+
+    <!-- Full Width Callout Section -->
+    <section class="w-full bg-slate-950 text-white py-16 px-4 md:px-8 text-center relative overflow-hidden">
+      <div class="absolute -top-40 -left-40 w-96 h-96 bg-rose-600 rounded-full blur-3xl opacity-10"></div>
+      <div class="relative max-w-2xl mx-auto flex flex-col items-center gap-6">
+        <span class="text-2xs font-extrabold tracking-[0.25em] text-red-500 uppercase">{isEn ? "CUTTING-EDGE TECHNOLOGY" : "TECNOLOGÍA DE VANGUARDIA"}</span>
+        <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none">
+          {isEn ? "DESIGNED FOR YOUR BEST VERSION" : "DISEÑADO PARA TU MEJOR VERSIÓN"}
+        </h2>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          {isEn ? "Our seamless elastic fabrics adapt to your every move, letting you train at your maximum level without discomfort." : "Nuestras telas elásticas sin costuras se adaptan a cada uno de tus movimientos, permitiéndote entrenar a tu máximo nivel sin molestias."}
+        </p>
+        <a href="#catalogo" class="px-6 py-3 border border-white/20 text-white hover:bg-white hover:text-slate-950 text-xs font-bold uppercase tracking-wider transition-all duration-300">
+          {isEn ? "Explore all" : "Explorar todo"}
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer (Full Width) -->
+    <footer id="contacto" class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850">
+      <div class="w-full grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+        <!-- Logo and info -->
+        <div class="flex flex-col gap-4">
+          <a href={`/${lang}`} class="flex flex-col">
+            <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
+              FLEX <span class="text-red-550">FORM</span>
+            </span>
+            <span class="text-[8px] font-extrabold tracking-[0.25em] text-slate-500 uppercase leading-none mt-0.5">
+              FITNESS
+            </span>
+          </a>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            {isEn ? "High-performance sportswear and premium accessories designed for dedicated athletes." : "Ropa deportiva de alto rendimiento y accesorios premium diseñados para atletas dedicados."}
+          </p>
+        </div>
+
+        <!-- Links Hombres -->
+        <div class="flex flex-col gap-3">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "COLLECTIONS" : "COLECCIONES"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href="#catalogo" class="hover:text-white transition-colors">{isEn ? "New Arrivals" : "Novedades"}</a></li>
+            <li><a href="#catalogo" class="hover:text-white transition-colors">{isEn ? "Men" : "Hombre"}</a></li>
+            <li><a href="#catalogo" class="hover:text-white transition-colors">{isEn ? "Women" : "Mujer"}</a></li>
+            <li><a href="#catalogo" class="hover:text-white transition-colors">{isEn ? "Bestsellers" : "Más Vendidos"}</a></li>
+          </ul>
+        </div>
+
+        <!-- Links Ayuda -->
+        <div class="flex flex-col gap-3">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Size Guide" : "Guía de Tallas"}</a></li>
+            <li><a href="/admin/login" class="hover:text-white transition-colors">{isEn ? "Admin Login" : "Acceso de Administrador"}</a></li>
+          </ul>
+        </div>
+
+        <!-- Contact/Newsletter -->
+        <div class="flex flex-col gap-3">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">NEWSLETTER</h4>
+          <p class="text-xs text-slate-500 leading-relaxed">Suscríbete para recibir un 10% de descuento en tu primer pedido y ofertas exclusivas.</p>
+          <div class="flex gap-2 mt-1">
+            <input type="email" id="newsletter-email" placeholder="Tu email" class="bg-slate-800 text-white placeholder-slate-500 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:border-white w-full" />
+            <button id="newsletter-submit-btn" class="bg-white text-slate-900 px-4 py-2 text-xs font-bold uppercase hover:bg-red-600 hover:text-white transition-colors">OK</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-3xs md:text-2xs text-slate-550">
+        <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
+        <div class="flex items-center gap-6">
+          <a href="#" class="hover:text-white transition-colors">Condiciones de Uso</a>
+          <a href="#" class="hover:text-white transition-colors">Política de Privacidad</a>
+          <a href="#" class="hover:text-white transition-colors">Cookies</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      import { cartStore } from '../../stores/cart';
+      import { actions } from 'astro:actions';
+
+      // Update cart count badge in navbar dynamically
+      cartStore.subscribe((cart) => {
+        const count = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+        const badge = document.getElementById('cart-badge');
+        if (badge) {
+          badge.textContent = String(count);
+          if (count === 0) {
+            badge.classList.add('hidden');
+          } else {
+            badge.classList.remove('hidden');
+          }
+        }
+      });
+
+      // Dynamic catalog tab filtering and navbar deep links
+      const filterBtns = document.querySelectorAll('.filter-tab-btn');
+      const productCards = document.querySelectorAll('.product-card');
+
+      function setFilter(filter: string) {
+        filterBtns.forEach((btn) => {
+          if (btn.getAttribute('data-filter') === filter) {
+            btn.className = "filter-tab-btn border-b-2 border-rose-600 text-rose-600 pb-2 px-1 focus:outline-none transition-all duration-200";
+          } else {
+            btn.className = "filter-tab-btn border-b-2 border-transparent text-slate-400 hover:text-slate-900 pb-2 px-1 focus:outline-none transition-all duration-200";
+          }
+        });
+
+        productCards.forEach((card) => {
+          const gender = card.getAttribute('data-gender');
+          if (filter === 'all' || gender === filter || gender === 'unisex') {
+            (card as HTMLElement).style.display = '';
+          } else {
+            (card as HTMLElement).style.display = 'none';
+          }
+        });
+      }
+
+      filterBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const filter = btn.getAttribute('data-filter') || 'all';
+          setFilter(filter);
+        });
+      });
+
+      // Listen to navigation links that point to the catalog (#catalogo)
+      document.querySelectorAll('a').forEach((link) => {
+        const href = link.getAttribute('href');
+        if (href && href.includes('#catalogo')) {
+          link.addEventListener('click', () => {
+            const text = link.textContent?.trim().toUpperCase() || '';
+            if (text.includes('HOMBRE')) {
+              setFilter('hombre');
+            } else if (text.includes('MUJER')) {
+              setFilter('mujer');
+            } else {
+              setFilter('all');
+            }
+          });
+        }
+      });
+
+      // Listen to product card images slider arrows & swatches click events
+      document.querySelectorAll('.product-card').forEach((card) => {
+        const slider = card.querySelector('.product-images-slider') as HTMLDivElement;
+        const arrowLeft = card.querySelector('.slider-arrow-left') as HTMLButtonElement;
+        const arrowRight = card.querySelector('.slider-arrow-right') as HTMLButtonElement;
+        const swatches = card.querySelectorAll('.color-swatch-btn') as NodeListOf<HTMLButtonElement>;
+
+        if (slider && arrowLeft && arrowRight) {
+          arrowLeft.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            slider.scrollLeft -= slider.clientWidth;
+          });
+
+          arrowRight.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            slider.scrollLeft += slider.clientWidth;
+          });
+        }
+
+        swatches.forEach((swatch) => {
+          swatch.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const imgUrl = swatch.dataset.variantImage;
+            if (!imgUrl || !slider) return;
+
+            // Find if this image URL exists in the slides
+            const slides = Array.from(slider.querySelectorAll('img'));
+            const matchedIndex = slides.findIndex((img) => {
+              const src = img.getAttribute('src') || '';
+              return src === imgUrl || img.src === imgUrl;
+            });
+
+            if (matchedIndex !== -1) {
+              slider.scrollLeft = matchedIndex * slider.clientWidth;
+            } else {
+              // If not found in slider, swap the first slide's image source to show it!
+              const firstImg = slides[0];
+              if (firstImg) {
+                firstImg.src = imgUrl;
+                slider.scrollLeft = 0; // Go to first slide
+              }
+            }
+          });
+        });
+      });
+
+      // Newsletter sign up logic
+      const newsletterEmailInput = document.getElementById('newsletter-email') as HTMLInputElement;
+      const newsletterSubmitBtn = document.getElementById('newsletter-submit-btn') as HTMLButtonElement;
+
+      newsletterSubmitBtn?.addEventListener('click', async () => {
+        const email = newsletterEmailInput.value.trim();
+        if (!email) {
+          alert('Por favor, introduce un correo electrónico.');
+          return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          alert('Por favor, introduce un correo electrónico válido.');
+          return;
+        }
+
+        newsletterSubmitBtn.disabled = true;
+        const originalText = newsletterSubmitBtn.innerText;
+        newsletterSubmitBtn.innerText = '...';
+
+        try {
+          const { error } = await actions.saveMarketingConsent({
+            email,
+            consent: true,
+          });
+          if (error) throw error;
+          alert('¡Gracias por suscribirte a nuestra newsletter!');
+          newsletterEmailInput.value = '';
+        } catch (err: any) {
+          console.error(err);
+          alert('Ocurrió un error al suscribirte: ' + (err.message || 'Error desconocido'));
+        } finally {
+          newsletterSubmitBtn.disabled = false;
+          newsletterSubmitBtn.innerText = originalText;
+        }
+      });
+    </script>
+    <style is:global>
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      .scrollbar-none::-webkit-scrollbar {
+        display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .scrollbar-none {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+    </style>
+  </body>
+</html>

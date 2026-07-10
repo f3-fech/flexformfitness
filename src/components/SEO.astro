@@ -24,6 +24,29 @@ const fullTitle = `${title} | ${siteName}`;
 
 const settings = await getGeneralSettings();
 const faviconUrl = settings.faviconUrl || '/logo.png'; // default fallback to logo.png which we optimized
+
+// Generate localized alternate links for search engine indexing (hreflang)
+const pathname = Astro.url.pathname;
+const origin = Astro.url.origin;
+const segments = pathname.split('/');
+const isEs = segments[1] === 'es';
+const isEn = segments[1] === 'en';
+
+let esPath = pathname;
+let enPath = pathname;
+
+if (isEs) {
+  enPath = pathname.replace(/^\/es/, '/en');
+} else if (isEn) {
+  esPath = pathname.replace(/^\/en/, '/es');
+} else {
+  // If at root or page without prefix
+  esPath = `/es${pathname === '/' ? '' : pathname}`;
+  enPath = `/en${pathname === '/' ? '' : pathname}`;
+}
+
+const esUrl = `${origin}${esPath}`;
+const enUrl = `${origin}${enPath}`;
 ---
 
 <!-- Primary Meta Tags -->
@@ -31,6 +54,9 @@ const faviconUrl = settings.faviconUrl || '/logo.png'; // default fallback to lo
 <meta name="title" content={fullTitle} />
 <meta name="description" content={description} />
 <link rel="canonical" href={canonicalUrl} />
+<link rel="alternate" hreflang="es" href={esUrl} />
+<link rel="alternate" hreflang="en" href={enUrl} />
+<link rel="alternate" hreflang="x-default" href={esUrl} />
 <link rel="icon" href={faviconUrl} />
 <meta name="robots" content="noindex, nofollow" />
 
@@ -55,3 +81,93 @@ const faviconUrl = settings.faviconUrl || '/logo.png'; // default fallback to lo
     <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
   )
 }
+
+<!-- Banner Global de Cookies y Privacidad -->
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Evitar renderizar en el panel de administración
+    if (window.location.pathname.startsWith('/admin')) return;
+
+    const cookieChoice = localStorage.getItem('cookies-accepted');
+    if (!cookieChoice) {
+      const banner = document.createElement('div');
+      banner.id = 'cookie-consent-banner';
+      banner.style.position = 'fixed';
+      banner.style.bottom = '24px';
+      banner.style.left = '24px';
+      banner.style.right = '24px';
+      banner.style.maxWidth = '420px';
+      banner.style.backgroundColor = '#ffffff';
+      banner.style.border = '1px solid #e2e8f0';
+      banner.style.borderRadius = '20px';
+      banner.style.boxShadow = '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)';
+      banner.style.padding = '20px';
+      banner.style.zIndex = '99999';
+      banner.style.fontFamily = 'Outfit, system-ui, sans-serif';
+      banner.style.display = 'flex';
+      banner.style.flexDirection = 'column';
+      banner.style.gap = '14px';
+      banner.style.transition = 'all 0.3s ease-in-out';
+
+      // Ajustes para móviles
+      if (window.innerWidth < 640) {
+        banner.style.left = '16px';
+        banner.style.right = '16px';
+        banner.style.bottom = '16px';
+      }
+
+      banner.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; text-transform: uppercase; tracking: 0.05em; display: flex; align-items: center; gap: 6px;">
+            <span>🍪</span> Cookies y Privacidad
+          </h3>
+          <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #64748b;">
+            Utilizamos cookies propias y de terceros para analizar tu navegación con fines estadísticos y de personalización de anuncios. Puedes aceptar todas las cookies o configurarlas.
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+          <button id="cookie-reject-btn" style="padding: 8px 14px; border-radius: 10px; font-size: 11px; font-weight: 600; color: #64748b; background-color: #f1f5f9; border: none; cursor: pointer; transition: all 0.2s;">
+            Rechazar
+          </button>
+          <button id="cookie-accept-btn" style="padding: 8px 18px; border-radius: 10px; font-size: 11px; font-weight: 700; color: #ffffff; background-color: #0f172a; border: none; cursor: pointer; transition: all 0.2s;">
+            Aceptar
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(banner);
+
+      const acceptBtn = document.getElementById('cookie-accept-btn');
+      const rejectBtn = document.getElementById('cookie-reject-btn');
+
+      // Hover effects
+      acceptBtn.addEventListener('mouseover', () => {
+        acceptBtn.style.backgroundColor = '#e11d48';
+      });
+      acceptBtn.addEventListener('mouseout', () => {
+        acceptBtn.style.backgroundColor = '#0f172a';
+      });
+
+      rejectBtn.addEventListener('mouseover', () => {
+        rejectBtn.style.backgroundColor = '#cbd5e1';
+      });
+      rejectBtn.addEventListener('mouseout', () => {
+        rejectBtn.style.backgroundColor = '#f1f5f9';
+      });
+
+      acceptBtn.addEventListener('click', () => {
+        localStorage.setItem('cookies-accepted', 'true');
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(20px)';
+        setTimeout(() => banner.remove(), 300);
+      });
+
+      rejectBtn.addEventListener('click', () => {
+        localStorage.setItem('cookies-accepted', 'false');
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(20px)';
+        setTimeout(() => banner.remove(), 300);
+      });
+    }
+  });
+</script>

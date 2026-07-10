@@ -1,40 +1,44 @@
 ---
-import { db } from '../../lib/firebase';
-import type { Product } from '../../types';
-import SEO from '../../components/SEO.astro';
-import Navbar from '../../components/Navbar.astro';
-import { ProductSelector } from '../../components/ProductSelector';
+import { db } from '../../../lib/firebase';
+import type { Product } from '../../../types';
+import SEO from '../../../components/SEO.astro';
+import Navbar from '../../../components/Navbar.astro';
+import { ProductSelector } from '../../../components/ProductSelector';
 
 export const prerender = true;
 
-import { mockProducts } from '../../lib/mockData';
+import { mockProducts } from '../../../lib/mockData';
 
-// Static path builder fetching product items at build time
 export async function getStaticPaths() {
   try {
     const productsSnap = await db.collection('products').get();
     
     if (productsSnap.empty) {
-      console.warn('Warning: No products found in Firestore during build. Using mock products fallback.');
-      return mockProducts.map((product) => ({
-        params: { slug: product.slug },
-        props: { product },
-      }));
+      return mockProducts.flatMap((product) => [
+        { params: { lang: 'es', slug: product.slug }, props: { product } },
+        { params: { lang: 'en', slug: product.slug }, props: { product } }
+      ]);
     }
 
-    return productsSnap.docs.map((doc) => {
+    return productsSnap.docs.flatMap((doc) => {
       const product = { id: doc.id, ...doc.data() } as Product;
-      return {
-        params: { slug: product.slug },
-        props: { product },
-      };
+      return [
+        {
+          params: { lang: 'es', slug: product.slug },
+          props: { product },
+        },
+        {
+          params: { lang: 'en', slug: product.slug },
+          props: { product },
+        }
+      ];
     });
   } catch (error) {
     console.error('Error fetching static paths from Firestore. Using mock products fallback:', error);
-    return mockProducts.map((product) => ({
-      params: { slug: product.slug },
-      props: { product },
-    }));
+    return mockProducts.flatMap((product) => [
+      { params: { lang: 'es', slug: product.slug }, props: { product } },
+      { params: { lang: 'en', slug: product.slug }, props: { product } }
+    ]);
   }
 }
 
@@ -44,10 +48,12 @@ interface Props {
 
 const { product } = Astro.props;
 
-// If build generated empty array or product missing
 if (!product) {
   return Astro.redirect('/404');
 }
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
 
 const getObjectPosition = (url: string | undefined): string => {
   if (!url) return 'center';
@@ -59,15 +65,18 @@ const getObjectPosition = (url: string | undefined): string => {
 };
 
 const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
-const canonicalUrl = `${siteUrl}/productos/${product.slug}`;
+const canonicalUrl = `${siteUrl}/${lang}/productos/${product.slug}`;
+
+const productTitle = isEn ? (product.title_en || product.title) : product.title;
+const productDescription = isEn ? (product.description_en || product.description) : product.description;
 
 // Construct product schema JSON-LD for rich snippets
 const productJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Product',
-  'name': product.title,
+  'name': productTitle,
   'image': product.images,
-  'description': product.description,
+  'description': productDescription,
   'sku': product.variants[0]?.sku || product.id,
   'offers': {
     '@type': 'AggregateOffer',
@@ -83,14 +92,14 @@ const productJsonLd = {
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <SEO
-      title={product.seo.title || product.title}
-      description={product.seo.description || product.description}
+      title={isEn ? (product.seo_en?.title || product.seo?.title || `${productTitle} | FLEX FORM FITNESS`) : (product.seo?.title || `${productTitle} | FLEX FORM FITNESS`)}
+      description={isEn ? (product.seo_en?.description || product.seo?.description || productDescription) : (product.seo?.description || productDescription)}
       image={product.images[0]}
       canonicalUrl={canonicalUrl}
       ogType="product"
@@ -106,9 +115,9 @@ const productJsonLd = {
 
     <main class="max-w-7xl mx-auto px-6 py-12 lg:py-16">
       <nav class="mb-8 text-sm font-medium text-slate-500 flex items-center gap-2">
-        <a href="/" class="hover:text-brand-600">Tienda</a>
+        <a href={`/${lang}`} class="hover:text-brand-600">{isEn ? "Shop" : "Tienda"}</a>
         <span>/</span>
-        <span class="text-slate-900 font-semibold">{product.title}</span>
+        <span class="text-slate-900 font-semibold">{productTitle}</span>
       </nav>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
@@ -123,25 +132,29 @@ const productJsonLd = {
                   class="w-16 h-20 sm:w-[80px] sm:h-[106px] shrink-0 rounded-xl overflow-hidden bg-white border border-slate-200 hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all duration-200 shadow-2xs"
                   onclick={`
                     const mainImg = document.getElementById('main-product-image');
-                    mainImg.src = '${img}';
-                    const match = '${img}'.match(/#pos=([a-zA-Z0-9%_-]+)/);
-                    mainImg.style.objectPosition = match ? match[1].replace('_', ' ') : 'center';
+                    if (mainImg) {
+                      mainImg.classList.add('opacity-0');
+                      mainImg.src = '${img}';
+                      const match = '${img}'.match(/#pos=([a-zA-Z0-9%_-]+)/);
+                      mainImg.style.objectPosition = match ? match[1].replace('_', ' ') : 'center';
+                    }
                   `}
                 >
-                  <img src={img} alt={`${product.title} vista ${idx + 1}`} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(img)}`} />
+                  <img src={img} alt={`${productTitle} vista ${idx + 1}`} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(img)}`} />
                 </button>
               ))}
             </div>
           )}
           
           <!-- Main featured product image (large box, object-cover to occupy full space with rounded corners) -->
-          <div class="flex-grow aspect-[3/4] w-full rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm relative">
+          <div class="flex-grow aspect-[3/4] w-full rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm relative" style="aspect-ratio: 3/4; overflow: hidden;">
             <img
               src={product.images[0]}
-              alt={product.title}
-              class="w-full h-full object-cover transition-all duration-300 rounded-2xl"
+              alt={productTitle}
+              class="w-full h-full object-cover transition-opacity duration-300 rounded-2xl opacity-0"
               style={`object-position: ${getObjectPosition(product.images[0])}`}
               id="main-product-image"
+              onload="this.classList.remove('opacity-0')"
             />
           </div>
         </div>
@@ -150,17 +163,17 @@ const productJsonLd = {
         <div class="lg:col-span-5 flex flex-col gap-6">
           <div>
             <h1 class="text-3xl lg:text-4xl font-extrabold text-slate-950 tracking-tight">
-              {product.title}
+              {productTitle}
             </h1>
-            <p class="text-sm text-slate-400 mt-1">ID del Producto: {product.id}</p>
+            <p class="text-sm text-slate-400 mt-1">{isEn ? "Product ID" : "ID del Producto"}: {product.id}</p>
           </div>
 
           <div class="prose prose-slate max-w-none text-slate-600 leading-relaxed">
-            <p>{product.description}</p>
+            <p>{productDescription}</p>
           </div>
 
           <!-- Interactive Client Component Selector -->
-          <ProductSelector product={product} client:load />
+          <ProductSelector product={product} lang={lang} client:load />
 
           <!-- Extra details -->
           <div class="border-t border-slate-200/80 pt-6 flex flex-col gap-4">
@@ -171,8 +184,8 @@ const productJsonLd = {
                 </svg>
               </div>
               <div>
-                <h4 class="text-sm font-bold text-slate-800">Envío Rápido a Domicilio</h4>
-                <p class="text-xs text-slate-500">Recibe tu pedido de 2 a 5 días hábiles con seguimiento completo.</p>
+                <h4 class="text-sm font-bold text-slate-800">{isEn ? "Fast Home Shipping" : "Envío Rápido a Domicilio"}</h4>
+                <p class="text-xs text-slate-500">{isEn ? "Receive your order in 2 to 5 business days with full tracking." : "Recibe tu pedido de 2 a 5 días hábiles con seguimiento completo."}</p>
               </div>
             </div>
 
@@ -183,8 +196,8 @@ const productJsonLd = {
                 </svg>
               </div>
               <div>
-                <h4 class="text-sm font-bold text-slate-800">Pago Seguro Seguro 100%</h4>
-                <p class="text-xs text-slate-500">Transacciones procesadas y cifradas a través de Stripe.</p>
+                <h4 class="text-sm font-bold text-slate-800">{isEn ? "100% Safe Checkout" : "Pago Seguro Seguro 100%"}</h4>
+                <p class="text-xs text-slate-500">{isEn ? "Transactions processed and encrypted via Stripe." : "Transacciones procesadas y cifradas a través de Stripe."}</p>
               </div>
             </div>
           </div>
@@ -193,7 +206,7 @@ const productJsonLd = {
     </main>
 
     <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400 mt-20">
-      <p>&copy; {new Date().getFullYear()} FlexForm Fitness. Todos los derechos reservados.</p>
+      <p>&copy; {new Date().getFullYear()} FlexForm Fitness. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
     </footer>
 
     <style is:global>

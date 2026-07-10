@@ -88,20 +88,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     const shippingCost = (subtotal >= settings.freeShippingMin || subtotal === 0) ? 0 : settings.shippingPrice;
 
-    // Add estimated 8% tax as a line item if greater than 0
-    const tax = Math.round(subtotal * 0.08);
-    if (tax > 0) {
-      lineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'Impuesto estimado (8%)',
-          },
-          unit_amount: tax,
-        },
-        quantity: 1,
-      });
-    }
+
 
     // Save draft checkout in Firestore to avoid Stripe 500-char metadata limit
     const checkoutRef = db.collection('draft_checkouts').doc();
@@ -118,7 +105,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      allow_promotion_codes: true,
+      allow_promotion_codes: promoCodeId ? undefined : true,
       customer_email: userEmail,
       discounts: promoCodeId ? [{ promotion_code: promoCodeId }] : undefined,
       shipping_address_collection: {

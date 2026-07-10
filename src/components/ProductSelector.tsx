@@ -4,6 +4,7 @@ import { addToCart } from '../stores/cart';
 
 interface ProductSelectorProps {
   product: Product;
+  lang?: string;
 }
 
 // Map color names to exact hex values
@@ -11,17 +12,27 @@ const getColorHex = (colorName: string): string => {
   const name = colorName.toLowerCase().trim();
   const colorMap: Record<string, string> = {
     'negro': '#0f172a',        // Slate 900
+    'black': '#0f172a',
     'gris': '#94a3b8',         // Slate 400
+    'grey': '#94a3b8',
+    'gray': '#94a3b8',
     'gris-oscuro': '#4b5563',  // Gray 600
     'rosa': '#db2777',         // Pink 600
+    'pink': '#db2777',
     'amarillo': '#fbbf24',     // Amber 400
+    'yellow': '#fbbf24',
     'azul-metalizado': '#475569', // Slate 600
     'azul-marino': '#1e3a8a',  // Blue 900
+    'navy': '#1e3a8a',
     'azul-claro': '#a5f3fc',   // Cyan 200
     'blanco': '#ffffff',       // White
+    'white': '#ffffff',
     'rojo': '#dc2626',         // Red 600
+    'red': '#dc2626',
     'verde': '#16a34a',        // Green 600
+    'green': '#16a34a',
     'naranja': '#ea580c',      // Orange 600
+    'orange': '#ea580c',
   };
 
   for (const key in colorMap) {
@@ -32,8 +43,9 @@ const getColorHex = (colorName: string): string => {
   return '#64748b'; // Fallback gray
 };
 
-export const ProductSelector: React.FC<ProductSelectorProps> = ({ product }) => {
+export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang = 'es' }) => {
   const hasVariants = product.variants && product.variants.length > 0;
+  const isEn = lang === 'en';
 
   // 1. Group variant values into option groups (Option 1 = Color/Style, Option 2 = Size/Talla)
   const optionGroups: { name: string; values: string[] }[] = [];
@@ -50,17 +62,17 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product }) => 
     
     if (opt1Values.size > 0) {
       const isColor = Array.from(opt1Values).some((val) => 
-        ['negro', 'gris', 'rosa', 'amarillo', 'azul', 'blanco', 'verde', 'rojo', 'naranja', 'metalizado', 'marino', 'claro', 'oscuro'].some((c) => val.toLowerCase().includes(c))
+        ['negro', 'black', 'gris', 'grey', 'gray', 'rosa', 'pink', 'amarillo', 'yellow', 'azul', 'blue', 'blanco', 'white', 'verde', 'green', 'rojo', 'red', 'naranja', 'orange', 'metalizado', 'marino', 'claro', 'oscuro'].some((c) => val.toLowerCase().includes(c))
       );
       optionGroups.push({
-        name: isColor ? 'Color' : 'Opción',
+        name: isColor ? (isEn ? 'Color' : 'Color') : (isEn ? 'Option' : 'Opción'),
         values: Array.from(opt1Values),
       });
     }
     
     if (opt2Values.size > 0) {
       optionGroups.push({
-        name: 'Talla',
+        name: isEn ? 'Size' : 'Talla',
         values: Array.from(opt2Values),
       });
     }
@@ -128,7 +140,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product }) => 
     addToCart({
       productId: product.id,
       variantSku: selectedVariant?.sku || null,
-      title: product.title,
+      title: isEn ? (product.title_en || product.title) : product.title,
       variantName: selectedVariant?.name || null,
       quantity,
       price: currentPrice,
@@ -153,11 +165,11 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product }) => 
       <div>
         {isOutOfStock ? (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">
-            Agotado
+            {isEn ? 'Out of Stock' : 'Agotado'}
           </span>
         ) : (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-            En Stock ({currentStock} disponibles)
+            {isEn ? `In Stock (${currentStock} available)` : `En Stock (${currentStock} disponibles)`}
           </span>
         )}
       </div>
@@ -191,7 +203,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product }) => 
                             setValue(value);
                             setQuantity(1);
                           }}
-                          style={{ backgroundColor: hex }}                           className={`w-9 h-9 rounded-full relative cursor-pointer border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${
+                          style={{ backgroundColor: hex }}
+                          className={`w-9 h-9 rounded-full relative cursor-pointer border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${
                             isSelected
                               ? 'border-rose-600 ring-2 ring-red-200 ring-offset-2 ring-offset-white'
                               : 'border-slate-200/80'
@@ -247,7 +260,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product }) => 
       {!isOutOfStock && (
         <div className="flex flex-col gap-3 border-t border-slate-100 pt-5">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Cantidad:</span>
+            <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+              {isEn ? 'Quantity:' : 'Cantidad:'}
+            </span>
             <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50">
               <button
                 type="button"
@@ -278,7 +293,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product }) => 
                 : 'bg-slate-950 hover:bg-rose-600 active:scale-98'
             }`}
           >
-            {addedFeedback ? '¡Añadido al Carrito! ✓' : 'Añadir al Carrito'}
+            {addedFeedback 
+              ? (isEn ? 'Added to Cart! ✓' : '¡Añadido al Carrito! ✓') 
+              : (isEn ? 'Add to Cart' : 'Añadir al Carrito')
+            }
           </button>
         </div>
       )}

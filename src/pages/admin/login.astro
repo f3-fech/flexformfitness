@@ -4,8 +4,11 @@ import SEO from '../../components/SEO.astro';
 export const prerender = false; // Must be server-rendered (SSR) to check session and show errors
 
 // Redirect if already logged in and admin
+// SECURITY FIX: Also verify email_verified to prevent identity spoofing
+// via OAuth/Google Auth with unverified email claims or premature admin
+// registrations (see security report: 2026-07-10).
 const user = Astro.locals.user;
-if (user && user.email) {
+if (user && user.email && user.email_verified) {
   const { admin } = await import('../../lib/firebase');
   const superAdminEmail = (import.meta.env.SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || 'admin@flexform.com').trim().toLowerCase();
   let isAdmin = user.email.trim().toLowerCase() === superAdminEmail;

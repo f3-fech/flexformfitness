@@ -5,6 +5,8 @@ export interface EmailSettings {
   orderBody: string;
   abandonedSubject: string;
   abandonedBody: string;
+  shippedSubject: string;
+  shippedBody: string;
 }
 
 export const defaultEmailSettings: EmailSettings = {
@@ -39,6 +41,18 @@ export const defaultEmailSettings: EmailSettings = {
     <p>Si tienes alguna pregunta o necesitas ayuda, responde directamente a este correo.</p>
   </div>
 </div>`,
+  shippedSubject: '¡Tu pedido ha sido enviado! 🚚 - FlexForm Fitness',
+  shippedBody: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+  <h1 style="color: #e11d48; margin-bottom: 20px;">¡Tu pedido está en camino! 🚚</h1>
+  <p style="color: #334155; line-height: 1.6;">Hola {{customerName}}, nos complace informarte que tu pedido <strong>{{orderId}}</strong> ha sido enviado y está en camino.</p>
+  
+  <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+    <p style="margin: 0 0 10px 0;"><strong>Código de Seguimiento:</strong> {{trackingNumber}}</p>
+    <p style="margin: 0 0 10px 0;"><strong>Enlace de Seguimiento:</strong> <a href="{{trackingUrl}}" target="_blank" style="color: #e11d48; font-weight: bold; text-decoration: underline;">Seguir mi pedido</a></p>
+  </div>
+  
+  <p style="color: #334155; line-height: 1.6;">Agradecemos tu confianza en FlexForm Fitness. Si tienes cualquier consulta, responde a este correo.</p>
+</div>`,
 };
 
 export async function getEmailSettings(): Promise<EmailSettings> {
@@ -51,6 +65,8 @@ export async function getEmailSettings(): Promise<EmailSettings> {
         orderBody: data.orderBody || defaultEmailSettings.orderBody,
         abandonedSubject: data.abandonedSubject || defaultEmailSettings.abandonedSubject,
         abandonedBody: data.abandonedBody || defaultEmailSettings.abandonedBody,
+        shippedSubject: data.shippedSubject || defaultEmailSettings.shippedSubject,
+        shippedBody: data.shippedBody || defaultEmailSettings.shippedBody,
       };
     }
   } catch (error) {
