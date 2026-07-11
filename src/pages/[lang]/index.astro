@@ -260,17 +260,21 @@ const user = Astro.locals.user;
     </section>
 
     <!-- Main Products Catalog (Full Width Container) -->
-    <main id="catalogo" class="w-full px-4 md:px-8 py-12 flex-grow flex flex-col gap-12 md:gap-16">
+    <main id="catalogo" class="w-full px-2 sm:px-4 md:px-8 py-12 flex-grow flex flex-col gap-12 md:gap-16">
       {homepageCollections.map((col, idx) => (
         <section class="collection-section w-full flex flex-col gap-6" data-collection-id={col.id}>
           {idx === 0 ? (
-            /* First section: Standard left-aligned title & right-aligned filters */
-            <div class="w-full border-b border-slate-100 pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h2 class="text-base md:text-lg font-black italic uppercase tracking-[0.25em] text-slate-800">
-                {col.title}
-              </h2>
+            /* First section: Centered with left & right divider lines on mobile, left-aligned on desktop */
+            <div class="w-full pl-3 pr-2 sm:px-0 pb-3 flex flex-col items-center sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div class="flex items-center justify-center sm:justify-start gap-2 sm:gap-0 flex-grow w-full sm:w-auto">
+                <div class="w-6 shrink-0 h-[1px] bg-slate-300 sm:hidden"></div>
+                <h2 class="text-base md:text-lg font-black italic uppercase tracking-[0.25em] text-slate-800 whitespace-nowrap">
+                  {col.title}
+                </h2>
+                <div class="w-6 shrink-0 h-[1px] bg-slate-300 sm:hidden"></div>
+              </div>
               
-              <div class="flex gap-6 text-xs font-extrabold tracking-widest uppercase">
+              <div class="flex gap-6 text-xs font-extrabold tracking-widest uppercase shrink-0 pl-1 sm:pl-0">
                 <button type="button" class="filter-tab-btn border-b-2 border-rose-600 text-rose-600 pb-2 px-1 focus:outline-none transition-all duration-200" data-filter="all">
                   {isEn ? "All" : "Todos"}
                 </button>
@@ -308,7 +312,7 @@ const user = Astro.locals.user;
           )}
 
           {/* 4 columns on desktop, full-width grid, large images (aspect-[3/4]) */}
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
             {col.products.map((product) => (
               <div 
                 class="product-card group flex flex-col justify-between w-full" 

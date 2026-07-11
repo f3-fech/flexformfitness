@@ -214,10 +214,10 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
     </section>
 
     <!-- Products Catalog Grid -->
-    <main class="w-full px-4 md:px-8 py-12 flex-grow">
+    <main class="w-full px-2 sm:px-4 md:px-8 py-12 flex-grow">
       <div class="w-full flex flex-col gap-6">
         {products.length > 0 ? (
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
             {products.map((product) => (
               <div class="product-card group flex flex-col justify-between w-full">
                 {/* Product Image */}
