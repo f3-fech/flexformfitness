@@ -364,8 +364,13 @@ function getObjectPosition(url: string | undefined): string {
                     </div>
                   </div>
                   
-                  <span class="mt-3 text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors line-clamp-2 max-w-[120px] leading-tight">
+                  <span class="mt-3 text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors line-clamp-2 max-w-[120px] leading-tight flex items-center gap-1.5 justify-center">
                     {col.title}
+                    {col.showOnIndex && (
+                      <span class="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[8px] font-black shadow-3xs" title={`Mostrada en Página de Inicio (Orden #${col.indexOrder || 0})`}>
+                        #{col.indexOrder || 0}
+                      </span>
+                    )}
                   </span>
                   
                   <span class="text-[9px] text-slate-400 font-mono mt-0.5 truncate max-w-[100px]">
@@ -1464,6 +1469,22 @@ function getObjectPosition(url: string | undefined): string {
                 <div>
                   <label for="form-collection-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Ruta URL (Slug)</label>
                   <input type="text" name="slug" id="form-collection-slug" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono shadow-3xs" placeholder="camisetas-mujeres-gym" />
+                </div>
+              </div>
+
+              <!-- Show on Index Checkbox & Order -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex items-center gap-3 bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-3xs select-none">
+                  <input type="checkbox" id="form-collection-show-on-index" class="w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-500 cursor-pointer" />
+                  <div class="flex flex-col">
+                    <label for="form-collection-show-on-index" class="text-3xs font-bold text-slate-800 uppercase tracking-widest cursor-pointer">Mostrar en Portada</label>
+                    <span class="text-[10px] text-slate-400">Mostrar en la página de inicio.</span>
+                  </div>
+                </div>
+                
+                <div class="flex flex-col bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-3xs">
+                  <label for="form-collection-index-order" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Orden en Portada</label>
+                  <input type="number" id="form-collection-index-order" min="0" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold" placeholder="0" />
                 </div>
               </div>
 
@@ -5955,6 +5976,10 @@ function getObjectPosition(url: string | undefined): string {
         };
         collectionModalTitle.textContent = "Nueva Carpeta de Colección";
         (document.getElementById('form-collection-id') as HTMLInputElement).value = "";
+        const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
+        if (showOnIndexCheckbox) showOnIndexCheckbox.checked = false;
+        const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
+        if (indexOrderInput) indexOrderInput.value = "0";
         deleteCurrentCollectionBtn?.classList.add('hidden');
         if (collCatalogSearch) collCatalogSearch.value = "";
         
@@ -6000,6 +6025,11 @@ function getObjectPosition(url: string | undefined): string {
         // Save current active language to local state
         syncCollectionFormToState(activeCollectionLang);
 
+        const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
+        const showOnIndex = showOnIndexCheckbox ? showOnIndexCheckbox.checked : false;
+        const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
+        const indexOrder = indexOrderInput ? parseInt(indexOrderInput.value) || 0 : 0;
+
         const collectionPayload: any = {
           title: collectionTranslations.title,
           title_en: collectionTranslations.title_en || undefined,
@@ -6009,6 +6039,8 @@ function getObjectPosition(url: string | undefined): string {
           detailedDescription: collectionTranslations.detailedDescription || null,
           detailedDescription_en: collectionTranslations.detailedDescription_en || null,
           productIds: currentOpenedFolderIds,
+          showOnIndex,
+          indexOrder,
           seo: {
             title: collectionTranslations.seo_title || collectionTranslations.title,
             description: collectionTranslations.seo_desc || collectionTranslations.description,
@@ -6059,6 +6091,10 @@ function getObjectPosition(url: string | undefined): string {
           collectionModalTitle.textContent = "Propiedades: Carpeta " + colData.title;
           (document.getElementById('form-collection-id') as HTMLInputElement).value = colData.id;
           (document.getElementById('form-collection-slug') as HTMLInputElement).value = colData.slug;
+          const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
+          if (showOnIndexCheckbox) showOnIndexCheckbox.checked = !!colData.showOnIndex;
+          const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
+          if (indexOrderInput) indexOrderInput.value = colData.indexOrder !== undefined ? String(colData.indexOrder) : "0";
 
           collectionTranslations = {
             title: colData.title || '',

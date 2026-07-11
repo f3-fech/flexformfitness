@@ -83,6 +83,8 @@ export interface ProductCollection {
   detailedDescription?: string | null;
   detailedDescription_en?: string | null;
   productIds: string[];
+  showOnIndex?: boolean;
+  indexOrder?: number;
   seo: ProductSEO;
   seo_en?: ProductSEO;
   createdAt: any;

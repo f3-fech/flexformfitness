@@ -72,6 +72,8 @@ const collectionSchema = z.object({
   detailedDescription: z.string().optional().nullable(),
   detailedDescription_en: z.string().optional().nullable(),
   productIds: z.array(z.string()),
+  showOnIndex: z.boolean().optional(),
+  indexOrder: z.number().int().nonnegative().optional().nullable(),
   seo: seoSchema,
   seo_en: seoSchema.optional(),
 });
@@ -86,6 +88,8 @@ const updateCollectionSchema = z.object({
   detailedDescription: z.string().optional().nullable(),
   detailedDescription_en: z.string().optional().nullable(),
   productIds: z.array(z.string()),
+  showOnIndex: z.boolean().optional(),
+  indexOrder: z.number().int().nonnegative().optional().nullable(),
   seo: seoSchema,
   seo_en: seoSchema.optional(),
 });
@@ -524,6 +528,8 @@ export const server = {
           });
         }
 
+
+
         const docRef = db.collection('collections').doc();
         await docRef.set({
           id: docRef.id,
@@ -574,6 +580,8 @@ export const server = {
             message: 'Another collection with this slug already exists.',
           });
         }
+
+
 
         await colRef.update({
           ...data,
@@ -1191,6 +1199,7 @@ export const server = {
       try {
         await db.collection('customers').doc(user.uid).set({
           name: input.name,
+          name_lowercase: input.name.toLowerCase(),
           phone: input.phone,
           address: input.address,
           updatedAt: new Date(),
@@ -1627,6 +1636,7 @@ export const server = {
           await db.collection('customers').doc(input.userId).set({
             email: input.email.toLowerCase().trim(),
             name: input.name || '',
+            name_lowercase: (input.name || '').toLowerCase(),
             marketingConsent: input.consent,
             updatedAt: new Date(),
           }, { merge: true });
@@ -1656,6 +1666,66 @@ export const server = {
     handler: async (input, context) => {
       await checkAdminAuth(context);
       try {
+        // Sync Firebase Authentication users into Firestore customers collection (Self-healing)
+        try {
+          const authUsersResult = await admin.auth().listUsers();
+          const authUsers = authUsersResult.users;
+          const authUserIds = new Set(authUsers.map(u => u.uid));
+          const customersSnap = await db.collection('customers').get();
+          const customerIds = new Set(customersSnap.docs.map(doc => doc.id));
+          const batch = db.batch();
+          let needsCommit = false;
+
+          // 1. Add missing or heal existing active customers
+          for (const authUser of authUsers) {
+            if (!customerIds.has(authUser.uid)) {
+              const customerRef = db.collection('customers').doc(authUser.uid);
+              batch.set(customerRef, {
+                email: authUser.email || '',
+                name: authUser.displayName || 'Cliente sin nombre',
+                name_lowercase: (authUser.displayName || 'Cliente sin nombre').toLowerCase(),
+                marketingConsent: false,
+                updatedAt: new Date(authUser.metadata.creationTime || Date.now()),
+              });
+              needsCommit = true;
+            } else {
+              const doc = customersSnap.docs.find(d => d.id === authUser.uid);
+              if (doc) {
+                const data = doc.data();
+                if (data.name && data.name_lowercase === undefined) {
+                  const customerRef = db.collection('customers').doc(authUser.uid);
+                  batch.update(customerRef, {
+                    name_lowercase: data.name.toLowerCase()
+                  });
+                  needsCommit = true;
+                }
+              }
+            }
+          }
+
+          // 2. Archive and remove deleted customers (whose UID is not in Auth anymore)
+          for (const doc of customersSnap.docs) {
+            if (!authUserIds.has(doc.id)) {
+              const deletedRef = db.collection('deleted_customers').doc(doc.id);
+              batch.set(deletedRef, {
+                ...doc.data(),
+                deletedAt: new Date(),
+              });
+              
+              const customerRef = db.collection('customers').doc(doc.id);
+              batch.delete(customerRef);
+              
+              needsCommit = true;
+            }
+          }
+
+          if (needsCommit) {
+            await batch.commit();
+          }
+        } catch (syncErr) {
+          console.error('Error syncing Auth users to Firestore:', syncErr);
+        }
+
         const { search, limit, lastVisibleId } = input;
         
         let query = db.collection('customers') as any;
