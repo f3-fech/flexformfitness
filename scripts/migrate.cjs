@@ -2,25 +2,7 @@ const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
 
-// Simple helper to parse .env files without dependencies
-function parseEnvFile(filePath) {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const env = {};
-  content.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('#') || !trimmed.includes('=')) return;
-    
-    const firstEqIndex = trimmed.indexOf('=');
-    const key = trimmed.substring(0, firstEqIndex).trim();
-    let value = trimmed.substring(firstEqIndex + 1).trim();
-    
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.substring(1, value.length - 1);
-    }
-    env[key] = value;
-  });
-  return env;
-}
+const { parseEnvFile } = require('./utils.cjs');
 
 const envDevPath = path.resolve(__dirname, '../.env.development');
 const envProdPath = path.resolve(__dirname, '../.env');

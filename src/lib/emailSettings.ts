@@ -55,12 +55,22 @@ export const defaultEmailSettings: EmailSettings = {
 </div>`,
 };
 
-export async function getEmailSettings(): Promise<EmailSettings> {
+// In-memory cache for email settings
+let cachedEmailSettings: EmailSettings | null = null;
+let emailCacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+export async function getEmailSettings(forceRefresh = false): Promise<EmailSettings> {
+  const now = Date.now();
+  if (!forceRefresh && cachedEmailSettings && (now - emailCacheTimestamp < CACHE_TTL)) {
+    return cachedEmailSettings;
+  }
+
   try {
     const doc = await db.collection('settings').doc('email').get();
     if (doc.exists) {
       const data = doc.data() as Partial<EmailSettings>;
-      return {
+      cachedEmailSettings = {
         orderSubject: data.orderSubject || defaultEmailSettings.orderSubject,
         orderBody: data.orderBody || defaultEmailSettings.orderBody,
         abandonedSubject: data.abandonedSubject || defaultEmailSettings.abandonedSubject,
@@ -68,6 +78,8 @@ export async function getEmailSettings(): Promise<EmailSettings> {
         shippedSubject: data.shippedSubject || defaultEmailSettings.shippedSubject,
         shippedBody: data.shippedBody || defaultEmailSettings.shippedBody,
       };
+      emailCacheTimestamp = now;
+      return cachedEmailSettings;
     }
   } catch (error) {
     console.error('Error fetching email settings:', error);

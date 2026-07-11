@@ -20,12 +20,22 @@ export const defaultSettings: GeneralSettings = {
   heroVideoUrl: 'https://firebasestorage.googleapis.com/v0/b/flexformfitness-673f4.firebasestorage.app/o/assets%2Fhero.mp4?alt=media&token=d2387591-833c-42d9-8342-45f30551a908',
 };
 
-export async function getGeneralSettings(): Promise<GeneralSettings> {
+// In-memory cache for settings
+let cachedSettings: GeneralSettings | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+export async function getGeneralSettings(forceRefresh = false): Promise<GeneralSettings> {
+  const now = Date.now();
+  if (!forceRefresh && cachedSettings && (now - cacheTimestamp < CACHE_TTL)) {
+    return cachedSettings;
+  }
+
   try {
     const doc = await db.collection('settings').doc('general').get();
     if (doc.exists) {
       const data = doc.data() as Partial<GeneralSettings>;
-      return {
+      cachedSettings = {
         shippingPrice: data.shippingPrice !== undefined ? data.shippingPrice : defaultSettings.shippingPrice,
         freeShippingMin: data.freeShippingMin !== undefined ? data.freeShippingMin : defaultSettings.freeShippingMin,
         markets: data.markets || defaultSettings.markets,
@@ -34,6 +44,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         faviconUrl: data.faviconUrl || defaultSettings.faviconUrl,
         heroVideoUrl: data.heroVideoUrl || defaultSettings.heroVideoUrl,
       };
+      cacheTimestamp = now;
+      return cachedSettings;
     }
   } catch (error) {
     console.error('Error fetching general settings from Firestore:', error);

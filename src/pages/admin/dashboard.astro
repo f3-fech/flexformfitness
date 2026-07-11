@@ -2181,7 +2181,9 @@ function getObjectPosition(url: string | undefined): string {
            } else if (tabName === 'orders') {
              tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
              sectionOrders.classList.remove('hidden');
-             loadOrdersList();
+             if (!ordersLoaded) {
+               loadOrdersList();
+             }
            } else if (tabName === 'emails' && tabEmailsBtn && sectionEmails) {
              tabEmailsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
              sectionEmails.classList.remove('hidden');
@@ -2190,7 +2192,9 @@ function getObjectPosition(url: string | undefined): string {
            } else if (tabName === 'users' && tabUsersBtn && sectionUsers) {
              tabUsersBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
              sectionUsers.classList.remove('hidden');
-             loadUsersList();
+             if (!usersLoaded) {
+               loadUsersList();
+             }
            } else if (tabName === 'settings' && tabSettingsBtn && sectionSettings) {
              tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
              sectionSettings.classList.remove('hidden');
@@ -2285,7 +2289,9 @@ function getObjectPosition(url: string | undefined): string {
          } else if (subtabName === 'abandoned' && subtabAbandonedBtn && formSubAbandoned) {
            subtabAbandonedBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
            formSubAbandoned.classList.remove('hidden');
-           loadAbandonedCarts();
+           if (!cartsLoaded) {
+             loadAbandonedCarts();
+           }
          }
        }
 
@@ -2329,6 +2335,7 @@ function getObjectPosition(url: string | undefined): string {
         let cartsCurrentPage = 1;
         let cartsPageHistory: string[] = []; // Array of lastVisibleId of previous pages
         let cartsNextVisibleId: string | null = null;
+        let cartsLoaded = false;
 
         async function loadAbandonedCarts(lastVisibleId: string | null = null) {
           if (!abandonedCartsTableBody) return;
@@ -2351,6 +2358,7 @@ function getObjectPosition(url: string | undefined): string {
               lastVisibleId: lastVisibleId || undefined,
             });
             if (error) throw error;
+            cartsLoaded = true;
             
             const carts = data?.carts || [];
             cartsNextVisibleId = data?.nextVisibleId || null;
@@ -2491,6 +2499,7 @@ function getObjectPosition(url: string | undefined): string {
         let usersPageHistory: string[] = []; // Array of lastVisibleId of previous pages
         let usersNextVisibleId: string | null = null;
         let usersSearchDebounceTimer: any = null;
+        let usersLoaded = false;
 
         async function loadUsersList(lastVisibleId: string | null = null) {
           if (!usersTableBody) return;
@@ -2512,6 +2521,7 @@ function getObjectPosition(url: string | undefined): string {
               lastVisibleId: lastVisibleId || undefined,
             });
             if (error) throw error;
+            usersLoaded = true;
 
             const users = data?.users || [];
             usersNextVisibleId = data?.nextVisibleId || null;
@@ -2855,6 +2865,7 @@ function getObjectPosition(url: string | undefined): string {
         let ordersPageHistory: string[] = []; // Array of lastVisibleId of previous pages
         let ordersNextVisibleId: string | null = null;
         let ordersSearchDebounceTimer: any = null;
+        let ordersLoaded = false;
 
         const ordersTableBody = document.getElementById('orders-table-body') as HTMLTableSectionElement;
         const ordersPrevBtn = document.getElementById('orders-prev-btn') as HTMLButtonElement;
@@ -2885,6 +2896,7 @@ function getObjectPosition(url: string | undefined): string {
               shippingStatus: shippingFilter || undefined,
             });
             if (error) throw error;
+            ordersLoaded = true;
 
             const ordersList = data?.orders || [];
             ordersNextVisibleId = data?.nextVisibleId || null;
