@@ -12,7 +12,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 });
 
 const [settings, emailSettings, promoResult, productsSnap, ordersSnap, collectionsSnap] = await Promise.all([
-  getGeneralSettings(),
+  getGeneralSettings(true),
   getEmailSettings(),
   stripe.promotionCodes.list({ active: true, limit: 100, expand: ['data.coupon'] }).catch((err) => {
     console.error('Error fetching Stripe promotion codes for dashboard:', err);
@@ -71,6 +71,36 @@ function getObjectPosition(url: string | undefined): string {
     <!-- Cropper.js CDN for photoshop-style visual image cropping -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style is:global>
+      /* Modern & thin custom scrollbar styles */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+      }
+
+      /* Webkit browsers (Chrome, Safari, Edge, Opera) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: #94a3b8;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+    </style>
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-screen font-sans antialiased flex flex-col w-full">
     
@@ -984,6 +1014,14 @@ function getObjectPosition(url: string | undefined): string {
             </button>
             <button
               type="button"
+              id="subtab-megamenu-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+              Editor de Mega Menú
+            </button>
+            <button
+              type="button"
               id="subtab-coupons-btn"
               class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
             >
@@ -1264,6 +1302,303 @@ function getObjectPosition(url: string | undefined): string {
                   class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
                 >
                   Guardar Imagen y Marca
+                </button>
+              </div>
+            </form>
+
+            <!-- SUBSECTION: MEGA MENU EDITOR -->
+            <form id="form-sub-megamenu" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+              <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+                <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Editor de Mega Menú</h3>
+                <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Configura los títulos, colecciones e imágenes promocionales que aparecen en el menú desplegable "Colecciones".</p>
+              </div>
+
+              <!-- Columnas de Colecciones -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+                <!-- Sección 1 -->
+                <div class="flex flex-col gap-4">
+                  <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 1: Colecciones Principales</span>
+                  
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="megamenu-s1-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Español)</label>
+                      <input
+                        type="text"
+                        id="megamenu-s1-title"
+                        value={settings.megaMenu?.section1?.title || 'Nuestras Colecciones'}
+                        placeholder="Nuestras Colecciones"
+                        class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-s1-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Inglés)</label>
+                      <input
+                        type="text"
+                        id="megamenu-s1-title-en"
+                        value={settings.megaMenu?.section1?.titleEn || 'Our Collections'}
+                        placeholder="Our Collections"
+                        class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider">Seleccionar Colecciones</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-h-[220px] overflow-y-auto">
+                      {collections.map((col) => {
+                        const isChecked = settings.megaMenu?.section1?.collectionIds?.includes(col.id) ?? false;
+                        return (
+                          <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name="megamenu-s1-collections"
+                              value={col.id}
+                              checked={isChecked}
+                              class="w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600 cursor-pointer"
+                            />
+                            <span class="text-2xs font-extrabold uppercase text-slate-700">{col.title}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sección 2 -->
+                <div class="flex flex-col gap-4">
+                  <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 2: Otras Colecciones</span>
+                  
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="megamenu-s2-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Español)</label>
+                      <input
+                        type="text"
+                        id="megamenu-s2-title"
+                        value={settings.megaMenu?.section2?.title || 'Más Categorías'}
+                        placeholder="Más Categorías"
+                        class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-s2-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Inglés)</label>
+                      <input
+                        type="text"
+                        id="megamenu-s2-title-en"
+                        value={settings.megaMenu?.section2?.titleEn || 'More Categories'}
+                        placeholder="More Categories"
+                        class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider">Seleccionar Colecciones</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-h-[220px] overflow-y-auto">
+                      {collections.map((col) => {
+                        const isChecked = settings.megaMenu?.section2?.collectionIds?.includes(col.id) ?? false;
+                        return (
+                          <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name="megamenu-s2-collections"
+                              value={col.id}
+                              checked={isChecked}
+                              class="w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600 cursor-pointer"
+                            />
+                            <span class="text-2xs font-extrabold uppercase text-slate-700">{col.title}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Promociones destacadas -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Promo 1 -->
+                <div class="flex flex-col gap-4 bg-slate-50/50 p-4 border border-slate-200 rounded-2xl">
+                  <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 3: Imagen Destacada 1</span>
+                  
+                  <div>
+                    <label for="megamenu-p1-image" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Imagen Destacada</label>
+                    <div class="flex gap-2.5 items-center">
+                      <input
+                        type="text"
+                        id="megamenu-p1-image"
+                        value={settings.megaMenu?.promo1?.imageUrl || ''}
+                        placeholder="https://..."
+                        class="flex-grow px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        class="open-gallery-btn px-4 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-3xs font-bold uppercase transition-colors shrink-0"
+                        data-input-id="megamenu-p1-image"
+                        data-preview-id="megamenu-p1-preview"
+                      >
+                        Seleccionar
+                      </button>
+                      <div id="megamenu-p1-preview" class="w-12 h-10 border border-slate-200 bg-white rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                        {settings.megaMenu?.promo1?.imageUrl ? (
+                          <img src={settings.megaMenu?.promo1?.imageUrl} class="w-full h-full object-cover" />
+                        ) : (
+                          <span class="text-[8px] text-slate-400 font-bold uppercase">Vacío</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="megamenu-p1-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Español)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p1-title"
+                        value={settings.megaMenu?.promo1?.title || ''}
+                        placeholder="Colección Hombre"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-p1-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Inglés)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p1-title-en"
+                        value={settings.megaMenu?.promo1?.titleEn || ''}
+                        placeholder="Men's Collection"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-p1-subtitle" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (Español)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p1-subtitle"
+                        value={settings.megaMenu?.promo1?.subtitle || ''}
+                        placeholder="Explorar Novedades"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-p1-subtitle-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (Inglés)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p1-subtitle-en"
+                        value={settings.megaMenu?.promo1?.subtitleEn || ''}
+                        placeholder="Explore New"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label for="megamenu-p1-link" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Enlace del Botón</label>
+                    <input
+                      type="text"
+                      id="megamenu-p1-link"
+                      value={settings.megaMenu?.promo1?.linkUrl || ''}
+                      placeholder="/es/colecciones/hombre"
+                      class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                <!-- Promo 2 -->
+                <div class="flex flex-col gap-4 bg-slate-50/50 p-4 border border-slate-200 rounded-2xl">
+                  <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 4: Imagen Destacada 2</span>
+                  
+                  <div>
+                    <label for="megamenu-p2-image" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Imagen Destacada</label>
+                    <div class="flex gap-2.5 items-center">
+                      <input
+                        type="text"
+                        id="megamenu-p2-image"
+                        value={settings.megaMenu?.promo2?.imageUrl || ''}
+                        placeholder="https://..."
+                        class="flex-grow px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        class="open-gallery-btn px-4 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-3xs font-bold uppercase transition-colors shrink-0"
+                        data-input-id="megamenu-p2-image"
+                        data-preview-id="megamenu-p2-preview"
+                      >
+                        Seleccionar
+                      </button>
+                      <div id="megamenu-p2-preview" class="w-12 h-10 border border-slate-200 bg-white rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                        {settings.megaMenu?.promo2?.imageUrl ? (
+                          <img src={settings.megaMenu?.promo2?.imageUrl} class="w-full h-full object-cover" />
+                        ) : (
+                          <span class="text-[8px] text-slate-400 font-bold uppercase">Vacío</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="megamenu-p2-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Español)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p2-title"
+                        value={settings.megaMenu?.promo2?.title || ''}
+                        placeholder="Colección Mujer"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-p2-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Inglés)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p2-title-en"
+                        value={settings.megaMenu?.promo2?.titleEn || ''}
+                        placeholder="Women's Collection"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-p2-subtitle" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (Español)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p2-subtitle"
+                        value={settings.megaMenu?.promo2?.subtitle || ''}
+                        placeholder="Explorar Novedades"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label for="megamenu-p2-subtitle-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (Inglés)</label>
+                      <input
+                        type="text"
+                        id="megamenu-p2-subtitle-en"
+                        value={settings.megaMenu?.promo2?.subtitleEn || ''}
+                        placeholder="Explore New"
+                        class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label for="megamenu-p2-link" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Enlace del Botón</label>
+                    <input
+                      type="text"
+                      id="megamenu-p2-link"
+                      value={settings.megaMenu?.promo2?.linkUrl || ''}
+                      placeholder="/es/colecciones/mujer"
+                      class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submit button -->
+              <div class="flex justify-end pt-4 border-t border-slate-100">
+                <button
+                  type="submit"
+                  id="save-megamenu-btn"
+                  class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+                >
+                  Guardar Configuración de Menú
                 </button>
               </div>
             </form>
@@ -2160,11 +2495,13 @@ function getObjectPosition(url: string | undefined): string {
       const subtabShippingBtn = document.getElementById('subtab-shipping-btn') as HTMLButtonElement;
       const subtabAdminsBtn = document.getElementById('subtab-admins-btn') as HTMLButtonElement;
       const subtabBrandingBtn = document.getElementById('subtab-branding-btn') as HTMLButtonElement;
+      const subtabMegamenuBtn = document.getElementById('subtab-megamenu-btn') as HTMLButtonElement;
       const subtabCouponsBtn = document.getElementById('subtab-coupons-btn') as HTMLButtonElement;
 
       const formSubShipping = document.getElementById('form-sub-shipping') as HTMLFormElement;
       const formSubAdmins = document.getElementById('form-sub-admins') as HTMLFormElement;
       const formSubBranding = document.getElementById('form-sub-branding') as HTMLFormElement;
+      const formSubMegamenu = document.getElementById('form-sub-megamenu') as HTMLFormElement;
       const formSubCoupons = document.getElementById('form-sub-coupons') as HTMLDivElement;
 
       const addAdminBtn = document.getElementById('add-admin-btn');
@@ -2234,11 +2571,13 @@ function getObjectPosition(url: string | undefined): string {
          if (subtabShippingBtn) subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
          if (subtabAdminsBtn) subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
          if (subtabBrandingBtn) subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+         if (subtabMegamenuBtn) subtabMegamenuBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
          if (subtabCouponsBtn) subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
 
          if (formSubShipping) formSubShipping.classList.add('hidden');
          if (formSubAdmins) formSubAdmins.classList.add('hidden');
          if (formSubBranding) formSubBranding.classList.add('hidden');
+         if (formSubMegamenu) formSubMegamenu.classList.add('hidden');
          if (formSubCoupons) formSubCoupons.classList.add('hidden');
        }
 
@@ -2255,6 +2594,9 @@ function getObjectPosition(url: string | undefined): string {
          } else if (subtabName === 'branding' && subtabBrandingBtn && formSubBranding) {
            subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
            formSubBranding.classList.remove('hidden');
+         } else if (subtabName === 'megamenu' && subtabMegamenuBtn && formSubMegamenu) {
+           subtabMegamenuBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+           formSubMegamenu.classList.remove('hidden');
          } else if (subtabName === 'coupons' && subtabCouponsBtn && formSubCoupons) {
            subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
            formSubCoupons.classList.remove('hidden');
@@ -2264,6 +2606,7 @@ function getObjectPosition(url: string | undefined): string {
        subtabShippingBtn?.addEventListener('click', () => activateSubtab('shipping'));
        subtabAdminsBtn?.addEventListener('click', () => activateSubtab('admins'));
        subtabBrandingBtn?.addEventListener('click', () => activateSubtab('branding'));
+       subtabMegamenuBtn?.addEventListener('click', () => activateSubtab('megamenu'));
        subtabCouponsBtn?.addEventListener('click', () => activateSubtab('coupons'));
 
        // --- Email Settings & Subtab Navigation ---
@@ -3688,7 +4031,61 @@ function getObjectPosition(url: string | undefined): string {
         const heroVideoUrl = (document.getElementById('settings-hero-video') as HTMLInputElement).value.trim() || undefined;
         const admins = Array.from(document.querySelectorAll('.admin-row')).map(el => el.getAttribute('data-email') || '').filter(Boolean);
 
-        return { shippingPrice, freeShippingMin, markets, logoUrl, faviconUrl, heroVideoUrl, admins };
+        // Mega Menu Configuration compilation
+        const s1Title = (document.getElementById('megamenu-s1-title') as HTMLInputElement)?.value.trim() || 'Nuestras Colecciones';
+        const s1TitleEn = (document.getElementById('megamenu-s1-title-en') as HTMLInputElement)?.value.trim() || 'Our Collections';
+        const s1Collections = Array.from(document.querySelectorAll('input[name="megamenu-s1-collections"]:checked'))
+          .map(el => (el as HTMLInputElement).value);
+
+        const s2Title = (document.getElementById('megamenu-s2-title') as HTMLInputElement)?.value.trim() || 'Más Categorías';
+        const s2TitleEn = (document.getElementById('megamenu-s2-title-en') as HTMLInputElement)?.value.trim() || 'More Categories';
+        const s2Collections = Array.from(document.querySelectorAll('input[name="megamenu-s2-collections"]:checked'))
+          .map(el => (el as HTMLInputElement).value);
+
+        const p1Image = (document.getElementById('megamenu-p1-image') as HTMLInputElement)?.value.trim() || '';
+        const p1Title = (document.getElementById('megamenu-p1-title') as HTMLInputElement)?.value.trim() || '';
+        const p1TitleEn = (document.getElementById('megamenu-p1-title-en') as HTMLInputElement)?.value.trim() || '';
+        const p1Subtitle = (document.getElementById('megamenu-p1-subtitle') as HTMLInputElement)?.value.trim() || '';
+        const p1SubtitleEn = (document.getElementById('megamenu-p1-subtitle-en') as HTMLInputElement)?.value.trim() || '';
+        const p1Link = (document.getElementById('megamenu-p1-link') as HTMLInputElement)?.value.trim() || '';
+
+        const p2Image = (document.getElementById('megamenu-p2-image') as HTMLInputElement)?.value.trim() || '';
+        const p2Title = (document.getElementById('megamenu-p2-title') as HTMLInputElement)?.value.trim() || '';
+        const p2TitleEn = (document.getElementById('megamenu-p2-title-en') as HTMLInputElement)?.value.trim() || '';
+        const p2Subtitle = (document.getElementById('megamenu-p2-subtitle') as HTMLInputElement)?.value.trim() || '';
+        const p2SubtitleEn = (document.getElementById('megamenu-p2-subtitle-en') as HTMLInputElement)?.value.trim() || '';
+        const p2Link = (document.getElementById('megamenu-p2-link') as HTMLInputElement)?.value.trim() || '';
+
+        const megaMenu = {
+          section1: {
+            title: s1Title,
+            titleEn: s1TitleEn,
+            collectionIds: s1Collections,
+          },
+          section2: {
+            title: s2Title,
+            titleEn: s2TitleEn,
+            collectionIds: s2Collections,
+          },
+          promo1: {
+            imageUrl: p1Image,
+            title: p1Title,
+            titleEn: p1TitleEn,
+            subtitle: p1Subtitle,
+            subtitleEn: p1SubtitleEn,
+            linkUrl: p1Link,
+          },
+          promo2: {
+            imageUrl: p2Image,
+            title: p2Title,
+            titleEn: p2TitleEn,
+            subtitle: p2Subtitle,
+            subtitleEn: p2SubtitleEn,
+            linkUrl: p2Link,
+          }
+        };
+
+        return { shippingPrice, freeShippingMin, markets, logoUrl, faviconUrl, heroVideoUrl, admins, megaMenu };
       }
 
       // --- Submit sub-form: Shipping and Markets ---
@@ -3736,6 +4133,53 @@ function getObjectPosition(url: string | undefined): string {
           alert('Error al guardar marca: ' + (err.message || err.code));
           btn.disabled = false;
           btn.innerHTML = originalText;
+        }
+      });
+
+      // --- Submit sub-form: Mega Menu ---
+      formSubMegamenu?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('save-megamenu-btn') as HTMLButtonElement;
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span>Guardando...</span>';
+
+        const data = compileSettingsData();
+
+        try {
+          const { error } = await actions.updateGeneralSettings(data);
+          if (error) throw error;
+          localStorage.setItem('flexform_pending_changes', 'true');
+          alert('Configuración del menú de colecciones guardada con éxito.');
+          window.location.reload();
+        } catch (err: any) {
+          console.error(err);
+          alert('Error al guardar configuración del menú: ' + (err.message || err.code));
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+
+      // Bind live previews for mega menu images
+      const p1ImgInput = document.getElementById('megamenu-p1-image') as HTMLInputElement;
+      const p1PreviewDiv = document.getElementById('megamenu-p1-preview') as HTMLDivElement;
+      p1ImgInput?.addEventListener('input', () => {
+        const val = p1ImgInput.value.trim();
+        if (val) {
+          p1PreviewDiv.innerHTML = `<img src="${val}" class="w-full h-full object-cover" />`;
+        } else {
+          p1PreviewDiv.innerHTML = `<span class="text-[8px] text-slate-400 font-bold uppercase">Vacío</span>`;
+        }
+      });
+
+      const p2ImgInput = document.getElementById('megamenu-p2-image') as HTMLInputElement;
+      const p2PreviewDiv = document.getElementById('megamenu-p2-preview') as HTMLDivElement;
+      p2ImgInput?.addEventListener('input', () => {
+        const val = p2ImgInput.value.trim();
+        if (val) {
+          p2PreviewDiv.innerHTML = `<img src="${val}" class="w-full h-full object-cover" />`;
+        } else {
+          p2PreviewDiv.innerHTML = `<span class="text-[8px] text-slate-400 font-bold uppercase">Vacío</span>`;
         }
       });
 
@@ -4114,8 +4558,8 @@ function getObjectPosition(url: string | undefined): string {
           saveCropBtn.innerHTML = "Guardando...";
           
           const croppedCanvas = cropperInstance.getCroppedCanvas({
-            maxWidth: 1200,
-            maxHeight: 1600,
+            maxWidth: 2400,
+            maxHeight: 3200,
             imageSmoothingQuality: 'high'
           });
           
@@ -4136,7 +4580,18 @@ function getObjectPosition(url: string | undefined): string {
 
             try {
               const base64Data = await blobToBase64(blob);
-              const fileName = `crop_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.webp`;
+              
+              // Extract the base name of the original image to link the crop to it
+              const originalUrl = getOriginalUrl(currentCropUrl);
+              const match = originalUrl.match(/\/o\/([^?#]+)/);
+              let cleanBaseName = '';
+              if (match && match[1]) {
+                const fullPath = decodeURIComponent(match[1]);
+                const originalFileName = fullPath.split('/').pop() || '';
+                cleanBaseName = originalFileName.replace(/\.[^/.]+$/, ""); // strip extension
+              }
+              const prefixName = cleanBaseName ? `crop_${cleanBaseName}` : 'crop';
+              const fileName = `${prefixName}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.webp`;
 
               const { data, error } = await actions.uploadImage({ base64Data, fileName, folder: 'products/crops' });
               if (error || !data?.success || !data?.url) {
@@ -4145,7 +4600,7 @@ function getObjectPosition(url: string | undefined): string {
 
               // Delete the old cropped image file from Storage to prevent orphaned file accumulation
               const oldCroppedUrl = currentCropUrl.split('#')[0];
-              if (oldCroppedUrl.includes('/crop_')) {
+              if (decodeURIComponent(oldCroppedUrl).includes('/crops/crop_')) {
                 try {
                   // Call deleteImage silently so that even if it fails, it doesn't block saving the new crop
                   await actions.deleteImage({ url: oldCroppedUrl });
@@ -4154,8 +4609,6 @@ function getObjectPosition(url: string | undefined): string {
                 }
               }
 
-              // Get original uncropped image URL
-              const originalUrl = getOriginalUrl(currentCropUrl);
               // Combine: cropped image url + original image url reference in hash
               const newUrl = `${data.url}#org=${originalUrl}`;
 
@@ -4170,7 +4623,7 @@ function getObjectPosition(url: string | undefined): string {
               saveCropBtn.disabled = false;
               saveCropBtn.innerHTML = originalText;
             }
-          }, 'image/webp', 0.92);
+          }, 'image/webp', 0.95);
         }
       });
  
@@ -4264,7 +4717,7 @@ function getObjectPosition(url: string | undefined): string {
           img.src = URL.createObjectURL(file);
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const maxDimension = 2000;
+            const maxDimension = 3000;
             let width = img.width;
             let height = img.height;
 
@@ -4300,7 +4753,7 @@ function getObjectPosition(url: string | undefined): string {
                 }
               },
               'image/webp',
-              0.92 // WebP 92% quality for high detail e-commerce
+              0.95 // WebP 95% quality for high detail e-commerce
             );
           };
           img.onerror = (err) => reject(err);

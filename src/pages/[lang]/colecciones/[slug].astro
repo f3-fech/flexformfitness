@@ -331,8 +331,8 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
 
     <!-- Footer -->
     <footer id="contacto" class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850">
-      <div class="w-full grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-        <div class="flex flex-col gap-4">
+      <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div class="flex flex-col gap-4 col-span-2 md:col-span-1">
           <a href={`/${lang}`} class="flex flex-col">
             <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
               FLEX <span class="text-red-550">FORM</span>
@@ -346,7 +346,7 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
           </p>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3 col-span-1">
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "COLLECTIONS" : "COLECCIONES"}</h4>
           <ul class="text-xs flex flex-col gap-2">
             <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Men" : "Hombre"}</a></li>
@@ -355,7 +355,7 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
           </ul>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3 col-span-1">
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
           <ul class="text-xs flex flex-col gap-2">
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
@@ -364,7 +364,7 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
           </ul>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3 col-span-2 md:col-span-1">
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">NEWSLETTER</h4>
           <p class="text-xs text-slate-500 leading-relaxed">Suscríbete para recibir un 10% de descuento en tu primer pedido y ofertas exclusivas.</p>
         </div>
@@ -372,6 +372,11 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
 
       <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-3xs md:text-2xs text-slate-550">
         <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
+        <div class="flex items-center gap-6">
+          <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
+          <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Política de Privacidad</a>
+          <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>
+        </div>
       </div>
     </footer>
 

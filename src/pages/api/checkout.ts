@@ -3,6 +3,7 @@ import { db } from '../../lib/firebase';
 import type { APIRoute } from 'astro';
 import type { Product } from '../../types';
 import { getGeneralSettings } from '../../lib/settings';
+import { checkRateLimit } from '../../lib/ratelimit';
 
 export const prerender = false;
 
@@ -10,8 +11,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20' as any,
 });
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   try {
+    // 0. Rate Limiting Check
+    const ip = clientAddress || '127.0.0.1';
+    const rateLimit = await checkRateLimit('checkout', ip);
+    if (!rateLimit.success) {
+      return new Response(
+        JSON.stringify({ error: 'Demasiadas solicitudes. Por favor, intenta de nuevo en unos minutos.' }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     const { items, promoCodeId } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {

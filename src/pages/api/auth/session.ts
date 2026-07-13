@@ -1,10 +1,24 @@
 import type { APIRoute } from 'astro';
 import { admin } from '../../../lib/firebase';
+import { checkRateLimit } from '../../../lib/ratelimit';
 
 export const prerender = false; // Must be dynamically rendered
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, clientAddress }) => {
   try {
+    // Rate Limiting Check
+    const ip = clientAddress || '127.0.0.1';
+    const rateLimit = await checkRateLimit('auth', ip);
+    if (!rateLimit.success) {
+      return new Response(
+        JSON.stringify({ error: 'Too Many Requests', message: 'Demasiadas solicitudes. Por favor, intenta de nuevo más tarde.' }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const { idToken } = await request.json();
 
     if (!idToken) {

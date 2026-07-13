@@ -52,6 +52,36 @@ if (errorParam === 'unauthorized') {
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+    <style is:global>
+      /* Modern & thin custom scrollbar styles */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+      }
+
+      /* Webkit browsers (Chrome, Safari, Edge, Opera) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: #94a3b8;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+    </style>
   </head>
   <body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen font-sans antialiased p-6">
     <div class="w-full max-w-md p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col gap-8">

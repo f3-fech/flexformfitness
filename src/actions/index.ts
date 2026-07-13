@@ -2,7 +2,7 @@ import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { db, admin } from '../lib/firebase';
-import { getGeneralSettings } from '../lib/settings';
+import { getGeneralSettings, clearSettingsCache } from '../lib/settings';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -12,6 +12,7 @@ import { sendEmail } from '../lib/mail';
 import type { Order } from '../types';
 import { getEmailSettings } from '../lib/emailSettings';
 import { triggerRebuild } from '../lib/deploy';
+import { checkRateLimit } from '../lib/ratelimit';
 
 // Schema Definitions
 const variantSchema = z.object({
@@ -325,6 +326,16 @@ export const server = {
       images: z.array(z.string().url()),
     }),
     handler: async (input, context) => {
+      // Rate Limit Check
+      const ip = context.clientAddress || '127.0.0.1';
+      const rateLimit = await checkRateLimit('email', ip);
+      if (!rateLimit.success) {
+        throw new ActionError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Demasiadas solicitudes de devolución. Por favor, intenta de nuevo más tarde.',
+        });
+      }
+
       const user = context.locals.user;
       if (!user) {
         throw new ActionError({
@@ -645,16 +656,46 @@ export const server = {
       logoUrl: z.string().optional(),
       faviconUrl: z.string().optional(),
       heroVideoUrl: z.string().optional(),
+      megaMenu: z.object({
+        section1: z.object({
+          title: z.string().min(1, 'El título de la sección 1 es obligatorio'),
+          titleEn: z.string().optional(),
+          collectionIds: z.array(z.string()),
+        }),
+        section2: z.object({
+          title: z.string().min(1, 'El título de la sección 2 es obligatorio'),
+          titleEn: z.string().optional(),
+          collectionIds: z.array(z.string()),
+        }),
+        promo1: z.object({
+          imageUrl: z.string(),
+          title: z.string().optional(),
+          titleEn: z.string().optional(),
+          subtitle: z.string().optional(),
+          subtitleEn: z.string().optional(),
+          linkUrl: z.string().optional(),
+        }),
+        promo2: z.object({
+          imageUrl: z.string(),
+          title: z.string().optional(),
+          titleEn: z.string().optional(),
+          subtitle: z.string().optional(),
+          subtitleEn: z.string().optional(),
+          linkUrl: z.string().optional(),
+        }),
+      }).optional(),
     }),
     handler: async (input, context) => {
       await checkAdminAuth(context);
 
       try {
+        console.log('updateGeneralSettings action payload received:', JSON.stringify(input, null, 2));
         await db.collection('settings').doc('general').set({
           ...input,
           updatedAt: new Date(),
         }, { merge: true });
 
+        clearSettingsCache();
         return { success: true };
       } catch (error: any) {
         console.error('Error in updateGeneralSettings action:', error);
@@ -760,7 +801,17 @@ export const server = {
     input: z.object({
       code: z.string().min(1),
     }),
-    handler: async (input) => {
+    handler: async (input, context) => {
+      // Rate Limit Check to prevent brute-forcing coupon codes
+      const ip = context.clientAddress || '127.0.0.1';
+      const rateLimit = await checkRateLimit('checkout', ip);
+      if (!rateLimit.success) {
+        throw new ActionError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Demasiadas solicitudes de validación de código. Por favor, intenta de nuevo más tarde.',
+        });
+      }
+
       try {
         const { code } = input;
         
@@ -929,9 +980,9 @@ export const server = {
 
         const filePath = decodeURIComponent(match[1]);
 
-        // Guard: Only allow deleting files in products folder that are cropped to avoid accidental deletions of main assets
-        if (!filePath.startsWith('products/crop_')) {
-          throw new Error('Sólo está permitido eliminar imágenes recortadas temporales.');
+        // Guard: Only allow deleting files under products/crops/ and products/gallery/ to avoid accidental deletions of other critical assets
+        if (!filePath.startsWith('products/crops/') && !filePath.startsWith('products/gallery/')) {
+          throw new Error('Sólo está permitido eliminar imágenes de la galería o recortadas.');
         }
 
         const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
@@ -941,7 +992,35 @@ export const server = {
         const [exists] = await file.exists();
         if (exists) {
           await file.delete();
-          console.log(`Successfully deleted orphaned cropped image from Storage: ${filePath}`);
+          console.log(`Successfully deleted image from Storage: ${filePath}`);
+        }
+
+        // If the deleted image was an original gallery image, find and delete all its associated crops
+        if (filePath.startsWith('products/gallery/')) {
+          const originalFileName = filePath.split('/').pop() || '';
+          const cleanBaseName = originalFileName.replace(/\.[^/.]+$/, ""); // strip extension
+          
+          if (cleanBaseName) {
+            try {
+              // List files in the crops folder
+              const [croppedFiles] = await bucket.getFiles({
+                prefix: 'products/crops/'
+              });
+              
+              // Filter files that contain the cleanBaseName in their name
+              const filesToDelete = croppedFiles.filter(f => f.name.includes(`crop_${cleanBaseName}`));
+              
+              for (const cropFile of filesToDelete) {
+                const [cropExists] = await cropFile.exists();
+                if (cropExists) {
+                  await cropFile.delete();
+                  console.log(`Deleted associated cropped image: ${cropFile.name}`);
+                }
+              }
+            } catch (cropDelErr) {
+              console.error('Error deleting associated cropped images:', cropDelErr);
+            }
+          }
         }
 
         return { success: true };

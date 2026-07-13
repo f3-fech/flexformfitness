@@ -1,0 +1,177 @@
+---
+import SEO from '../../components/SEO.astro';
+import { getGeneralSettings } from '../../lib/settings';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'es' } },
+    { params: { lang: 'en' } }
+  ];
+}
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
+const settings = await getGeneralSettings();
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <SEO
+      title={isEn ? "Cookies Policy | FLEX FORM FITNESS" : "Política de Cookies | FLEX FORM FITNESS"}
+      description={isEn ? "Learn about the cookies we use to ensure the functionality and security of FLEX FORM FITNESS." : "Información sobre el uso de cookies y tecnologías similares en FLEX FORM FITNESS para garantizar la seguridad y el funcionamiento de la tienda."}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-6">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <a href={`/${lang}`} class="flex items-center gap-2 group">
+          {settings.logoUrl ? (
+            <img src={settings.logoUrl} alt="FLEX FORM FITNESS" class="h-6 sm:h-8 md:h-10 w-auto object-contain" />
+          ) : (
+            <div class="flex flex-col">
+              <span class="text-base sm:text-2xl md:text-3xl font-black italic tracking-tighter text-slate-955 uppercase leading-none">
+                FLEX <span class="text-rose-600">FORM</span>
+              </span>
+              <span class="text-[7.5px] sm:text-[9px] md:text-[10px] font-extrabold tracking-[0.18em] sm:tracking-[0.25em] text-slate-400 uppercase leading-none mt-0.5 group-hover:text-red-600 transition-colors">
+                FITNESS
+              </span>
+            </div>
+          )}
+        </a>
+        <a href={`/${lang}`} class="text-sm font-bold uppercase tracking-wider text-slate-600 hover:text-rose-600 transition-colors">
+          {isEn ? "Back to Shop" : "Volver a la Tienda"}
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-12 lg:py-16 flex-grow w-full">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight mb-8">
+        {isEn ? "Cookies Policy" : "Política de Cookies"}
+      </h1>
+      
+      <div class="bg-white rounded-3xl border border-slate-100 p-8 sm:p-12 shadow-sm text-sm sm:text-base text-slate-700 leading-relaxed space-y-8">
+        {isEn ? (
+          // ENGLISH VERSION
+          <>
+            <p class="text-slate-500 italic">Last updated: July 13, 2026</p>
+            <p>FLEX FORM FITNESS uses cookies to ensure our website functions correctly, to secure transaction processes, and to improve your browsing experience. Below, you will find detailed information about what cookies are, which types we use, and how you can manage them.</p>
+            
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">1. What are Cookies?</h2>
+              <p>A cookie is a small text file that a website stores on your computer, tablet, or smartphone when you visit. It allows the website to remember your actions and preferences (such as login details, selected language, shopping cart state, and other display preferences) over a period, so you do not have to keep re-entering them whenever you return to the site or browse from one page to another.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">2. Types of Cookies We Use</h2>
+              <p>Our website uses the following categories of cookies:</p>
+              
+              <div class="space-y-4 mt-2">
+                <div>
+                  <h3 class="font-bold text-slate-800">A. Necessary / Technical Cookies (Strictly Essential)</h3>
+                  <p>These cookies are essential for you to browse the website and use its features, such as accessing secure areas, keeping your active user session open, and managing the items in your shopping cart. Without these cookies, services you have asked for (like the cart and checkout) cannot be provided. In accordance with the LSSI-CE, technical cookies do not require your prior consent.</p>
+                  <ul class="list-disc pl-5 mt-1 space-y-0.5 text-xs text-slate-650">
+                    <li><strong>session_token:</strong> Standard secure cookie used to manage and verify your administrator or client session.</li>
+                    <li><strong>nanostores (Local Storage):</strong> Used in the browser to maintain the list of items inside your shopping cart in real-time.</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 class="font-bold text-slate-800">B. Payment & Security Cookies (Third Party)</h3>
+                  <p>When you checkout, Stripe integrates technical and security cookies to securely process payments and detect/prevent credit card fraud. These are technically required for our merchant safety and processing.</p>
+                  <ul class="list-disc pl-5 mt-1 space-y-0.5 text-xs text-slate-650">
+                    <li><strong>__stripe_mid, __stripe_sid:</strong> Stripe cookies to facilitate secure processing of payments and prevent credit card testing or fraudulent transaction attempts.</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 class="font-bold text-slate-800">C. Preference / Customization Cookies (Optional)</h3>
+                  <p>These cookies allow our website to remember choices you make (such as your preferred language: Spanish or English) and provide enhanced, more personal features.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">3. How to Manage and Block Cookies</h2>
+              <p>You can control and/or delete cookies as you wish. You can delete all cookies that are already on your computer and you can set most browsers to prevent them from being placed. However, if you do this, you may have to manually adjust some preferences every time you visit a site and some services and functionalities (such as adding items to the cart or checking out) may not work.</p>
+              <p>To restrict or block cookies, you can adjust your browser settings. Here are the official guides for the most popular web browsers:</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Google Chrome</a></li>
+                <li><a href="https://support.apple.com/en-gb/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Apple Safari</a></li>
+                <li><a href="https://support.mozilla.org/en-US/kb/enhanced-tracking-protection-firefox-desktop" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Mozilla Firefox</a></li>
+                <li><a href="https://support.microsoft.com/en-us/microsoft-edge/delete-cookies-in-microsoft-edge-63fd9a4b-d084-e9d1-80f2-085d68d3b3d7" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Microsoft Edge</a></li>
+              </ul>
+            </section>
+          </>
+        ) : (
+          // SPANISH VERSION
+          <>
+            <p class="text-slate-500 italic">Última actualización: 13 de julio de 2026</p>
+            <p>FLEX FORM FITNESS utiliza cookies y tecnologías de almacenamiento similares para garantizar el correcto funcionamiento del sitio web, posibilitar pasarelas de pago seguras y ofrecer una navegación fluida. A continuación, le detallamos qué son las cookies, cuáles utilizamos en este portal y cómo puede gestionarlas.</p>
+            
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">1. ¿Qué son las Cookies?</h2>
+              <p>Una cookie es un pequeño archivo de texto que un sitio web almacena en su ordenador, tableta o dispositivo móvil cuando nos visita. Permite que el portal recuerde sus acciones y preferencias (como el idioma seleccionado, el estado del carrito de compra, inicios de sesión o configuraciones de visualización) para que no tenga que volver a configurarlos cada vez que navega entre páginas o regresa al sitio web.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">2. Cookies que Utilizamos</h2>
+              <p>Este sitio web utiliza únicamente las categorías de cookies que se describen a continuación:</p>
+              
+              <div class="space-y-4 mt-2">
+                <div>
+                  <h3 class="font-bold text-slate-800">A. Cookies Técnicas y Estrictamente Necesarias (Esenciales)</h3>
+                  <p>Son aquellas indispensables para la navegación y el uso de las opciones y servicios del sitio web. Permiten controlar el tráfico de datos, identificar la sesión del usuario, acceder a secciones privadas, recordar los productos añadidos al carrito y realizar la compra. De acuerdo con la LSSI-CE, estas cookies no requieren del consentimiento previo del usuario al ser indispensables para la prestación del servicio.</p>
+                  <ul class="list-disc pl-5 mt-1 space-y-0.5 text-xs text-slate-650">
+                    <li><strong>session_token:</strong> Cookie técnica para verificar y asegurar su sesión de usuario o administrador.</li>
+                    <li><strong>nanostores (Almacenamiento Local):</strong> Almacena en tiempo real los artículos del carrito de compra del usuario para que persistan mientras navega.</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 class="font-bold text-slate-800">B. Cookies de Pago y Seguridad (De Terceros)</h3>
+                  <p>Durante el proceso de checkout, Stripe integra cookies de control y seguridad. Sirven para posibilitar el procesamiento seguro del pago y monitorizar patrones que detecten/prevengan fraudes con tarjetas de crédito.</p>
+                  <ul class="list-disc pl-5 mt-1 space-y-0.5 text-xs text-slate-650">
+                    <li><strong>__stripe_mid, __stripe_sid:</strong> Cookies de Stripe utilizadas para evitar fraudes en la pasarela de pago y asegurar la transacción de compra.</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 class="font-bold text-slate-800">C. Cookies de Personalización (Opcionales)</h3>
+                  <p>Permiten recordar la configuración de idioma del usuario (Español o Inglés) para que sus visitas recurrentes carguen de forma automática en el idioma adecuado.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">3. Cómo Configurar, Desactivar o Eliminar las Cookies</h2>
+              <p>Usted tiene derecho a permitir, bloquear o eliminar las cookies instaladas en su equipo mediante la configuración del navegador de internet instalado en su dispositivo. En caso de bloquear o deshabilitar cookies esenciales, algunas funciones de la tienda online (como añadir artículos al carrito o completar el checkout) podrían dejar de funcionar o mostrar errores.</p>
+              <p>Puede consultar la guía de configuración en los principales navegadores a través de los siguientes enlaces oficiales:</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><a href="https://support.google.com/chrome/answer/95647?hl=es" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Google Chrome</a></li>
+                <li><a href="https://support.apple.com/es-es/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Apple Safari</a></li>
+                <li><a href="https://support.mozilla.org/es/kb/habilitar-y-deshabilitar-cookies-sitios-web-rastrear-preferencias" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Mozilla Firefox</a></li>
+                <li><a href="https://support.microsoft.com/es-es/microsoft-edge/eliminar-las-cookies-en-microsoft-edge-63fd9a4b-d084-e9d1-80f2-085d68d3b3d7" target="_blank" rel="noopener noreferrer" class="text-rose-600 hover:underline">Microsoft Edge</a></li>
+              </ul>
+            </section>
+          </>
+        )}
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400">
+      <p>&copy; {new Date().getFullYear()} FlexForm Fitness. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+    </footer>
+  </body>
+</html>

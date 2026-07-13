@@ -1,5 +1,27 @@
 import { db } from './firebase';
 
+export interface MegaMenuSection {
+  title: string;
+  titleEn?: string;
+  collectionIds: string[];
+}
+
+export interface MegaMenuPromoImage {
+  imageUrl: string;
+  title?: string;
+  titleEn?: string;
+  subtitle?: string;
+  subtitleEn?: string;
+  linkUrl?: string;
+}
+
+export interface MegaMenuConfig {
+  section1: MegaMenuSection;
+  section2: MegaMenuSection;
+  promo1: MegaMenuPromoImage;
+  promo2: MegaMenuPromoImage;
+}
+
 export interface GeneralSettings {
   shippingPrice: number;       // in cents (e.g. 499 for $4.99)
   freeShippingMin: number;     // in cents (e.g. 5000 for $50.00)
@@ -8,6 +30,7 @@ export interface GeneralSettings {
   logoUrl?: string;
   faviconUrl?: string;
   heroVideoUrl?: string;
+  megaMenu?: MegaMenuConfig;
 }
 
 export const defaultSettings: GeneralSettings = {
@@ -43,6 +66,7 @@ export async function getGeneralSettings(forceRefresh = false): Promise<GeneralS
         logoUrl: data.logoUrl || defaultSettings.logoUrl,
         faviconUrl: data.faviconUrl || defaultSettings.faviconUrl,
         heroVideoUrl: data.heroVideoUrl || defaultSettings.heroVideoUrl,
+        megaMenu: data.megaMenu,
       };
       cacheTimestamp = now;
       return cachedSettings;
@@ -51,4 +75,9 @@ export async function getGeneralSettings(forceRefresh = false): Promise<GeneralS
     console.error('Error fetching general settings from Firestore:', error);
   }
   return defaultSettings;
+}
+
+export function clearSettingsCache(): void {
+  cachedSettings = null;
+  cacheTimestamp = 0;
 }

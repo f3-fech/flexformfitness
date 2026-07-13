@@ -1,0 +1,195 @@
+---
+import SEO from '../../components/SEO.astro';
+import { getGeneralSettings } from '../../lib/settings';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'es' } },
+    { params: { lang: 'en' } }
+  ];
+}
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
+const settings = await getGeneralSettings();
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <SEO
+      title={isEn ? "Terms of Use and Conditions | FLEX FORM FITNESS" : "Condiciones de Uso y Contratación | FLEX FORM FITNESS"}
+      description={isEn ? "Legal terms of use and purchase conditions for FLEX FORM FITNESS." : "Condiciones generales de uso del sitio web y contratación de productos en FLEX FORM FITNESS."}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-6">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <a href={`/${lang}`} class="flex items-center gap-2 group">
+          {settings.logoUrl ? (
+            <img src={settings.logoUrl} alt="FLEX FORM FITNESS" class="h-6 sm:h-8 md:h-10 w-auto object-contain" />
+          ) : (
+            <div class="flex flex-col">
+              <span class="text-base sm:text-2xl md:text-3xl font-black italic tracking-tighter text-slate-955 uppercase leading-none">
+                FLEX <span class="text-rose-600">FORM</span>
+              </span>
+              <span class="text-[7.5px] sm:text-[9px] md:text-[10px] font-extrabold tracking-[0.18em] sm:tracking-[0.25em] text-slate-400 uppercase leading-none mt-0.5 group-hover:text-red-600 transition-colors">
+                FITNESS
+              </span>
+            </div>
+          )}
+        </a>
+        <a href={`/${lang}`} class="text-sm font-bold uppercase tracking-wider text-slate-600 hover:text-rose-600 transition-colors">
+          {isEn ? "Back to Shop" : "Volver a la Tienda"}
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-12 lg:py-16 flex-grow w-full">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight mb-8">
+        {isEn ? "Terms of Use and Purchase Conditions" : "Condiciones de Uso y Contratación"}
+      </h1>
+      
+      <div class="bg-white rounded-3xl border border-slate-100 p-8 sm:p-12 shadow-sm text-sm sm:text-base text-slate-700 leading-relaxed space-y-8">
+        {isEn ? (
+          // ENGLISH VERSION
+          <>
+            <p class="text-slate-500 italic">Last updated: July 13, 2026</p>
+            <p>Welcome to our online store. Please read these Terms and Conditions carefully. By accessing this website or purchasing any product, you agree to be bound by these terms.</p>
+            
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">1. General Information</h2>
+              <p>In compliance with the duty of information established in Article 10 of Law 34/2002, of July 11, on Information Society Services and Electronic Commerce (LSSI-CE), the owner of this website is:</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><strong>Company / Owner Name:</strong> [Enter Company Name or Owner's Full Name]</li>
+                <li><strong>Tax Identification Number (NIF/CIF):</strong> [Enter NIF / CIF]</li>
+                <li><strong>Registered Address:</strong> [Enter Complete Physical Address, Spain]</li>
+                <li><strong>Contact Email:</strong> [Enter Contact Email, e.g., legal@yourdomain.com]</li>
+                <li><strong>Contact Phone:</strong> [Enter Contact Phone Number]</li>
+                <li><strong>Registry Data:</strong> [Enter Commercial Registry details if applicable, e.g., Tomo, Folio, Hoja]</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">2. Object</h2>
+              <p>These conditions regulate the access, browsing, and purchase of sports apparel and accessories through the FLEX FORM FITNESS website. The owner reserves the right to modify these terms at any time, which will be published on this website.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">3. Intellectual Property</h2>
+              <p>All content displayed on this website, including but not limited to texts, source code, designs, photographs, graphics, logos, and trademarks, is the intellectual property of the owner or licensed to them. Any unauthorized copy, distribution, or commercial use is strictly prohibited.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">4. Ordering Process and Prices</h2>
+              <p>Orders are processed directly through the online catalog. All prices shown on our website are in Euros (€) and include the Value Added Tax (VAT) applicable in Spain. Shipping charges, if any, will be detailed during checkout prior to final payment.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">5. Secure Payment Methods</h2>
+              <p>Payments are managed and processed through Stripe. This ensures maximum security for your transaction. We accept credit/debit cards (Visa, Mastercard, American Express) and alternative payment methods integrated by Stripe (such as Apple Pay). Payment data is encrypted and processed directly by Stripe; we never store your payment credentials.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Shipping and Delivery</h2>
+              <p>We ship products within Spain and to supported international markets. Shipping costs and estimated delivery times are calculated during checkout based on the delivery address. Deliveries are handled by transport agencies. The risk of loss passes to the customer upon delivery of the goods.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">7. Right of Withdrawal (Returns Policy)</h2>
+              <p>In accordance with Royal Legislative Decree 1/2007, of November 16, which approves the consolidated text of the General Law for the Defense of Consumers and Users in Spain, <strong>the customer has a period of 14 calendar days</strong> from receipt of the product to withdraw from the purchase without justification.</p>
+              <p>To exercise this right, you must notify us via email. The product must be returned unused, with all its tags and in its original packaging. The customer is responsible for the direct shipping costs of returning the product, unless the item is defective or incorrect.</p>
+              <p>Upon receipt and inspection of the returned product, we will issue a full refund including standard shipping costs within 14 calendar days using the same payment method used for the initial purchase.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">8. Product Warranty</h2>
+              <p>Under Spanish law (Decree 1/2007), all consumer goods purchased on or after January 1, 2022, carry a <strong>3-year legal warranty</strong> against manufacturing defects or non-conformity. In the event of a defect, the customer is entitled to product repair, replacement, price reduction, or termination of the contract (refund), as applicable, free of charge.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">9. Governing Law and Jurisdiction</h2>
+              <p>These terms shall be governed by and construed in accordance with Spanish law. Any conflict or dispute arising from the use of this website or the purchase of products shall be submitted to the non-exclusive jurisdiction of the Courts and Tribunals corresponding to the consumer's domicile or where legally applicable.</p>
+            </section>
+          </>
+        ) : (
+          // SPANISH VERSION
+          <>
+            <p class="text-slate-500 italic">Última actualización: 13 de julio de 2026</p>
+            <p>Bienvenido a nuestra tienda online. Por favor, lea atentamente las presentes Condiciones de Uso y Contratación. Al acceder a esta web o realizar cualquier compra de productos, acepta quedar vinculado por las presentes cláusulas.</p>
+            
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">1. Información General</h2>
+              <p>En cumplimiento del deber de información establecido en el Artículo 10 de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y de Comercio Electrónico (LSSI-CE), se hace constar que el titular de este sitio web es:</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><strong>Nombre del Propietario / Empresa:</strong> [Introducir Nombre de la Empresa o del Autónomo]</li>
+                <li><strong>Número de Identificación Fiscal (NIF/CIF):</strong> [Introducir NIF / CIF]</li>
+                <li><strong>Domicilio Social:</strong> [Introducir Dirección Completa, España]</li>
+                <li><strong>Correo de Contacto:</strong> [Introducir Correo de Contacto, ej. legal@tudominio.com]</li>
+                <li><strong>Teléfono de Contacto:</strong> [Introducir Teléfono de Contacto]</li>
+                <li><strong>Datos de Inscripción:</strong> [Introducir datos de registro mercantil si procede, ej. Tomo, Folio, Hoja]</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">2. Objeto</h2>
+              <p>Las presentes condiciones regulan el acceso, navegación y compra de prendas deportivas y accesorios a través del sitio web de FLEX FORM FITNESS. El titular se reserva el derecho de modificar unilateralmente estas condiciones, las cuales serán publicadas en esta misma sección.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">3. Propiedad Intelectual</h2>
+              <p>Todos los contenidos mostrados en este sitio web, incluyendo de forma enunciativa pero no limitativa textos, códigos fuente, diseños, fotografías, logotipos, imágenes y marcas registradas son propiedad de su titular o de terceros licenciantes. Queda prohibida cualquier reproducción, distribución o uso comercial sin autorización expresa por escrito.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">4. Proceso de Compra y Precios</h2>
+              <p>Los pedidos se tramitan directamente a través del catálogo interactivo. Todos los precios mostrados en nuestra web se indican en Euros (€) e incluyen el Impuesto sobre el Valor Añadido (IVA) vigente en España. Los costes de envío se detallarán e informarán al usuario durante el checkout antes de efectuar el pago.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">5. Métodos de Pago Seguros</h2>
+              <p>Los pagos se procesan y encriptan de forma segura a través de Stripe. Aceptamos tarjetas de crédito/débito (Visa, Mastercard, American Express) y métodos digitales integrados en Stripe (como Apple Pay). Las credenciales de pago viajan cifradas y se gestionan directamente en la pasarela de Stripe; nosotros nunca almacenamos ni tenemos acceso a sus tarjetas.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Envíos y Plazos de Entrega</h2>
+              <p>Realizamos envíos dentro de España y a los mercados internacionales admitidos. Los plazos y tarifas de envío se calculan en base a la dirección introducida. El transporte se realiza mediante agencias de mensajería colaboradoras. La responsabilidad sobre la mercancía se transmite al cliente al efectuarse la entrega del paquete.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">7. Derecho de Desistimiento (Devoluciones)</h2>
+              <p>Conforme al Real Decreto Legislativo 1/2007, de 16 de noviembre, por el que se aprueba el texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios en España, <strong>el cliente dispone de un plazo de 14 días naturales</strong> desde la recepción del producto para desistir de la compra sin necesidad de justificación.</p>
+              <p>Para tramitar una devolución, puede contactar vía email. El artículo debe devolverse sin usar, en perfectas condiciones y en su embalaje original. Los costes directos de la devolución (envío del artículo de vuelta) correrán a cargo del cliente, salvo en caso de producto defectuoso o erróneo.</p>
+              <p>Una vez recibido e inspeccionado el producto devuelto en nuestros almacenes, procederemos al reembolso íntegro del importe abonado (incluyendo los costes iniciales de envío estándar) en un plazo máximo de 14 días naturales, utilizando el mismo método de pago.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">8. Garantía de los Productos</h2>
+              <p>Bajo la legislación española (Real Decreto Legislativo 1/2007), todos los productos de consumo adquiridos a partir del 1 de enero de 2022 gozan de una **garantía legal de 3 años** ante cualquier defecto de fábrica o falta de conformidad. Ante tal situación, el cliente tendrá derecho a la reparación del bien, su sustitución, la rebaja del precio o la resolución del contrato, de forma totalmente gratuita.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">9. Ley Aplicable y Jurisdicción</h2>
+              <p>Las presentes condiciones se rigen por la legislación española. Cualquier reclamación o litigio derivado de la interpretación o ejecución de este contrato se someterá a la jurisdicción de los Juzgados y Tribunales del domicilio del consumidor.</p>
+            </section>
+          </>
+        )}
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400">
+      <p>&copy; {new Date().getFullYear()} FlexForm Fitness. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+    </footer>
+  </body>
+</html>

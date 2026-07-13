@@ -310,14 +310,14 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
             </div>
           )}
         </div>
-
       </div>
     </main>
 
-    <!-- Footer -->
+    <!-- Footer (Full Width) -->
     <footer id="contacto" class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850">
-      <div class="w-full grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-        <div class="flex flex-col gap-4">
+      <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <!-- Logo and info -->
+        <div class="flex flex-col gap-4 col-span-2 md:col-span-1">
           <a href={`/${lang}`} class="flex flex-col">
             <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
               FLEX <span class="text-red-550">FORM</span>
@@ -326,39 +326,51 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
               FITNESS
             </span>
           </a>
-          <p class="text-xs text-slate-550 leading-relaxed">
+          <p class="text-xs text-slate-500 leading-relaxed">
             {isEn ? "High-performance sportswear and premium accessories designed for dedicated athletes." : "Ropa deportiva de alto rendimiento y accesorios premium diseñados para atletas dedicados."}
           </p>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <!-- Links Colecciones -->
+        <div class="flex flex-col gap-3 col-span-1">
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "COLLECTIONS" : "COLECCIONES"}</h4>
           <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "New Arrivals" : "Novedades"}</a></li>
             <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Men" : "Hombre"}</a></li>
             <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Women" : "Mujer"}</a></li>
-            <li><a href={`/${lang}`} class="hover:text-white transition-colors">{isEn ? "View all" : "Ver Todo"}</a></li>
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Bestsellers" : "Más Vendidos"}</a></li>
           </ul>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <!-- Links Ayuda -->
+        <div class="flex flex-col gap-3 col-span-1">
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
           <ul class="text-xs flex flex-col gap-2">
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Size Guide" : "Guía de Tallas"}</a></li>
             <li><a href="/admin/login" class="hover:text-white transition-colors">{isEn ? "Admin Login" : "Acceso de Administrador"}</a></li>
           </ul>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <!-- Contact/Newsletter -->
+        <div class="flex flex-col gap-3 col-span-2 md:col-span-1">
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">NEWSLETTER</h4>
-          <p class="text-xs text-slate-550 leading-relaxed">
-            {isEn ? "Subscribe to receive a 10% discount on your first order and exclusive deals." : "Suscríbete para recibir un 10% de descuento en tu primer pedido y ofertas exclusivas."}
-          </p>
+          <p class="text-xs text-slate-550 leading-relaxed">{isEn ? "Subscribe to receive a 10% discount on your first order and exclusive deals." : "Suscríbete para recibir un 10% de descuento en tu primer pedido y ofertas exclusivas."}</p>
+          <div class="flex gap-2 mt-1">
+            <input type="email" id="newsletter-email" placeholder={isEn ? "Your email" : "Tu email"} class="bg-slate-800 text-white placeholder-slate-500 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:border-white w-full" />
+            <button id="newsletter-submit-btn" class="bg-white text-slate-900 px-4 py-2 text-xs font-bold uppercase hover:bg-red-600 hover:text-white transition-colors">OK</button>
+          </div>
         </div>
       </div>
 
       <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-3xs md:text-2xs text-slate-550">
         <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+        <div class="flex items-center gap-6">
+          <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
+          <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Política de Privacidad</a>
+          <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>
+        </div>
       </div>
     </footer>
 
@@ -551,7 +563,7 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
           img.src = URL.createObjectURL(file);
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const max = 800; // max size for return proof images
+            const max = 1600; // max size for return proof images
             let w = img.width;
             let h = img.height;
             if (w > max || h > max) {
@@ -573,7 +585,7 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
               } else {
                 blobToBase64(file).then(resolve);
               }
-            }, 'image/jpeg', 0.8);
+            }, 'image/jpeg', 0.9);
           };
         });
       }
@@ -650,6 +662,45 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
           alert((isEn ? 'Error submitting request: ' : 'Error al enviar la solicitud: ') + (err.message || err.code));
           submitReturnBtn.disabled = false;
           submitReturnBtn.innerHTML = originalText;
+        }
+      });
+
+      // Newsletter sign up logic
+      const newsletterEmailInput = document.getElementById('newsletter-email') as HTMLInputElement;
+      const newsletterSubmitBtn = document.getElementById('newsletter-submit-btn') as HTMLButtonElement;
+
+      newsletterSubmitBtn?.addEventListener('click', async () => {
+        const email = newsletterEmailInput.value.trim();
+        const isEn = getIsEn();
+        if (!email) {
+          alert(isEn ? 'Please enter an email address.' : 'Por favor, introduce un correo electrónico.');
+          return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          alert(isEn ? 'Please enter a valid email address.' : 'Por favor, introduce un correo electrónico válido.');
+          return;
+        }
+
+        newsletterSubmitBtn.disabled = true;
+        const originalText = newsletterSubmitBtn.innerText;
+        newsletterSubmitBtn.innerText = '...';
+
+        try {
+          const { error } = await actions.saveMarketingConsent({
+            email,
+            consent: true,
+          });
+          if (error) throw error;
+          alert(isEn ? 'Thank you for subscribing to our newsletter!' : '¡Gracias por suscribirte a nuestra newsletter!');
+          newsletterEmailInput.value = '';
+        } catch (err: any) {
+          console.error(err);
+          alert(isEn ? 'An error occurred during subscription: ' + (err.message || 'Unknown error') : 'Ocurrió un error al suscribirte: ' + (err.message || 'Error desconocido'));
+        } finally {
+          newsletterSubmitBtn.disabled = false;
+          newsletterSubmitBtn.innerText = originalText;
         }
       });
     </script>
