@@ -122,23 +122,15 @@ const productJsonLd = {
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
         <!-- Media Gallery -->
-        <div class="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-5">
+        <div id="product-gallery" data-images={JSON.stringify(product.images)} class="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-5">
           <!-- Thumbnails list (vertical on desktop, horizontal on mobile) -->
           {product.images.length > 1 && (
             <div class="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto shrink-0 w-full sm:w-[88px] max-h-[500px] pr-1.5 custom-scrollbar">
               {product.images.map((img, idx) => (
                 <button
                   type="button"
-                  class="w-16 h-20 sm:w-[80px] sm:h-[106px] shrink-0 rounded-xl overflow-hidden bg-white border border-slate-200 hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all duration-200 shadow-2xs"
-                  onclick={`
-                    const mainImg = document.getElementById('main-product-image');
-                    if (mainImg) {
-                      mainImg.classList.add('opacity-0');
-                      mainImg.src = '${img}';
-                      const match = '${img}'.match(/#pos=([a-zA-Z0-9%_-]+)/);
-                      mainImg.style.objectPosition = match ? match[1].replace('_', ' ') : 'center';
-                    }
-                  `}
+                  data-index={idx}
+                  class={`thumbnail-btn w-16 h-20 sm:w-[80px] sm:h-[106px] shrink-0 rounded-xl overflow-hidden bg-white border ${idx === 0 ? 'border-brand-600 ring-2 ring-brand-100 shadow-sm' : 'border-slate-200'} hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all duration-200 shadow-2xs`}
                 >
                   <img src={img} alt={`${productTitle} vista ${idx + 1}`} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(img)}`} />
                 </button>
@@ -147,7 +139,7 @@ const productJsonLd = {
           )}
           
           <!-- Main featured product image (large box, object-cover to occupy full space with rounded corners) -->
-          <div class="flex-grow aspect-[3/4] w-full rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm relative" style="aspect-ratio: 3/4; overflow: hidden;">
+          <div class="flex-grow aspect-[3/4] w-full rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm relative group" style="aspect-ratio: 3/4; overflow: hidden;">
             <img
               src={product.images[0]}
               alt={productTitle}
@@ -156,6 +148,32 @@ const productJsonLd = {
               id="main-product-image"
               onload="this.classList.remove('opacity-0')"
             />
+
+            <!-- Left and Right Arrows (Desktop only, hidden on mobile) -->
+            {product.images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  id="prev-image-btn"
+                  class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-xs text-slate-800 border border-slate-200/50 shadow-md flex items-center justify-center transition-all duration-200 hover:bg-white hover:text-brand-600 active:scale-95 z-10 hidden sm:flex opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
+                  aria-label={isEn ? "Previous image" : "Imagen anterior"}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  id="next-image-btn"
+                  class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-xs text-slate-800 border border-slate-200/50 shadow-md flex items-center justify-center transition-all duration-200 hover:bg-white hover:text-brand-600 active:scale-95 z-10 hidden sm:flex opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
+                  aria-label={isEn ? "Next image" : "Siguiente imagen"}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -208,6 +226,153 @@ const productJsonLd = {
     <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400 mt-20">
       <p>&copy; {new Date().getFullYear()} FlexForm Fitness. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
     </footer>
+    <script>
+      // Execute when DOM is ready
+      function initGallery() {
+        const gallery = document.getElementById('product-gallery');
+        const mainImg = document.getElementById('main-product-image') as HTMLImageElement;
+        const prevBtn = document.getElementById('prev-image-btn');
+        const nextBtn = document.getElementById('next-image-btn');
+
+        if (!gallery || !mainImg) return;
+
+        let images: string[] = [];
+        try {
+          images = JSON.parse(gallery.dataset.images || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery images:', e);
+          return;
+        }
+
+        if (images.length === 0) return;
+
+        let currentIndex = 0;
+
+        function changeToImage(idx: number) {
+          if (idx < 0) idx = images.length - 1;
+          if (idx >= images.length) idx = 0;
+
+          currentIndex = idx;
+          const newSrc = images[idx];
+
+          mainImg.classList.add('opacity-0');
+          mainImg.src = newSrc;
+
+          const match = newSrc.match(/#pos=([a-zA-Z0-9%_-]+)/);
+          mainImg.style.objectPosition = match ? match[1].replace('_', ' ') : 'center';
+        }
+
+        function updateActiveThumbnail(src: string) {
+          const thumbnails = gallery?.querySelectorAll('.thumbnail-btn');
+          if (!thumbnails) return;
+
+          let matchedIndex = -1;
+
+          // Helper to normalize URL for comparison
+          const getPathname = (urlStr: string) => {
+            try {
+              return new URL(urlStr, window.location.origin).pathname;
+            } catch {
+              return urlStr;
+            }
+          };
+
+          const targetPath = getPathname(src);
+
+          thumbnails.forEach((thumb, idx) => {
+            const thumbImg = thumb.querySelector('img');
+            if (thumbImg && getPathname(thumbImg.src) === targetPath) {
+              matchedIndex = idx;
+            }
+          });
+
+          if (matchedIndex !== -1) {
+            currentIndex = matchedIndex;
+            thumbnails.forEach((thumb, idx) => {
+              if (idx === matchedIndex) {
+                thumb.classList.remove('border-slate-200');
+                thumb.classList.add('border-brand-600', 'ring-2', 'ring-brand-100', 'shadow-sm');
+              } else {
+                thumb.classList.remove('border-brand-600', 'ring-2', 'ring-brand-100', 'shadow-sm');
+                thumb.classList.add('border-slate-200');
+              }
+            });
+
+            // Scroll thumbnail into view if needed
+            const activeThumb = thumbnails[matchedIndex] as HTMLElement;
+            activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          }
+        }
+
+        // Wire up thumbnail clicks
+        const thumbnails = gallery.querySelectorAll('.thumbnail-btn');
+        thumbnails.forEach((thumb) => {
+          thumb.addEventListener('click', () => {
+            const idx = parseInt(thumb.getAttribute('data-index') || '0', 10);
+            changeToImage(idx);
+          });
+        });
+
+        // Wire up desktop arrow buttons
+        prevBtn?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          changeToImage(currentIndex - 1);
+        });
+
+        nextBtn?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          changeToImage(currentIndex + 1);
+        });
+
+        // Synchronize on main image load (triggered by variant clicks or thumbnail/arrow switches)
+        mainImg.addEventListener('load', () => {
+          mainImg.classList.remove('opacity-0');
+          updateActiveThumbnail(mainImg.src);
+        });
+
+        // Initial setup for loaded image active state
+        updateActiveThumbnail(mainImg.src);
+
+        // Swipe gestures on mobile
+        const mainImageContainer = mainImg.parentElement;
+        if (mainImageContainer) {
+          let touchStartX = 0;
+          let touchStartY = 0;
+          let touchStartTime = 0;
+
+          mainImageContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+          }, { passive: true });
+
+          mainImageContainer.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const touchEndTime = Date.now();
+
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            const duration = touchEndTime - touchStartTime;
+
+            // Swipe: short duration, significant horizontal movement, mostly horizontal direction
+            if (duration < 500 && Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {
+              if (diffX > 0) {
+                // Swipe right -> Previous
+                changeToImage(currentIndex - 1);
+              } else {
+                // Swipe left -> Next
+                changeToImage(currentIndex + 1);
+              }
+            }
+          }, { passive: true });
+        }
+      }
+
+      // Initialize on load and re-run on page transitions if applicable
+      initGallery();
+      document.addEventListener('astro:after-swap', initGallery);
+    </script>
 
     <style is:global>
       /* Thin elegant scrollbar for the vertical thumbnail list */

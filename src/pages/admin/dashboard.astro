@@ -5196,8 +5196,8 @@ function getObjectPosition(url: string | undefined): string {
           return;
         }
 
-        if (file.size > 20 * 1024 * 1024) {
-          alert('El archivo de video es demasiado grande. El límite es 20 MB.');
+        if (file.size > 50 * 1024 * 1024) {
+          alert('El archivo de video es demasiado grande. El límite es 50 MB.');
           return;
         }
 

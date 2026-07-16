@@ -1201,8 +1201,14 @@ export const server = {
         const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
         const bucket = admin.storage().bucket(bucketName);
         
-        // List files in the videos/ folder
-        const [files] = await bucket.getFiles({ prefix: 'videos/' });
+        // List files in the videos/ and assets/ folders
+        const [videoFiles] = await bucket.getFiles({ prefix: 'videos/' });
+        const [assetFiles] = await bucket.getFiles({ prefix: 'assets/' });
+        
+        const files = [
+          ...videoFiles,
+          ...assetFiles.filter(f => f.name.endsWith('.mp4') || f.name.endsWith('.webm') || f.name.endsWith('.mov'))
+        ];
 
         const videos = await Promise.all(
           files.map(async (file) => {
@@ -1226,7 +1232,7 @@ export const server = {
               const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${token}`;
 
               return {
-                name: file.name.replace('videos/', ''),
+                name: file.name.replace('videos/', '').replace('assets/', ''),
                 url: downloadUrl,
                 timeCreated: metadata.timeCreated || new Date().toISOString(),
               };
