@@ -6,7 +6,8 @@
     "node": "24.x"
   },
   "overrides": {
-    "astro": "$astro"
+    "astro": "$astro",
+    "uuid": "^11.0.0"
   },
   "scripts": {
     "dev": "astro dev",

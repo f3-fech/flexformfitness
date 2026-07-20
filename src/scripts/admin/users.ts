@@ -1,6 +1,7 @@
 import { actions } from 'astro:actions';
 import { state } from './state';
 import { toggleModal } from './utils';
+import { renderOrderDetails } from './orders';
 
 // Elements
 const usersTableBody = document.getElementById('users-table-body') as HTMLTableSectionElement;
@@ -244,8 +245,6 @@ export function renderUserDetails(user: any, orders: any[]) {
           throw new Error(error?.message || 'No se pudieron cargar los detalles del pedido.');
         }
         
-        // Import dynamic circular dependency to prevent module loading timing bugs
-        const { renderOrderDetails } = await import('./orders');
         renderOrderDetails(data.order);
       } catch (err: any) {
         if (orderContentEl) {
