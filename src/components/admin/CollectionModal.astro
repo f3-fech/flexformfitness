@@ -1,0 +1,279 @@
+---
+// Component for editing collections/folders properties and organizing products
+---
+
+<!-- MODAL: COLLECTION FORM (CREATE / EDIT) -->
+<!-- MODAL: WINDOW FOLDER VIEW & EDIT -->
+<div id="collection-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+  <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] h-[92vh] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+    
+    <!-- Window Title Bar (Windows-like layout) -->
+    <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center select-none shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-5 h-5 bg-amber-500/10 text-amber-500 rounded flex items-center justify-center border border-amber-500/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9" />
+          </svg>
+        </div>
+        <h3 id="collection-modal-title" class="text-xs font-extrabold tracking-widest text-slate-800 uppercase font-mono">
+          Propiedades de Carpeta
+        </h3>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
+        <button type="button" id="close-collection-modal" class="w-5 h-5 flex items-center justify-center rounded bg-slate-100 hover:bg-rose-600 hover:text-white text-slate-500 text-xs font-bold transition-all" title="Cerrar Ventana">
+          ×
+        </button>
+      </div>
+    </div>
+    
+    <!-- Modal Tab Bar -->
+    <div class="px-6 bg-slate-50 border-b border-slate-200 flex gap-4 shrink-0 select-none">
+      <button type="button" id="coll-tab-info" class="py-3 px-1 border-b-2 border-rose-600 text-rose-600 font-extrabold text-xs uppercase tracking-wider focus:outline-none transition-all cursor-pointer">
+        1. Propiedades y SEO
+      </button>
+      <button type="button" id="coll-tab-products" class="py-3 px-1 border-b-2 border-transparent text-slate-400 hover:text-slate-900 font-extrabold text-xs uppercase tracking-wider focus:outline-none transition-all cursor-pointer">
+        2. Organizar Productos
+      </button>
+    </div>
+
+    <form id="collection-form" class="flex-grow overflow-hidden flex flex-col text-xs bg-slate-50/35">
+      <!-- Hidden id field -->
+      <input type="hidden" name="id" id="form-collection-id" />
+
+      <!-- Language Editor Selector Dropdown -->
+      <div class="mx-6 mt-4 flex items-center justify-between bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-3xs shrink-0">
+        <div class="flex flex-col">
+          <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Idioma de Edición / Editing Language</span>
+          <span class="text-[10px] text-slate-500 font-medium">Usa este desplegable para guardar la versión traducida al Inglés</span>
+        </div>
+        <select id="form-collection-lang" class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 text-slate-800 focus:outline-none focus:border-rose-600 cursor-pointer shadow-3xs">
+          <option value="es">🇪🇸 Español (Predeterminado)</option>
+          <option value="en">🇺🇸 English (Traducción)</option>
+        </select>
+      </div>
+
+      <!-- SECTION 1: Folder Settings & SEO -->
+      <div id="coll-sec-info" class="w-full flex-grow overflow-y-auto p-6 flex flex-col lg:flex-row gap-6">
+        <!-- Left Side: Basic Settings -->
+        <div class="w-full lg:w-1/2 flex flex-col gap-5">
+          <div class="border-b border-slate-200 pb-2">
+            <span class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">Ajustes Básicos</span>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="form-collection-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Nombre Carpeta</label>
+              <input type="text" name="title" id="form-collection-title" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold shadow-3xs" placeholder="Ej: Camisetas Mujeres Gym" />
+            </div>
+            
+            <div>
+              <label for="form-collection-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Ruta URL (Slug)</label>
+              <input type="text" name="slug" id="form-collection-slug" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono shadow-3xs" placeholder="camisetas-mujeres-gym" />
+            </div>
+          </div>
+
+          <!-- Show on Index Checkbox & Order -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex items-center gap-3 bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-3xs select-none">
+              <input type="checkbox" id="form-collection-show-on-index" class="w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-500 cursor-pointer" />
+              <div class="flex flex-col">
+                <label for="form-collection-show-on-index" class="text-3xs font-bold text-slate-800 uppercase tracking-widest cursor-pointer">Mostrar en Portada</label>
+                <span class="text-[10px] text-slate-400">Mostrar en la página de inicio.</span>
+              </div>
+            </div>
+            
+            <div class="flex flex-col bg-white border border-slate-200/80 p-3.5 rounded-2xl shadow-3xs">
+              <label for="form-collection-index-order" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Orden en Portada</label>
+              <input type="number" id="form-collection-index-order" min="0" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold" placeholder="0" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Texto SEO / Descripción Corta (HTML permitido)</label>
+            
+            <!-- Editor Container -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden shadow-3xs bg-white">
+              <!-- Tab Selector & Toolbar -->
+              <div class="flex flex-wrap items-center justify-between bg-slate-50 border-b border-slate-200 p-2 gap-2">
+                <div class="flex bg-slate-200/80 p-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider">
+                  <button type="button" id="btn-colmode-visual-desc" class="px-2.5 py-1 rounded-md bg-white text-rose-600 shadow-3xs transition-all focus:outline-none">Vista Visual</button>
+                  <button type="button" id="btn-colmode-html-desc" class="px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-900 transition-all focus:outline-none">Código HTML</button>
+                </div>
+                
+                <div id="coltoolbar-visual-desc" class="flex items-center gap-1">
+                  <button type="button" data-colcmd="formatBlock" data-val="h2" title="Título H2" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 font-bold text-xs focus:outline-none">H2</button>
+                  <button type="button" data-colcmd="formatBlock" data-val="h3" title="Título H3" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 font-bold text-xs focus:outline-none">H3</button>
+                  <span class="w-px h-3.5 bg-slate-300 mx-0.5"></span>
+                  <button type="button" data-colcmd="bold" title="Negrita" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3.75h4.5a3.75 3.75 0 1 1 0 7.5h-4.5M6.75 11.25h6a3.75 3.75 0 1 1 0 7.5h-6v-15Z"></path></svg>
+                  </button>
+                  <button type="button" data-colcmd="italic" title="Cursiva" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 4.5h3m-6 15h6m-1.5-15-3 15"></path></svg>
+                  </button>
+                  <button type="button" data-colcmd="underline" title="Subrayado" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75v1.5a5.25 5.25 0 1 1-10.5 0v-1.5m1.5 10.5h7.5"></path></svg>
+                  </button>
+                  <span class="w-px h-3.5 bg-slate-300 mx-0.5"></span>
+                  <button type="button" data-colcmd="insertUnorderedList" title="Lista" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-3.75 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"></path></svg>
+                  </button>
+                  <button type="button" id="btn-collink-desc" title="Insertar Enlace" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244m6.522-2.235-3.328-3.329"></path></svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div id="colcontainer-visual-desc" class="w-full h-48 relative">
+                <iframe id="iframe-col-desc" class="w-full h-full border-none bg-white"></iframe>
+              </div>
+              
+              <div id="colcontainer-html-desc" class="w-full hidden">
+                <textarea name="description" id="form-collection-desc" rows="6" required class="w-full px-3.5 py-2.5 border-none bg-white text-slate-909 focus:outline-none leading-normal font-sans shadow-3xs" placeholder="Redacta un texto introductorio optimizado para SEO..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Contenido SEO Adicional / Detalles (HTML permitido)</label>
+            
+            <!-- Editor Container -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden shadow-3xs bg-white">
+              <!-- Tab Selector & Toolbar -->
+              <div class="flex flex-wrap items-center justify-between bg-slate-50 border-b border-slate-200 p-2 gap-2">
+                <div class="flex bg-slate-200/80 p-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider">
+                  <button type="button" id="btn-colmode-visual-det" class="px-2.5 py-1 rounded-md bg-white text-rose-600 shadow-3xs transition-all focus:outline-none">Vista Visual</button>
+                  <button type="button" id="btn-colmode-html-det" class="px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-900 transition-all focus:outline-none">Código HTML</button>
+                </div>
+                
+                <div id="coltoolbar-visual-det" class="flex items-center gap-1">
+                  <button type="button" data-colcmd="formatBlock" data-val="h2" title="Título H2" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 font-bold text-xs focus:outline-none">H2</button>
+                  <button type="button" data-colcmd="formatBlock" data-val="h3" title="Título H3" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 font-bold text-xs focus:outline-none">H3</button>
+                  <span class="w-px h-3.5 bg-slate-300 mx-0.5"></span>
+                  <button type="button" data-colcmd="bold" title="Negrita" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3.75h4.5a3.75 3.75 0 1 1 0 7.5h-4.5M6.75 11.25h6a3.75 3.75 0 1 1 0 7.5h-6v-15Z"></path></svg>
+                  </button>
+                  <button type="button" data-colcmd="italic" title="Cursiva" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 4.5h3m-6 15h6m-1.5-15-3 15"></path></svg>
+                  </button>
+                  <button type="button" data-colcmd="underline" title="Subrayado" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75v1.5a5.25 5.25 0 1 1-10.5 0v-1.5m1.5 10.5h7.5"></path></svg>
+                  </button>
+                  <span class="w-px h-3.5 bg-slate-300 mx-0.5"></span>
+                  <button type="button" data-colcmd="insertUnorderedList" title="Lista" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-3.75 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"></path></svg>
+                  </button>
+                  <button type="button" id="btn-collink-det" title="Insertar Enlace" class="p-1 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244m6.522-2.235-3.328-3.329"></path></svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div id="colcontainer-visual-det" class="w-full h-80 relative">
+                <iframe id="iframe-col-det" class="w-full h-full border-none bg-white"></iframe>
+              </div>
+              
+              <div id="colcontainer-html-det" class="w-full hidden">
+                <textarea name="detailedDescription" id="form-collection-detailed-desc" rows="10" class="w-full px-3.5 py-2.5 border-none bg-white text-slate-900 focus:outline-none leading-normal font-sans shadow-3xs" placeholder="Redacta un texto extenso con detalles, FAQs, guías de compra u otra información para posicionar..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: SEO Metadata -->
+        <div class="w-full lg:w-1/2 flex flex-col gap-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-3xs">
+          <div class="border-b border-slate-200 pb-2">
+            <span class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">Metadatos para Google (SEO)</span>
+          </div>
+          
+          <div>
+            <label for="form-collection-seo-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Título de Página (Title Tag)</label>
+            <input type="text" id="form-collection-seo-title" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-bold shadow-3xs" placeholder="Ej: Ropa de Gym de Mujer | FLEX FORM FITNESS" />
+          </div>
+
+          <div>
+            <label for="form-collection-seo-keywords" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Palabras Clave (Meta Keywords - Separadas por comas)</label>
+            <input type="text" id="form-collection-seo-keywords" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono font-semibold shadow-3xs" placeholder="gym, ropa, camisetas" />
+          </div>
+
+          <div>
+            <label for="form-collection-seo-desc" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción en Buscadores (Meta Description)</label>
+            <textarea id="form-collection-seo-desc" rows="4" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-medium shadow-3xs" placeholder="Escribe un resumen atractivo para captar clics en Google..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 2: Organize Products Catalog -->
+      <div id="coll-sec-products" class="w-full flex-grow overflow-hidden flex flex-col lg:flex-row gap-6 p-6 hidden">
+        <!-- Left Column: Products in this Collection (Draggable sorting!) -->
+        <div class="w-full lg:w-1/2 flex flex-col gap-3 overflow-hidden border border-slate-200 bg-white rounded-2xl p-4 shadow-3xs">
+          <div class="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
+            <div>
+              <h4 class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">En esta Colección</h4>
+              <p class="text-[9px] text-slate-400 font-bold select-none mt-0.5" id="coll-current-count">0 asociados</p>
+            </div>
+            <span class="bg-rose-50 text-rose-600 text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded shadow-3xs font-mono">Orden de Salida</span>
+          </div>
+          
+          <!-- Draggable Container for Current Collection Items -->
+          <div id="coll-current-list" class="flex-grow overflow-y-auto flex flex-col gap-2 pr-1 min-h-[250px] bg-slate-50/50 rounded-xl p-2 border border-dashed border-slate-200">
+            <!-- Dynamically populated from JS -->
+          </div>
+        </div>
+
+        <!-- Right Column: Catalog of Available Products -->
+        <div class="w-full lg:w-1/2 flex flex-col gap-3 overflow-hidden border border-slate-200 bg-white rounded-2xl p-4 shadow-3xs">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-slate-100 shrink-0">
+            <div>
+              <h4 class="text-3xs font-extrabold text-slate-800 uppercase tracking-widest font-mono">Disponible en Catálogo</h4>
+              <p class="text-[9px] text-slate-400 font-bold select-none mt-0.5">Haz click en [+] para añadir</p>
+            </div>
+            <input 
+              type="text" 
+              id="coll-catalog-search" 
+              placeholder="Buscar en catálogo..." 
+              class="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-[10px] focus:outline-none focus:border-rose-600 w-full sm:w-40 font-semibold shadow-3xs"
+            />
+          </div>
+
+          <!-- Available Products List -->
+          <div id="coll-available-list" class="flex-grow overflow-y-auto flex flex-col gap-2 pr-1 min-h-[250px]">
+            <!-- Dynamically populated from JS -->
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Window Actions Footer -->
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
+      <div>
+        <button
+          type="button"
+          id="delete-current-collection-btn"
+          class="px-4 py-2 bg-rose-50 hover:bg-rose-650 text-rose-600 hover:text-white border border-rose-100 hover:border-rose-600 rounded-xl text-3xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 hidden"
+        >
+          Eliminar Carpeta
+        </button>
+      </div>
+      
+      <div class="flex gap-3">
+        <button
+          type="button"
+          id="cancel-collection-modal"
+          class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95"
+        >
+          Cerrar
+        </button>
+        <button
+          type="submit"
+          form="collection-form"
+          id="save-collection-btn"
+          class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-2xs"
+        >
+          Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

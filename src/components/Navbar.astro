@@ -115,14 +115,14 @@ const megaMenu = settings.megaMenu;
 const s1Title = megaMenu?.section1?.title ? (isEn ? (megaMenu.section1.titleEn || megaMenu.section1.title) : megaMenu.section1.title) : (isEn ? "Our Collections" : "Nuestras Colecciones");
 const s1Ids = megaMenu?.section1?.collectionIds;
 const s1Collections = s1Ids 
-  ? collections.filter(c => s1Ids.includes(c.id))
+  ? s1Ids.map(id => collections.find(c => c.id === id)).filter(Boolean) as ProductCollection[]
   : collections.slice(0, 5);
 
 // Column 2: Section 2
 const s2Title = megaMenu?.section2?.title ? (isEn ? (megaMenu.section2.titleEn || megaMenu.section2.title) : megaMenu.section2.title) : (isEn ? "More Categories" : "Más Categorías");
 const s2Ids = megaMenu?.section2?.collectionIds;
 const s2Collections = s2Ids 
-  ? collections.filter(c => s2Ids.includes(c.id))
+  ? s2Ids.map(id => collections.find(c => c.id === id)).filter(Boolean) as ProductCollection[]
   : collections.slice(5);
 
 // Promo 1: Lifestyle Image 1
@@ -133,7 +133,8 @@ const p1Title = megaMenu?.promo1?.title
 const p1Subtitle = megaMenu?.promo1?.subtitle 
   ? (isEn ? (megaMenu.promo1.subtitleEn || megaMenu.promo1.subtitle) : megaMenu.promo1.subtitle) 
   : (isEn ? "Explore New" : "Explorar Novedades");
-const p1Link = megaMenu?.promo1?.linkUrl || `/${lang}/colecciones/hombre`;
+const p1RawLink = megaMenu?.promo1?.linkUrl || 'hombre';
+const p1Link = p1RawLink.startsWith('/') ? p1RawLink : `/${lang}/colecciones/${p1RawLink}`;
 
 // Promo 2: Lifestyle Image 2
 const p2Image = megaMenu?.promo2?.imageUrl || "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=600";
@@ -143,7 +144,8 @@ const p2Title = megaMenu?.promo2?.title
 const p2Subtitle = megaMenu?.promo2?.subtitle 
   ? (isEn ? (megaMenu.promo2.subtitleEn || megaMenu.promo2.subtitle) : megaMenu.promo2.subtitle) 
   : (isEn ? "Explore New" : "Explorar Novedades");
-const p2Link = megaMenu?.promo2?.linkUrl || `/${lang}/colecciones/mujer`;
+const p2RawLink = megaMenu?.promo2?.linkUrl || 'mujer';
+const p2Link = p2RawLink.startsWith('/') ? p2RawLink : `/${lang}/colecciones/${p2RawLink}`;
 ---
 
 <!-- Announcement Bar -->
@@ -1029,9 +1031,9 @@ const p2Link = megaMenu?.promo2?.linkUrl || `/${lang}/colecciones/mujer`;
                     <span class="text-sm font-extrabold text-slate-950">
                       $${(p.price / 100).toFixed(2)}
                     </span>
-                    <span class="text-[10px] font-bold text-rose-600 group-hover:underline uppercase tracking-wider">
+                    <a href="/${lang}/productos/${p.slug}" class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
                       ${isEn ? 'View details' : 'Ver más'}
-                    </span>
+                    </a>
                   </div>
                 </div>
               </div>

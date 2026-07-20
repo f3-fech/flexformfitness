@@ -1,12 +1,12 @@
 import { defineAction, ActionError } from 'astro:actions';
-import { z } from 'zod';
+import { z } from 'astro/zod';
 import { randomUUID } from 'crypto';
 import { db, admin } from '../lib/firebase';
 import { getGeneralSettings, clearSettingsCache } from '../lib/settings';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-06-20' as any,
+  apiVersion: '2024-06-20',
 });
 import { sendEmail } from '../lib/mail';
 import type { Order } from '../types';
@@ -77,22 +77,24 @@ const collectionSchema = z.object({
   indexOrder: z.number().int().nonnegative().optional().nullable(),
   seo: seoSchema,
   seo_en: seoSchema.optional(),
+  parentCategory: z.string().optional().nullable(),
 });
 
 const updateCollectionSchema = z.object({
   id: z.string().min(1, 'Collection ID is required'),
-  title: z.string().min(1, 'Title is required'),
+  title: z.string().min(1, 'Title is required').optional(),
   title_en: z.string().optional(),
-  slug: z.string().min(1, 'Slug is required'),
-  description: z.string().min(1, 'Description is required'),
+  slug: z.string().min(1, 'Slug is required').optional(),
+  description: z.string().min(1, 'Description is required').optional(),
   description_en: z.string().optional(),
   detailedDescription: z.string().optional().nullable(),
   detailedDescription_en: z.string().optional().nullable(),
-  productIds: z.array(z.string()),
+  productIds: z.array(z.string()).optional(),
   showOnIndex: z.boolean().optional(),
   indexOrder: z.number().int().nonnegative().optional().nullable(),
-  seo: seoSchema,
+  seo: seoSchema.optional(),
   seo_en: seoSchema.optional(),
+  parentCategory: z.string().optional().nullable(),
 });
 
 // Admin Authorization Guard Helper
@@ -580,22 +582,37 @@ export const server = {
           });
         }
 
-        const existingSnap = await db.collection('collections')
-          .where('slug', '==', data.slug)
-          .get();
-        
-        const otherDocs = existingSnap.docs.filter((doc) => doc.id !== id);
-        if (otherDocs.length > 0) {
+        const oldData = colSnap.data();
+        if (data.slug !== undefined && oldData && (oldData.slug === 'hombre' || oldData.slug === 'mujer') && data.slug !== oldData.slug) {
           throw new ActionError({
-            code: 'CONFLICT',
-            message: 'Another collection with this slug already exists.',
+            code: 'FORBIDDEN',
+            message: 'No se puede modificar el slug de las colecciones fijas (hombre/mujer).',
           });
         }
 
+        if (data.slug !== undefined) {
+          const existingSnap = await db.collection('collections')
+            .where('slug', '==', data.slug)
+            .get();
+          
+          const otherDocs = existingSnap.docs.filter((doc) => doc.id !== id);
+          if (otherDocs.length > 0) {
+            throw new ActionError({
+              code: 'CONFLICT',
+              message: 'Another collection with this slug already exists.',
+            });
+          }
+        }
 
+        const updatePayload: Record<string, any> = {};
+        for (const [key, val] of Object.entries(data)) {
+          if (val !== undefined) {
+            updatePayload[key] = val;
+          }
+        }
 
         await colRef.update({
-          ...data,
+          ...updatePayload,
           updatedAt: new Date(),
         });
 
@@ -631,6 +648,14 @@ export const server = {
           });
         }
 
+        const colData = colSnap.data();
+        if (colData && (colData.slug === 'hombre' || colData.slug === 'mujer')) {
+          throw new ActionError({
+            code: 'FORBIDDEN',
+            message: 'Las colecciones de hombre y mujer son fijas y no se pueden eliminar.',
+          });
+        }
+
         await colRef.delete();
 
         return { success: true };
@@ -643,6 +668,46 @@ export const server = {
         });
       }
     },
+  }),
+
+  // Actions for collection category management
+  getCollectionCategories: defineAction({
+    accept: 'json',
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        const doc = await db.collection('settings').doc('collectionCategories').get();
+        if (doc.exists) {
+          return doc.data() as { categories: string[] };
+        }
+        return { categories: ['Hombre', 'Mujer'] };
+      } catch (error) {
+        console.error('Error fetching collection categories:', error);
+        return { categories: ['Hombre', 'Mujer'] };
+      }
+    }
+  }),
+
+  saveCollectionCategories: defineAction({
+    accept: 'json',
+    input: z.object({
+      categories: z.array(z.string())
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        await db.collection('settings').doc('collectionCategories').set({
+          categories: input.categories
+        });
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error saving collection categories:', error);
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: error.message || 'Failed to save categories.',
+        });
+      }
+    }
   }),
 
   // Action to save General Settings in Firestore
@@ -880,7 +945,7 @@ export const server = {
   saveDbCart: defineAction({
     accept: 'json',
     input: z.object({
-      items: z.record(z.any()),
+      items: z.record(z.string(), z.any()),
     }),
     handler: async (input, context) => {
       const user = context.locals.user;
@@ -1400,11 +1465,62 @@ export const server = {
           }
         }
 
-        // Retrieve limit + 1
-        const snap = await query.limit(limit + 1).get();
-        const docs = snap.docs;
-        const hasMore = docs.length > limit;
-        const items = hasMore ? docs.slice(0, limit) : docs;
+        // Retrieve limit + 1 with in-memory fallback for missing composite indexes (code 9)
+        let docs: any[] = [];
+        let hasMore = false;
+        let items: any[] = [];
+        
+        try {
+          const snap = await query.limit(limit + 1).get();
+          docs = snap.docs;
+          hasMore = docs.length > limit;
+          items = hasMore ? docs.slice(0, limit) : docs;
+        } catch (dbError: any) {
+          // Check if index is missing (Failed Precondition - code 9)
+          if (dbError.code === 9 || String(dbError.message).toLowerCase().includes('index')) {
+            console.warn('[Firestore Fallback] Missing composite index detected, falling back to in-memory filtering/sorting.');
+            
+            // Fallback: Fetch latest 1000 orders (uses default single-field index on createdAt)
+            let fallbackQuery = db.collection('orders').orderBy('createdAt', 'desc').limit(1000);
+            const rawSnap = await fallbackQuery.get();
+            let allOrdersDocs = rawSnap.docs;
+
+            // Apply in-memory filtering
+            if (paymentStatus) {
+              allOrdersDocs = allOrdersDocs.filter(doc => doc.data().paymentStatus === paymentStatus);
+            }
+            if (shippingStatus) {
+              if (shippingStatus === 'return_pending') {
+                allOrdersDocs = allOrdersDocs.filter(doc => doc.data().returnRequest?.status === 'pending');
+              } else {
+                allOrdersDocs = allOrdersDocs.filter(doc => doc.data().shippingStatus === shippingStatus);
+              }
+            }
+            if (search && search.trim() !== '') {
+              const term = search.trim().toLowerCase();
+              allOrdersDocs = allOrdersDocs.filter(doc => {
+                const idMatch = doc.id.toLowerCase().includes(term);
+                const emailMatch = doc.data().customerDetails?.email?.toLowerCase().includes(term);
+                return idMatch || emailMatch;
+              });
+            }
+
+            // In-memory pagination
+            let startIndex = 0;
+            if (lastVisibleId) {
+              const idx = allOrdersDocs.findIndex(doc => doc.id === lastVisibleId);
+              if (idx !== -1) {
+                startIndex = idx + 1;
+              }
+            }
+
+            const paginatedDocs = allOrdersDocs.slice(startIndex, startIndex + limit + 1);
+            hasMore = paginatedDocs.length > limit;
+            items = hasMore ? paginatedDocs.slice(0, limit) : paginatedDocs;
+          } else {
+            throw dbError;
+          }
+        }
 
         const orders = items.map((doc: any) => {
           const data = doc.data();

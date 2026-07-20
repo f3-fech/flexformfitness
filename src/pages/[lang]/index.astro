@@ -192,7 +192,7 @@ const user = Astro.locals.user;
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html lang={lang} class="scroll-smooth">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -265,8 +265,9 @@ const user = Astro.locals.user;
         <section class="collection-section w-full flex flex-col gap-6" data-collection-id={col.id}>
           {idx === 0 ? (
             /* First section: Centered with left & right divider lines on mobile, left-aligned on desktop */
-            <div class="w-full pl-3 pr-2 sm:px-0 pb-3 flex flex-col items-center sm:flex-row sm:justify-between sm:items-center gap-4">
-              <div class="flex items-center justify-center sm:justify-start gap-2 sm:gap-0 flex-grow w-full sm:w-auto">
+            <div class="w-full pl-3 pr-2 sm:px-0 pb-3 flex flex-col items-center sm:flex-row sm:justify-between sm:items-center gap-4 select-none">
+              <div class="flex items-center justify-center sm:justify-start gap-2 sm:gap-4 flex-grow w-full sm:w-auto">
+                <div class="hidden sm:block w-16 h-[1px] bg-gradient-to-r from-transparent to-slate-400"></div>
                 <div class="w-6 shrink-0 h-[1px] bg-slate-300 sm:hidden"></div>
                 <h2 class="text-base md:text-lg font-black italic uppercase tracking-[0.25em] text-slate-800 whitespace-nowrap">
                   {col.title}
@@ -398,9 +399,9 @@ const user = Astro.locals.user;
                     <span class="text-sm font-extrabold text-slate-950">
                       ${(product.price / 100).toFixed(2)}
                     </span>
-                    <span class="text-[10px] font-bold text-rose-600 group-hover:underline uppercase tracking-wider">
+                    <a href={`/${lang}/productos/${product.slug}`} class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
                       {isEn ? "View details" : "Ver más"}
-                    </span>
+                    </a>
                   </div>
                 </div>
               </div>

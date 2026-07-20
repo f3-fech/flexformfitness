@@ -1,0 +1,131 @@
+---
+import type Stripe from 'stripe';
+
+interface Props {
+  freeShippingMin: number;
+  promotionCodes: Stripe.PromotionCode[];
+}
+
+const { freeShippingMin, promotionCodes } = Astro.props;
+---
+
+<div id="form-sub-coupons" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+  <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+    <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Códigos de Descuento (Stripe)</h3>
+    <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Crea cupones activos de descuento en Stripe y desactiva los códigos existentes.</p>
+  </div>
+
+  <!-- Configuration of Free Shipping threshold inside coupons tab -->
+  <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3">
+    <span class="block font-bold text-slate-900 uppercase tracking-wider text-3xs">Ajustes de Envío de la Tienda</span>
+    <form id="form-sub-coupons-free-shipping" class="flex flex-col sm:flex-row items-end gap-3">
+      <div class="flex-1 w-full">
+        <label for="settings-coupons-free-shipping-min" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider font-sans">Monto Mínimo para Envío Gratis (USD)</label>
+        <input
+          type="number"
+          step="0.01"
+          id="settings-coupons-free-shipping-min"
+          value={(freeShippingMin / 100).toFixed(2)}
+          placeholder="Ej: 50.00"
+          class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-xs"
+        />
+      </div>
+      <button
+        type="submit"
+        class="w-full sm:w-auto px-5 py-2.5 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase transition-colors shrink-0"
+      >
+        Guardar Envío
+      </button>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    
+    <!-- Left side: create discount form -->
+    <div class="md:col-span-1 flex flex-col gap-3">
+      <span class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Crear Nuevo Código</span>
+      
+      <div class="flex flex-col gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <div>
+          <label for="promo-code-name" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Nombre del Código</label>
+          <input
+            type="text"
+            id="promo-code-name"
+            placeholder="Ej: SUMMER20"
+            class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-bold uppercase text-xs"
+          />
+        </div>
+
+        <div>
+          <label for="promo-code-type" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Tipo de Descuento</label>
+          <select
+            id="promo-code-type"
+            class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-707 focus:outline-none focus:border-rose-600 font-semibold text-xs"
+          >
+            <option value="percent">Porcentaje (%)</option>
+            <option value="amount">Cantidad Fija (USD)</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="promo-code-value" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Valor del Descuento</label>
+          <input
+            type="number"
+            step="0.01"
+            id="promo-code-value"
+            placeholder="Ej: 20 o 5.00"
+            class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-909 focus:outline-none focus:border-rose-600 font-mono text-xs"
+          />
+        </div>
+
+        <button
+          type="button"
+          id="create-promo-btn"
+          class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs"
+        >
+          Crear Código
+        </button>
+      </div>
+    </div>
+    
+    <!-- Right side: active discount codes list -->
+    <div class="md:col-span-2 flex flex-col gap-2">
+      <span class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Códigos Activos en Stripe</span>
+      
+      <div class="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1" id="promos-list-container">
+        {promotionCodes.length === 0 ? (
+          <div class="p-6 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+            No hay códigos de descuento activos.
+          </div>
+        ) : (
+          promotionCodes.map((promo) => {
+            const coupon = promo.coupon;
+            let discountStr = '';
+            if (coupon.percent_off) {
+              discountStr = `${coupon.percent_off}% de descuento`;
+            } else if (coupon.amount_off) {
+              discountStr = `$${(coupon.amount_off / 100).toFixed(2)} de descuento`;
+            }
+            
+            return (
+              <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors shadow-3xs" data-promo-id={promo.id}>
+                <div class="flex flex-col">
+                  <span class="font-black text-slate-905 font-mono text-sm tracking-wide uppercase">{promo.code}</span>
+                  <span class="text-3xs text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{discountStr} · Permanente</span>
+                </div>
+                <button
+                  type="button"
+                  class="delete-promo-btn text-rose-500 hover:text-rose-600 hover:bg-rose-50 p-2.5 rounded-xl transition-colors font-bold text-base"
+                  data-promo-id={promo.id}
+                  title="Eliminar código de descuento"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  </div>
+</div>

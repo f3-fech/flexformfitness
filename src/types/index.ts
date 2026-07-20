@@ -87,6 +87,7 @@ export interface ProductCollection {
   indexOrder?: number;
   seo: ProductSEO;
   seo_en?: ProductSEO;
+  parentCategory?: string | null;
   createdAt: any;
   updatedAt: any;
 }

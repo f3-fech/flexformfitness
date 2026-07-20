@@ -39,6 +39,10 @@ export const defaultEmailSettings: EmailSettings = {
   
   <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; color: #64748b; font-size: 12px;">
     <p>Si tienes alguna pregunta o necesitas ayuda, responde directamente a este correo.</p>
+    <p style="margin-top: 15px; font-size: 11px; color: #94a3b8; line-height: 1.4;">
+      Si no deseas recibir más ofertas o correos de recuperación de carrito, puedes 
+      <a href="{{unsubscribeUrl}}" style="color: #64748b; text-decoration: underline;">darte de baja aquí</a>.
+    </p>
   </div>
 </div>`,
   shippedSubject: '¡Tu pedido ha sido enviado! 🚚 - FlexForm Fitness',

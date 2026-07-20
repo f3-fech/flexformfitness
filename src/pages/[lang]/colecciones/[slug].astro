@@ -33,16 +33,47 @@ export async function getStaticPaths() {
       ];
     }
 
-    return snap.docs.flatMap((doc) => {
-      const collection = { id: doc.id, ...doc.data() } as ProductCollection;
+    const collections = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ProductCollection);
+
+    return collections.flatMap((collection) => {
+      const finalCollection = { ...collection };
+      
+      if (collection.slug === 'hombre' || collection.slug === 'mujer') {
+        const isHombre = collection.slug === 'hombre';
+        const targetCategoryName = isHombre ? 'Hombre' : 'Mujer';
+        
+        // Find sub-collections
+        const subCollections = collections.filter((c) => {
+          if (c.slug === 'hombre' || c.slug === 'mujer') return false;
+          
+          if (c.parentCategory) {
+            return c.parentCategory === targetCategoryName;
+          }
+          
+          const isMen = c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men');
+          const isWomen = c.slug.includes('mujer') || c.title.toLowerCase().includes('mujer') || c.title.toLowerCase().includes('women');
+          
+          if (isHombre) return isMen;
+          return isWomen && !isMen;
+        });
+        
+        // Aggregate all product IDs
+        const allProductIds = new Set<string>(collection.productIds || []);
+        subCollections.forEach((subCol) => {
+          (subCol.productIds || []).forEach((id) => allProductIds.add(id));
+        });
+        
+        finalCollection.productIds = Array.from(allProductIds);
+      }
+
       return [
         {
           params: { lang: 'es', slug: collection.slug },
-          props: { collection },
+          props: { collection: finalCollection },
         },
         {
           params: { lang: 'en', slug: collection.slug },
-          props: { collection },
+          props: { collection: finalCollection },
         }
       ];
     });
@@ -65,19 +96,80 @@ if (!collection) {
 const { lang } = Astro.params;
 const isEn = lang === 'en';
 
-// Fetch only the products that belong to this collection
+// Fetch sub-collections and products
 let products: Product[] = [];
+let subCollections: ProductCollection[] = [];
 try {
+  if (collection.slug === 'hombre' || collection.slug === 'mujer') {
+    const snap = await db.collection('collections').get();
+    const allCols = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ProductCollection);
+    
+    const isHombre = collection.slug === 'hombre';
+    const targetCategoryName = isHombre ? 'Hombre' : 'Mujer';
+    
+    subCollections = allCols.filter((c) => {
+      if (c.slug === 'hombre' || c.slug === 'mujer') return false;
+      
+      if (c.parentCategory) {
+        return c.parentCategory === targetCategoryName;
+      }
+      
+      const isMen = c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men');
+      const isWomen = c.slug.includes('mujer') || c.title.toLowerCase().includes('mujer') || c.title.toLowerCase().includes('women');
+      
+      if (isHombre) return isMen;
+      return isWomen && !isMen;
+    }).sort((a, b) => (a.indexOrder ?? 999) - (b.indexOrder ?? 999));
+
+    const allProductIds = new Set<string>(collection.productIds || []);
+    subCollections.forEach((subCol) => {
+      (subCol.productIds || []).forEach((id) => allProductIds.add(id));
+    });
+    collection.productIds = Array.from(allProductIds);
+  }
+
   if (collection.productIds && collection.productIds.length > 0) {
     const productsSnap = await db.collection('products').get();
     if (!productsSnap.empty) {
       const allProducts = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
       products = allProducts.filter((p) => collection.productIds.includes(p.id));
+
+      // Sort products by their sub-collection order, then by their position in that sub-collection
+      if (collection.slug === 'hombre' || collection.slug === 'mujer') {
+        products.sort((a, b) => {
+          const subColA = subCollections.find((col) => (col.productIds || []).includes(a.id));
+          const subColB = subCollections.find((col) => (col.productIds || []).includes(b.id));
+          
+          const orderA = subColA ? (subColA.indexOrder ?? 999) : 999;
+          const orderB = subColB ? (subColB.indexOrder ?? 999) : 999;
+          
+          if (orderA !== orderB) {
+            return orderA - orderB;
+          }
+          
+          const idxA = subColA ? subColA.productIds.indexOf(a.id) : 0;
+          const idxB = subColB ? subColB.productIds.indexOf(b.id) : 0;
+          return idxA - idxB;
+        });
+      }
     }
   }
 } catch (error) {
   console.error('Error fetching products for collection:', error);
 }
+
+const getProductCollectionIds = (prodId: string) => {
+  const ids = [];
+  subCollections.forEach((subCol) => {
+    if ((subCol.productIds || []).includes(prodId)) {
+      ids.push(subCol.id);
+    }
+  });
+  if ((collection.productIds || []).includes(prodId)) {
+    ids.push(collection.id);
+  }
+  return ids.join(' ');
+};
 
 const getObjectPosition = (url: string | undefined): string => {
   if (!url) return 'center';
@@ -159,6 +251,13 @@ const collectionDetailedDescription = isEn ? (collection.detailedDescription_en 
 
 const seoTitle = isEn ? (collection.seo_en?.title || collection.seo?.title || `${collectionTitle} | FLEX FORM FITNESS`) : (collection.seo?.title || `${collectionTitle} | FLEX FORM FITNESS`);
 const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?.description || collectionDescription) : (collection.seo?.description || collectionDescription);
+
+// Helper to remove gender suffixes from filter titles
+const cleanFilterTitle = (title: string): string => {
+  return title
+    .replace(/\s*(?:de|para|of|for)?\s*[-–—]?\s*(hombre|mujer|men|women)$/i, '')
+    .trim();
+};
 ---
 
 <!doctype html>
@@ -207,11 +306,54 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
           </p>
         )}
         
-        <span class="text-3xs text-slate-550 font-bold uppercase tracking-widest mt-4">
+        <span id="products-count-badge" class="text-3xs text-slate-550 font-bold uppercase tracking-widest mt-4">
           {products.length} {products.length === 1 ? (isEn ? 'Product Found' : 'Producto Encontrado') : (isEn ? 'Products Found' : 'Productos Encontrados')}
         </span>
       </div>
     </section>
+
+    {subCollections.length > 0 && (
+      <section class="w-full bg-slate-50 border-t border-b border-slate-100 py-6 px-4 md:px-8 shadow-3xs">
+        {/* Full-Width Integrated Filter Panel (Gordito de panel, fino de filtros) */}
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-x-6 gap-y-3.5">
+          <!-- Filtro Ver todo -->
+          <button
+            type="button"
+            class="category-filter-btn group flex items-center gap-1.5 text-[10.5px] md:text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200 select-none bg-transparent py-1 border-b border-slate-950 text-slate-950 cursor-pointer"
+            data-collection-id="all"
+            data-active="true"
+          >
+            <span>{isEn ? "View All" : "Ver todo"}</span>
+            <svg class="w-2.5 h-2.5 transform group-hover:translate-x-0.5 transition-all text-slate-950" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </button>
+
+          <!-- Filtros de Subcolecciones -->
+          {subCollections.map((subCol) => {
+            const subTitle = isEn ? (subCol.title_en || subCol.title) : subCol.title;
+            return (
+              <>
+                <!-- Separador adaptativo (oculto en móvil) -->
+                <span class="category-separator hidden md:inline-block w-[1px] h-3.5 bg-slate-300/40 mx-2 shrink-0"></span>
+                
+                <button
+                  type="button"
+                  class="category-filter-btn group flex items-center gap-1.5 text-[10.5px] md:text-xs font-semibold uppercase tracking-[0.18em] transition-all duration-200 select-none bg-transparent py-1 border-b border-transparent text-slate-400 hover:text-slate-800 cursor-pointer"
+                  data-collection-id={subCol.id}
+                  data-active="false"
+                >
+                  <span>{cleanFilterTitle(subTitle)}</span>
+                  <svg class="w-2.5 h-2.5 transform group-hover:translate-x-0.5 transition-all text-slate-300 group-hover:text-slate-500 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </button>
+              </>
+            );
+          })}
+        </div>
+      </section>
+    )}
 
     <!-- Products Catalog Grid -->
     <main class="w-full px-2 sm:px-4 md:px-8 py-12 flex-grow">
@@ -219,7 +361,7 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
         {products.length > 0 ? (
           <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
             {products.map((product) => (
-              <div class="product-card group flex flex-col justify-between w-full">
+              <div class="product-card group flex flex-col justify-between w-full" data-collections={getProductCollectionIds(product.id)}>
                 {/* Product Image */}
               <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
                 <!-- Swipeable Images Container -->
@@ -299,9 +441,9 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
                     <span class="text-sm font-extrabold text-slate-950">
                       ${(product.price / 100).toFixed(2)}
                     </span>
-                    <span class="text-[10px] font-bold text-rose-600 group-hover:underline uppercase tracking-wider">
+                    <a href={`/${lang}/productos/${product.slug}`} class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
                       {isEn ? "View details" : "Ver más"}
-                    </span>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -444,6 +586,63 @@ const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?
               }
             }
           });
+        });
+      });
+
+      // Integrated Filter Panel logic
+      const categoryFilterBtns = document.querySelectorAll('.category-filter-btn');
+      const productCards = document.querySelectorAll('.product-card');
+      const countBadge = document.getElementById('products-count-badge');
+
+      // Handle category selection
+      categoryFilterBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const selectedId = btn.getAttribute('data-collection-id') || 'all';
+
+          // Reset active classes on all filter buttons
+          categoryFilterBtns.forEach((b) => {
+            b.setAttribute('data-active', 'false');
+            b.classList.remove('border-slate-950', 'text-slate-950');
+            b.classList.add('border-transparent', 'text-slate-400', 'hover:text-slate-800');
+            
+            const arrow = b.querySelector('svg');
+            if (arrow) {
+              arrow.classList.remove('text-slate-950');
+              arrow.classList.add('text-slate-300', 'group-hover:text-slate-500');
+            }
+          });
+
+          // Set active classes to selected button
+          btn.setAttribute('data-active', 'true');
+          btn.classList.remove('border-transparent', 'text-slate-400', 'hover:text-slate-800');
+          btn.classList.add('border-slate-950', 'text-slate-950');
+
+          const arrow = btn.querySelector('svg');
+          if (arrow) {
+            arrow.classList.remove('text-slate-300', 'group-hover:text-slate-500');
+            arrow.classList.add('text-slate-950');
+          }
+
+          // Filter actual product list
+          let visibleCount = 0;
+          productCards.forEach((card) => {
+            const assocIds = card.getAttribute('data-collections') || '';
+            if (selectedId === 'all' || assocIds.split(' ').includes(selectedId)) {
+              (card as HTMLElement).style.display = 'flex';
+              visibleCount++;
+            } else {
+              (card as HTMLElement).style.display = 'none';
+            }
+          });
+
+          // Update count badge
+          if (countBadge) {
+            const isEnPage = window.location.pathname.includes('/en');
+            const labelText = isEnPage
+              ? `${visibleCount} ${visibleCount === 1 ? 'Product Found' : 'Products Found'}`
+              : `${visibleCount} ${visibleCount === 1 ? 'Producto Encontrado' : 'Productos Encontrados'}`;
+            countBadge.textContent = labelText;
+          }
         });
       });
     </script>

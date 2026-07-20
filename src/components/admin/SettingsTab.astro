@@ -1,0 +1,714 @@
+---
+import type { GeneralSettings } from '../../lib/settings';
+import type { ProductCollection } from '../../types';
+import type Stripe from 'stripe';
+import CouponTab from './CouponTab.astro';
+
+interface Props {
+  settings: GeneralSettings;
+  collections: ProductCollection[];
+  promotionCodes: Stripe.PromotionCode[];
+}
+
+const { settings, collections, promotionCodes } = Astro.props;
+
+const popularCountries = ['ES', 'FR', 'DE', 'IT', 'PT', 'GB', 'US', 'CA', 'MX'];
+const otherCountries = settings.markets.filter((c) => !popularCountries.includes(c));
+---
+
+<section id="section-settings" class="w-full hidden">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wider">Configuración General</h2>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <!-- Left Side: Sub-navigation sidebar menu -->
+    <div class="md:col-span-1 flex flex-col gap-1 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm h-fit">
+      <button
+        type="button"
+        id="subtab-shipping-btn"
+        class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.75a1.125 1.125 0 0 1-1.125-1.125V15h9.75M8.25 18.75a1.5 1.5 0 0 0 3 0M12 18.75a1.5 1.5 0 0 0-3 0m3 0h3.75a1.125 1.125 0 0 0 1.125-1.125V18m-4.875-13.5v10.125c0 .621.504 1.125 1.125 1.125H18M15 4.5V15h4.5M19.5 18a2.25 2.25 0 0 0-2.25-2.25h-1.5A2.25 2.25 0 0 0 13.5 18m6 0a2.25 2.25 0 0 1-2.25 2.25h-1.5A2.25 2.25 0 0 1 13.5 18" /></svg>
+        Envíos y Mercados
+      </button>
+      <button
+        type="button"
+        id="subtab-admins-btn"
+        class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm-3.75 7.875c0-1.242 1.343-2.25 3-2.25s3 1.008 3 2.25H6.75Z" /></svg>
+        Administradores
+      </button>
+      <button
+        type="button"
+        id="subtab-branding-btn"
+        class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 3.395-1.622m-3.395 1.622a15.999 15.999 0 0 1-1.622-3.395m3.42-3.42L15 4.5M10.97 8.53 4.5 15" /></svg>
+        Identidad de Marca
+      </button>
+      <button
+        type="button"
+        id="subtab-megamenu-btn"
+        class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+        Editor de Mega Menú
+      </button>
+      <button
+        type="button"
+        id="subtab-coupons-btn"
+        class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a2.25 2.25 0 0 0 3.181 0l5.178-5.178a2.25 2.25 0 0 0 0-3.181l-9.58-9.581A2.25 2.25 0 0 0 9.568 3Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
+        Códigos Descuento
+      </button>
+    </div>
+
+    <!-- Right Side: Forms/Content Panel -->
+    <div class="md:col-span-3 flex flex-col gap-6 text-xs text-slate-705">
+      
+      <!-- SUBSECTION: SHIPPING & MARKETS -->
+      <form id="form-sub-shipping" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm">
+        <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+          <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Envíos y Mercados</h3>
+          <p class="text-slate-400 text-3xs normal-case leading-normal">Configura el costo de los envíos estándar, el umbral para envío gratuito y los códigos de país habilitados en Stripe.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="settings-shipping-price" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Envío Estándar ($/€, Ej: 4.99)</label>
+            <input
+              type="number"
+              step="0.01"
+              id="settings-shipping-price"
+              value={(settings.shippingPrice / 100).toFixed(2)}
+              required
+              class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-sm"
+            />
+          </div>
+          <div>
+            <label for="settings-free-shipping-min" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Límite Envío Gratis ($/€, Ej: 50.00)</label>
+            <input
+              type="number"
+              step="0.01"
+              id="settings-free-shipping-min"
+              value={(settings.freeShippingMin / 100).toFixed(2)}
+              required
+              class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-sm"
+            />
+          </div>
+          <div class="md:col-span-2 flex flex-col gap-4">
+            <div>
+              <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider">Selección de Países (Mercados de Stripe)</span>
+              
+              <!-- Regional Quick Select Buttons -->
+              <div class="flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  id="preset-europe-btn"
+                  class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-3xs font-black uppercase tracking-wider transition-colors border border-slate-200 cursor-pointer"
+                >
+                  🇪🇺 Europa (UE)
+                </button>
+                <button
+                  type="button"
+                  id="preset-northamerica-btn"
+                  class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-3xs font-black uppercase tracking-wider transition-colors border border-slate-200 cursor-pointer"
+                >
+                  🌎 Norteamérica (US, CA, MX)
+                </button>
+                <button
+                  type="button"
+                  id="preset-clear-btn"
+                  class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 rounded-xl text-3xs font-black uppercase tracking-wider transition-colors border border-rose-100 cursor-pointer"
+                >
+                  ✕ Deseleccionar Todo
+                </button>
+              </div>
+              
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-h-[180px] overflow-y-auto">
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="ES" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('ES')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">ES (España)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="FR" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('FR')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">FR (Francia)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="DE" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('DE')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">DE (Alemania)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="IT" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('IT')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">IT (Italia)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="PT" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('PT')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">PT (Portugal)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="GB" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('GB')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">GB (R. Unido)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="US" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('US')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">US (EE.UU.)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="CA" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('CA')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">CA (Canadá)</span>
+                </label>
+                <label class="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-all cursor-pointer">
+                  <input type="checkbox" name="country-checkbox" value="MX" class="country-cb w-4 h-4 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={settings.markets.includes('MX')} />
+                  <span class="text-2xs font-extrabold uppercase text-slate-700 font-mono">MX (México)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Auxiliary manual input for other countries -->
+            <div>
+              <label for="settings-other-markets" class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-3xs">Otros Países Adicionales (Separados por comas, ej: JP, AU, CH)</label>
+              <input
+                type="text"
+                id="settings-other-markets"
+                value={otherCountries.join(', ')}
+                placeholder="Ej: JP, AU, CH"
+                class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t border-slate-100">
+          <button
+            type="submit"
+            id="save-shipping-btn"
+            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+          >
+            Guardar Envíos y Mercados
+          </button>
+        </div>
+      </form>
+
+      <!-- SUBSECTION: ADMINISTRATORS -->
+      <form id="form-sub-admins" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+        <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+          <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Administradores del Sistema</h3>
+          <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Delega o revoca permisos de acceso de administrador secundarios por correo electrónico.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="md:col-span-1 flex flex-col gap-3">
+            <label for="new-admin-email" class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Agregar Administrador</label>
+            <div class="flex gap-2">
+              <input
+                type="email"
+                id="new-admin-email"
+                placeholder="admin@flexform.com"
+                class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-medium"
+              />
+              <button
+                type="button"
+                id="add-admin-btn"
+                class="px-4 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase transition-colors shrink-0"
+              >
+                Añadir
+              </button>
+            </div>
+            <p class="text-slate-400 text-3xs leading-normal font-medium">
+              Los administradores delegados podrán acceder a todo el panel usando su propia cuenta de Firebase Auth / Google.
+            </p>
+          </div>
+
+          <div class="md:col-span-2 flex flex-col gap-2">
+            <span class="block font-semibold text-slate-500 uppercase tracking-wider mb-1">Administradores Autorizados</span>
+            <div class="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1" id="admins-list-container">
+              <!-- Super Admin (Read-only) -->
+              <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="flex flex-col">
+                  <span class="font-bold text-slate-800 font-mono">{import.meta.env.SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || 'admin@flexform.com'}</span>
+                  <span class="text-3xs text-rose-600 font-extrabold uppercase tracking-wider mt-0.5">Superadministrador Principal (.env)</span>
+                </div>
+                <span class="text-2xs text-slate-400 italic px-2">Solo lectura</span>
+              </div>
+
+              <!-- Dynamic Admins list -->
+              {settings.admins && settings.admins.map((adminEmail) => (
+                <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors admin-row" data-email={adminEmail}>
+                  <span class="font-bold text-slate-800 font-mono">{adminEmail}</span>
+                  <button
+                    type="button"
+                    class="remove-admin-btn text-rose-500 hover:text-rose-600 hover:bg-rose-50 p-2.5 rounded-xl transition-colors font-bold text-base"
+                    title="Eliminar administrador"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-3xs font-extrabold uppercase tracking-widest border border-emerald-100 select-none">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Autoguardado Activo
+          </span>
+        </div>
+      </form>
+
+      <!-- SUBSECTION: BRANDING (LOGO & FAVICON & HERO VIDEO) -->
+      <form id="form-sub-branding" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+        <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+          <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Identidad de Marca</h3>
+          <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Introduce las URLs para el logotipo, el favicon y el video de portada de tu sitio.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="settings-logo" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">URL del Logotipo</label>
+            <input
+              type="text"
+              id="settings-logo"
+              value={settings.logoUrl || ''}
+              placeholder="Ej: /logo.png o https://..."
+              class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-sm"
+            />
+          </div>
+          <div>
+            <label for="settings-favicon" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">URL del Favicon</label>
+            <input
+              type="text"
+              id="settings-favicon"
+              value={settings.faviconUrl || ''}
+              placeholder="Ej: /favicon.ico o https://..."
+              class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-sm"
+            />
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-4 flex flex-col gap-4">
+          <div>
+            <label for="settings-hero-video" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">URL del Video del Hero</label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                id="settings-hero-video"
+                value={settings.heroVideoUrl || ''}
+                placeholder="Ej: https://..."
+                class="flex-grow px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-sm"
+              />
+              <button
+                type="button"
+                id="open-video-gallery-btn"
+                class="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase transition-colors shrink-0"
+              >
+                Seleccionar Video
+              </button>
+            </div>
+            
+            <!-- Preview of the current video -->
+            <div id="settings-hero-video-preview" class="mt-3 aspect-video max-w-sm rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+              {settings.heroVideoUrl ? (
+                <video src={settings.heroVideoUrl} autoplay loop muted playsinline class="w-full h-full object-cover" />
+              ) : (
+                <span class="text-3xs text-slate-400 font-bold uppercase tracking-widest">Sin Vista Previa</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t border-slate-100">
+          <button
+            type="submit"
+            id="save-branding-btn"
+            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+          >
+            Guardar Imagen y Marca
+          </button>
+        </div>
+      </form>
+
+      <!-- SUBSECTION: MEGA MENU EDITOR -->
+      <form id="form-sub-megamenu" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
+        <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+          <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Editor de Mega Menú</h3>
+          <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Configura los títulos, colecciones e imágenes promocionales que aparecen en el menú desplegable "Colecciones".</p>
+        </div>
+
+        <!-- Columnas de Colecciones -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+          <!-- Sección 1 -->
+          <div class="flex flex-col gap-4">
+            <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 1: Colecciones Principales</span>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="megamenu-s1-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Español)</label>
+                <input
+                  type="text"
+                  id="megamenu-s1-title"
+                  value={settings.megaMenu?.section1?.title || 'Nuestras Colecciones'}
+                  placeholder="Nuestras Colecciones"
+                  class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                />
+              </div>
+              <div>
+                <label for="megamenu-s1-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Inglés)</label>
+                <input
+                  type="text"
+                  id="megamenu-s1-title-en"
+                  value={settings.megaMenu?.section1?.titleEn || 'Our Collections'}
+                  placeholder="Our Collections"
+                  class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider">Categorías en Columna 1 (Arrastra para ordenar)</span>
+              <div id="megamenu-s1-selected-list" class="flex flex-col gap-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl min-h-[120px] max-h-[220px] overflow-y-auto">
+                <!-- Dynamically loaded from JS -->
+              </div>
+              <div class="mt-3">
+                <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider text-3xs font-mono">Añadir Categoría</span>
+                <div class="relative custom-dropdown" id="megamenu-s1-dropdown-container">
+                  <button type="button" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:border-slate-350 transition-colors focus:outline-none focus:border-rose-600 text-xs font-bold shadow-3xs cursor-pointer select-none">
+                    <span class="dropdown-selected-text">Seleccionar categoría para añadir...</span>
+                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <div id="megamenu-s1-available-list" class="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden z-20 hidden flex flex-col max-h-[180px] overflow-y-auto dropdown-options-list py-1">
+                    <!-- Populated via JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sección 2 -->
+          <div class="flex flex-col gap-4">
+            <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 2: Otras Colecciones</span>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="megamenu-s2-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Español)</label>
+                <input
+                  type="text"
+                  id="megamenu-s2-title"
+                  value={settings.megaMenu?.section2?.title || 'Más Categorías'}
+                  placeholder="Más Categorías"
+                  class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                />
+              </div>
+              <div>
+                <label for="megamenu-s2-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título (Inglés)</label>
+                <input
+                  type="text"
+                  id="megamenu-s2-title-en"
+                  value={settings.megaMenu?.section2?.titleEn || 'More Categories'}
+                  placeholder="More Categories"
+                  class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-medium text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider">Categorías en Columna 2 (Arrastra para ordenar)</span>
+              <div id="megamenu-s2-selected-list" class="flex flex-col gap-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl min-h-[120px] max-h-[220px] overflow-y-auto">
+                <!-- Dynamically loaded from JS -->
+              </div>
+              <div class="mt-3">
+                <span class="block font-semibold mb-2 text-slate-500 uppercase tracking-wider text-3xs font-mono">Añadir Categoría</span>
+                <div class="relative custom-dropdown" id="megamenu-s2-dropdown-container">
+                  <button type="button" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:border-slate-350 transition-colors focus:outline-none focus:border-rose-600 text-xs font-bold shadow-3xs cursor-pointer select-none">
+                    <span class="dropdown-selected-text">Seleccionar categoría para añadir...</span>
+                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <div id="megamenu-s2-available-list" class="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden z-20 hidden flex flex-col max-h-[180px] overflow-y-auto dropdown-options-list py-1">
+                    <!-- Populated via JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Promociones destacadas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Promo 1 -->
+          <div class="flex flex-col gap-4 bg-slate-50/50 p-4 border border-slate-200 rounded-2xl">
+            <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 3: Imagen Destacada 1</span>
+            
+            <div class="flex flex-col gap-3">
+              <div class="flex gap-4 items-start">
+                <div id="megamenu-p1-preview" class="w-16 h-16 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-3xs">
+                  {settings.megaMenu?.promo1?.imageUrl ? (
+                    <img src={settings.megaMenu.promo1.imageUrl} class="w-full h-full object-cover" />
+                  ) : (
+                    <span class="text-3xs text-slate-400 font-extrabold uppercase select-none">No Img</span>
+                  )}
+                </div>
+                <div class="flex-grow">
+                  <label for="megamenu-p1-image" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Imagen Destacada (Columna 3)</label>
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      id="megamenu-p1-image"
+                      value={settings.megaMenu?.promo1?.imageUrl || ''}
+                      placeholder="https://..."
+                      class="flex-grow px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-xs"
+                    />
+                    <button
+                      type="button"
+                      class="open-gallery-btn px-3 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-3xs font-extrabold uppercase transition-all duration-200 active:scale-95 shrink-0 cursor-pointer shadow-3xs"
+                      data-input-id="megamenu-p1-image"
+                      data-preview-id="megamenu-p1-preview"
+                    >
+                      Buscar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="megamenu-p1-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título Botón (ES)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p1-title"
+                    value={settings.megaMenu?.promo1?.title || ''}
+                    placeholder="Ej: Ver Novedades"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label for="megamenu-p1-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título Botón (EN)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p1-title-en"
+                    value={settings.megaMenu?.promo1?.titleEn || ''}
+                    placeholder="Ej: Shop New"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="megamenu-p1-subtitle" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (ES)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p1-subtitle"
+                    value={settings.megaMenu?.promo1?.subtitle || ''}
+                    placeholder="Ej: Colección Técnica"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label for="megamenu-p1-subtitle-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (EN)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p1-subtitle-en"
+                    value={settings.megaMenu?.promo1?.subtitleEn || ''}
+                    placeholder="Ej: Tech Collection"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <span class="block font-semibold mb-1.5 text-slate-500 uppercase tracking-wider text-3xs font-mono">Categoría de Destino</span>
+                <input type="hidden" id="megamenu-p1-link" value={settings.megaMenu?.promo1?.linkUrl || ''} />
+                <div class="relative custom-dropdown single-select-dropdown" id="megamenu-p1-dropdown-container" data-input-id="megamenu-p1-link">
+                  <button type="button" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:border-slate-350 transition-colors focus:outline-none focus:border-rose-600 text-xs font-bold shadow-3xs cursor-pointer select-none">
+                    <span class="dropdown-selected-text">
+                      {(() => {
+                        const selectedCol = collections.find(c => settings.megaMenu?.promo1?.linkUrl === c.slug || settings.megaMenu?.promo1?.linkUrl?.endsWith(`/${c.slug}`));
+                        return selectedCol ? selectedCol.title.toUpperCase() : "SELECCIONAR CATEGORÍA...";
+                      })()}
+                    </span>
+                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <div class="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden z-20 hidden flex flex-col max-h-[180px] overflow-y-auto dropdown-options-list py-1">
+                    <button type="button" class="dropdown-option-item text-left px-3.5 py-2 hover:bg-slate-50 text-2xs font-extrabold uppercase text-slate-700 transition-colors cursor-pointer" data-value="">
+                      -- Sin categoría --
+                    </button>
+                    {collections.map(c => {
+                      const isSelected = settings.megaMenu?.promo1?.linkUrl === c.slug || settings.megaMenu?.promo1?.linkUrl?.endsWith(`/${c.slug}`);
+                      return (
+                        <button 
+                          type="button" 
+                          class={`dropdown-option-item text-left px-3.5 py-2 hover:bg-slate-50 text-2xs font-extrabold uppercase text-slate-700 transition-colors cursor-pointer flex justify-between items-center ${isSelected ? 'bg-slate-50' : ''}`}
+                          data-value={c.slug}
+                          data-title={c.title}
+                        >
+                          <span>{c.title}</span>
+                          <svg class={`w-3.5 h-3.5 text-rose-600 shrink-0 select-checkmark ${isSelected ? '' : 'hidden'}`} fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Promo 2 -->
+          <div class="flex flex-col gap-4 bg-slate-50/50 p-4 border border-slate-200 rounded-2xl">
+            <span class="block font-bold text-slate-900 uppercase tracking-wider text-2xs">Columna 4: Imagen Destacada 2</span>
+            
+            <div class="flex flex-col gap-3">
+              <div class="flex gap-4 items-start">
+                <div id="megamenu-p2-preview" class="w-16 h-16 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-3xs">
+                  {settings.megaMenu?.promo2?.imageUrl ? (
+                    <img src={settings.megaMenu.promo2.imageUrl} class="w-full h-full object-cover" />
+                  ) : (
+                    <span class="text-3xs text-slate-400 font-extrabold uppercase select-none">No Img</span>
+                  )}
+                </div>
+                <div class="flex-grow">
+                  <label for="megamenu-p2-image" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Imagen Destacada (Columna 4)</label>
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      id="megamenu-p2-image"
+                      value={settings.megaMenu?.promo2?.imageUrl || ''}
+                      placeholder="https://..."
+                      class="flex-grow px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-xs"
+                    />
+                    <button
+                      type="button"
+                      class="open-gallery-btn px-3 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-3xs font-extrabold uppercase transition-all duration-200 active:scale-95 shrink-0 cursor-pointer shadow-3xs"
+                      data-input-id="megamenu-p2-image"
+                      data-preview-id="megamenu-p2-preview"
+                    >
+                      Buscar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="megamenu-p2-title" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título Botón (ES)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p2-title"
+                    value={settings.megaMenu?.promo2?.title || ''}
+                    placeholder="Ej: Ropa de Mujer"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label for="megamenu-p2-title-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Título Botón (EN)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p2-title-en"
+                    value={settings.megaMenu?.promo2?.titleEn || ''}
+                    placeholder="Ej: Women's Wear"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="megamenu-p2-subtitle" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (ES)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p2-subtitle"
+                    value={settings.megaMenu?.promo2?.subtitle || ''}
+                    placeholder="Ej: Explorar Novedades"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label for="megamenu-p2-subtitle-en" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Subtítulo (EN)</label>
+                  <input
+                    type="text"
+                    id="megamenu-p2-subtitle-en"
+                    value={settings.megaMenu?.promo2?.subtitleEn || ''}
+                    placeholder="Explore New"
+                    class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <span class="block font-semibold mb-1.5 text-slate-500 uppercase tracking-wider text-3xs font-mono">Categoría de Destino</span>
+                <input type="hidden" id="megamenu-p2-link" value={settings.megaMenu?.promo2?.linkUrl || ''} />
+                <div class="relative custom-dropdown single-select-dropdown" id="megamenu-p2-dropdown-container" data-input-id="megamenu-p2-link">
+                  <button type="button" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:border-slate-350 transition-colors focus:outline-none focus:border-rose-600 text-xs font-bold shadow-3xs cursor-pointer select-none">
+                    <span class="dropdown-selected-text">
+                      {(() => {
+                        const selectedCol = collections.find(c => settings.megaMenu?.promo2?.linkUrl === c.slug || settings.megaMenu?.promo2?.linkUrl?.endsWith(`/${c.slug}`));
+                        return selectedCol ? selectedCol.title.toUpperCase() : "SELECCIONAR CATEGORÍA...";
+                      })()}
+                    </span>
+                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <div class="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden z-20 hidden flex flex-col max-h-[180px] overflow-y-auto dropdown-options-list py-1">
+                    <button type="button" class="dropdown-option-item text-left px-3.5 py-2 hover:bg-slate-50 text-2xs font-extrabold uppercase text-slate-700 transition-colors cursor-pointer" data-value="">
+                      -- Sin categoría --
+                    </button>
+                    {collections.map(c => {
+                      const isSelected = settings.megaMenu?.promo2?.linkUrl === c.slug || settings.megaMenu?.promo2?.linkUrl?.endsWith(`/${c.slug}`);
+                      return (
+                        <button 
+                          type="button" 
+                          class={`dropdown-option-item text-left px-3.5 py-2 hover:bg-slate-50 text-2xs font-extrabold uppercase text-slate-700 transition-colors cursor-pointer flex justify-between items-center ${isSelected ? 'bg-slate-50' : ''}`}
+                          data-value={c.slug}
+                          data-title={c.title}
+                        >
+                          <span>{c.title}</span>
+                          <svg class={`w-3.5 h-3.5 text-rose-600 shrink-0 select-checkmark ${isSelected ? '' : 'hidden'}`} fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bridge for megamenu initial lists -->
+        <div id="megamenu-initial-bridge" 
+          data-s1={JSON.stringify(settings.megaMenu?.section1?.collectionIds || [])}
+          data-s2={JSON.stringify(settings.megaMenu?.section2?.collectionIds || [])}
+          data-all={JSON.stringify(collections.map(c => ({ id: c.id, title: c.title })))}
+          class="hidden"
+        ></div>
+
+        <!-- Submit button -->
+        <div class="flex justify-end pt-4 border-t border-slate-100">
+          <button
+            type="submit"
+            id="save-megamenu-btn"
+            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+          >
+            Guardar Configuración de Menú
+          </button>
+        </div>
+      </form>
+
+      <!-- SUBSECTION: STRIPE DISCOUNT CODES -->
+      <CouponTab freeShippingMin={settings.freeShippingMin} promotionCodes={promotionCodes} />
+
+    </div>
+  </div>
+</section>

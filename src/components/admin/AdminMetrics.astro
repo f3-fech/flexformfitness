@@ -1,0 +1,50 @@
+---
+interface Props {
+  totalRevenue: number;
+  paidOrdersCount: number;
+  pendingShipmentsCount: number;
+  averageOrderValue: number;
+  returnedOrdersCount: number;
+}
+
+const {
+  totalRevenue,
+  paidOrdersCount,
+  pendingShipmentsCount,
+  averageOrderValue,
+  returnedOrdersCount
+} = Astro.props;
+---
+
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+  <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+    <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Ingresos Totales</span>
+    <span class="text-xl sm:text-2xl font-bold tracking-tight text-emerald-600 font-mono">
+      ${(totalRevenue / 100).toFixed(2)}
+    </span>
+  </div>
+  <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+    <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Pedidos Pagados</span>
+    <span class="text-xl sm:text-2xl font-bold tracking-tight text-slate-950">
+      {paidOrdersCount}
+    </span>
+  </div>
+  <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+    <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Pedidos por Enviar</span>
+    <span class="text-xl sm:text-2xl font-bold tracking-tight text-amber-600">
+      {pendingShipmentsCount}
+    </span>
+  </div>
+  <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm">
+    <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Ticket Medio</span>
+    <span class="text-xl sm:text-2xl font-bold tracking-tight text-slate-950 font-mono">
+      ${(averageOrderValue / 100).toFixed(2)}
+    </span>
+  </div>
+  <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-1 shadow-sm col-span-2 sm:col-span-1">
+    <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Pedidos Devueltos</span>
+    <span class="text-xl sm:text-2xl font-bold tracking-tight text-rose-600">
+      {returnedOrdersCount}
+    </span>
+  </div>
+</div>

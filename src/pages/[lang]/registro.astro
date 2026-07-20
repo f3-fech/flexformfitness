@@ -27,7 +27,7 @@ const isEn = lang === 'en';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;955&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-center py-6 sm:py-12 px-4 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
       <!-- Logo -->
       <a href={`/${lang}`} class="inline-flex flex-col group mb-6">
@@ -359,6 +359,16 @@ const isEn = lang === 'en';
 
         try {
           const userCredential = await signInWithPopup(auth, googleProvider);
+          try {
+            await actions.saveMarketingConsent({
+              email: userCredential.user.email || '',
+              consent: true,
+              name: userCredential.user.displayName || '',
+              userId: userCredential.user.uid,
+            });
+          } catch (consentErr) {
+            console.error('Error saving marketing consent during Google sign in/up:', consentErr);
+          }
           await createSession(userCredential.user);
         } catch (error: any) {
           console.error('Google sign in error:', error);
@@ -378,7 +388,6 @@ const isEn = lang === 'en';
       function updateButtonsState() {
         const isChecked = termsCheckbox ? termsCheckbox.checked : false;
         if (submitBtn) submitBtn.disabled = !isChecked;
-        if (googleBtn) googleBtn.disabled = !isChecked;
       }
 
       termsCheckbox?.addEventListener('change', updateButtonsState);
