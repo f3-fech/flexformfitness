@@ -167,6 +167,7 @@ function compileSettingsData() {
     const btn2Style = (card.querySelector('.slide-btn2-style') as HTMLSelectElement).value as 'primary' | 'secondary';
 
     const showTitleOverlay = (card.querySelector('.slide-show-title') as HTMLInputElement).checked;
+    const showDarkOverlay = (card.querySelector('.slide-show-dark-overlay') as HTMLInputElement)?.checked !== false;
 
     heroSlides.push({
       id,
@@ -188,7 +189,8 @@ function compileSettingsData() {
         style: btn2Style,
         enabled: btn2Enabled,
       },
-      showTitleOverlay
+      showTitleOverlay,
+      showDarkOverlay,
     });
   });
 
@@ -1016,6 +1018,10 @@ if (megamenuBridgeEl) {
           <label class="flex items-center gap-1.5 cursor-pointer ml-2">
             <input type="checkbox" class="slide-show-title w-3.5 h-3.5 rounded text-rose-600 border-slate-300 focus:ring-rose-600 cursor-pointer" checked />
             <span class="text-3xs font-extrabold uppercase text-slate-500 select-none">Mostrar Título (FLEX FORM FITNESS)</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer ml-2">
+            <input type="checkbox" class="slide-show-dark-overlay w-3.5 h-3.5 rounded text-rose-600 border-slate-300 focus:ring-rose-600 cursor-pointer" checked />
+            <span class="text-3xs font-extrabold uppercase text-slate-500 select-none">Opacidad oscura (overlay)</span>
           </label>
         </div>
         <button type="button" class="delete-slide-btn text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl transition-colors font-extrabold text-2xs uppercase tracking-wider cursor-pointer">

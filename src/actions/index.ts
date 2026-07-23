@@ -749,6 +749,7 @@ export const server = {
           enabled: z.boolean(),
         }),
         showTitleOverlay: z.boolean().optional(),
+        showDarkOverlay: z.boolean().optional(),
       })).optional(),
       megaMenu: z.object({
         section1: z.object({

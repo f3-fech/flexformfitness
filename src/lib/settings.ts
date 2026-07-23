@@ -39,6 +39,7 @@ export interface HeroSlide {
   button1: HeroButtonConfig;
   button2: HeroButtonConfig;
   showTitleOverlay?: boolean;
+  showDarkOverlay?: boolean;
 }
 
 export interface GeneralSettings {
@@ -235,6 +236,7 @@ export async function getGeneralSettings(forceRefresh = false): Promise<GeneralS
               enabled: !!slide.button2?.enabled,
             },
             showTitleOverlay: slide.showTitleOverlay !== false,
+            showDarkOverlay: slide.showDarkOverlay !== false,
           };
         }
         
@@ -259,6 +261,7 @@ export async function getGeneralSettings(forceRefresh = false): Promise<GeneralS
             enabled: false,
           },
           showTitleOverlay: slide.showTitleOverlay !== false,
+          showDarkOverlay: slide.showDarkOverlay !== false,
         };
       });
 
