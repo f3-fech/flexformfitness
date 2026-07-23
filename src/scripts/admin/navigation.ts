@@ -2,6 +2,7 @@ import { state } from './state';
 import { loadOrdersList } from './orders';
 import { loadUsersList } from './users';
 import { loadAbandonedCarts } from './emails';
+import { loadContactsList } from './contacts';
 
 // Elements
 const tabProductsBtn = document.getElementById('tab-products-btn') as HTMLButtonElement;
@@ -9,6 +10,7 @@ const tabCollectionsBtn = document.getElementById('tab-collections-btn') as HTML
 const tabOrdersBtn = document.getElementById('tab-orders-btn') as HTMLButtonElement;
 const tabEmailsBtn = document.getElementById('tab-emails-btn') as HTMLButtonElement;
 const tabUsersBtn = document.getElementById('tab-users-btn') as HTMLButtonElement;
+const tabContactsBtn = document.getElementById('tab-contacts-btn') as HTMLButtonElement;
 const tabSettingsBtn = document.getElementById('tab-settings-btn') as HTMLButtonElement;
 
 const sectionProducts = document.getElementById('section-products') as HTMLDivElement;
@@ -16,6 +18,7 @@ const sectionCollections = document.getElementById('section-collections') as HTM
 const sectionOrders = document.getElementById('section-orders') as HTMLDivElement;
 const sectionEmails = document.getElementById('section-emails') as HTMLDivElement;
 const sectionUsers = document.getElementById('section-users') as HTMLDivElement;
+const sectionContacts = document.getElementById('section-contacts') as HTMLDivElement;
 const sectionSettings = document.getElementById('section-settings') as HTMLDivElement;
 
 const subtabShippingBtn = document.getElementById('subtab-shipping-btn') as HTMLButtonElement;
@@ -41,6 +44,7 @@ function deactivateAllTabs() {
   if (tabOrdersBtn) tabOrdersBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
   if (tabEmailsBtn) tabEmailsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
   if (tabUsersBtn) tabUsersBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
+  if (tabContactsBtn) tabContactsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
   if (tabSettingsBtn) tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
 
   if (sectionProducts) sectionProducts.classList.add('hidden');
@@ -48,6 +52,7 @@ function deactivateAllTabs() {
   if (sectionOrders) sectionOrders.classList.add('hidden');
   if (sectionEmails) sectionEmails.classList.add('hidden');
   if (sectionUsers) sectionUsers.classList.add('hidden');
+  if (sectionContacts) sectionContacts.classList.add('hidden');
   if (sectionSettings) sectionSettings.classList.add('hidden');
 }
 
@@ -77,6 +82,12 @@ export function activateTab(tabName: string) {
     sectionUsers.classList.remove('hidden');
     if (!state.users.loaded) {
       loadUsersList();
+    }
+  } else if (tabName === 'contacts' && tabContactsBtn && sectionContacts) {
+    tabContactsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
+    sectionContacts.classList.remove('hidden');
+    if (!state.contacts.loaded) {
+      loadContactsList();
     }
   } else if (tabName === 'settings' && tabSettingsBtn && sectionSettings) {
     tabSettingsBtn.className = "pb-4 px-2 border-b-2 border-rose-600 text-rose-600 uppercase focus:outline-none transition-all";
@@ -150,6 +161,7 @@ tabCollectionsBtn?.addEventListener('click', () => activateTab('collections'));
 tabOrdersBtn?.addEventListener('click', () => activateTab('orders'));
 tabEmailsBtn?.addEventListener('click', () => activateTab('emails'));
 tabUsersBtn?.addEventListener('click', () => activateTab('users'));
+tabContactsBtn?.addEventListener('click', () => activateTab('contacts'));
 tabSettingsBtn?.addEventListener('click', () => activateTab('settings'));
 
 // Event Listeners for settings subtab buttons

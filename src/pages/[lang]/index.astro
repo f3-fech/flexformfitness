@@ -187,8 +187,48 @@ try {
   }];
 }
 const settings = await getGeneralSettings();
-const heroVideoUrl = settings.heroVideoUrl || 'https://firebasestorage.googleapis.com/v0/b/flexformfitness-673f4.firebasestorage.app/o/assets%2Fhero.mp4?alt=media&token=d2387591-833c-42d9-8342-45f30551a908';
+
+let collectionsMap: Record<string, { slug: string; title: string }> = {};
+try {
+  const allColsSnap = await db.collection('collections').get();
+  allColsSnap.docs.forEach((doc) => {
+    const data = doc.data();
+    collectionsMap[doc.id] = {
+      slug: data.slug || '',
+      title: data.title || '',
+    };
+  });
+} catch (err) {
+  console.error("Error building collectionsMap for homepage:", err);
+}
+
+const heroSlides = settings.heroSlides || [];
+const firstSlide = heroSlides[0];
+const shouldPreloadFirstSlideImage = firstSlide && firstSlide.desktopType === 'image';
+const firstSlidePreloadUrl = shouldPreloadFirstSlideImage ? firstSlide.desktopUrl : '';
+
 const user = Astro.locals.user;
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+const canonicalUrl = `${siteUrl}/${lang}`;
+
+// Construct OnlineStore structured data JSON-LD for store profile rich snippets
+const storeJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'OnlineStore',
+  'name': 'Flex Form Fitness',
+  'url': canonicalUrl,
+  'logo': `${siteUrl}/logo.png`,
+  'image': `${siteUrl}/images/hero-slide1.png`,
+  'description': isEn 
+    ? "Explore the official activewear collection of FLEX FORM FITNESS. High-performance shirts, leggings, joggers, and hoodies." 
+    : "Explora la colección oficial de ropa deportiva técnica de FLEX FORM FITNESS. Camisetas, mallas, joggers y sudaderas de alto rendimiento.",
+  'priceRange': '$$',
+  'address': {
+    '@type': 'PostalAddress',
+    'addressCountry': 'ES'
+  }
+};
 ---
 
 <!doctype html>
@@ -199,65 +239,299 @@ const user = Astro.locals.user;
     <SEO
       title={isEn ? "Official Store | FLEX FORM FITNESS" : "Tienda Oficial | FLEX FORM FITNESS"}
       description={isEn ? "Explore the official activewear collection of FLEX FORM FITNESS. High-performance shirts, leggings, joggers, and hoodies." : "Explora la colección oficial de ropa deportiva técnica de FLEX FORM FITNESS. Camisetas, mallas, joggers y sudaderas de alto rendimiento."}
+      jsonLd={storeJsonLd}
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    {firstSlidePreloadUrl && (
+      <link rel="preload" href={firstSlidePreloadUrl} as="image" fetchpriority="high" />
+    )}
   </head>
   <body class="bg-white text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between w-full overflow-x-hidden">
     
     <Navbar />
 
-    <!-- Hero Video Section (Edge to Edge / Full Width) -->
-    <section class="w-full h-[75vh] md:h-[85vh] relative overflow-hidden bg-slate-950">
-      <!-- Background Video Loop -->
-      <video
-        id="hero-video"
-        autoplay
-        loop
-        muted
-        playsinline
-        class="absolute inset-0 w-full h-full object-cover object-center opacity-0 transition-opacity duration-1000 scale-102"
-      >
-        <source src={heroVideoUrl} type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+    <!-- Hero Image Carousel Section (Edge to Edge / Full Width) -->
+    <section class="w-full h-[55vh] md:h-[85vh] relative overflow-hidden bg-slate-950">
+      <!-- Carousel Slides -->
+      <div class="absolute inset-0 w-full h-full">
+        {heroSlides.map((slide, index) => {
+          const isFirst = index === 0;
+          let button1Link = '#catalogo';
+          if (slide.button1?.collectionId && collectionsMap[slide.button1.collectionId]) {
+            button1Link = `/${lang}/colecciones/${collectionsMap[slide.button1.collectionId].slug}`;
+          }
+
+          let button2Link = '#catalogo';
+          if (slide.button2?.collectionId && collectionsMap[slide.button2.collectionId]) {
+            button2Link = `/${lang}/colecciones/${collectionsMap[slide.button2.collectionId].slug}`;
+          }
+
+          const showButton1 = slide.button1?.enabled !== false;
+          const showButton2 = slide.button2?.enabled === true;
+
+          const getButtonClass = (style?: string) => {
+            if (style === 'primary') {
+              return "px-6 py-2.5 md:px-8 md:py-3.5 bg-rose-600 text-white border-2 border-rose-600 font-bold uppercase tracking-widest hover:bg-rose-700 hover:border-rose-700 transition-all duration-300 text-xs md:text-sm shadow-lg active:scale-95 hero-slide-btn";
+            }
+            if (style === 'pink') {
+              return "px-6 py-2.5 md:px-8 md:py-3.5 bg-pink-600 text-white border-2 border-pink-600 font-bold uppercase tracking-widest hover:bg-pink-700 hover:border-pink-700 transition-all duration-300 text-xs md:text-sm shadow-lg active:scale-95 hero-slide-btn";
+            }
+            return "px-6 py-2.5 md:px-8 md:py-3.5 border-2 border-white text-white font-bold uppercase tracking-widest hover:bg-white hover:text-slate-950 transition-all duration-300 text-xs md:text-sm shadow-lg active:scale-95 hero-slide-btn";
+          };
+
+          return (
+            <div
+              class={`hero-slide absolute inset-0 w-full h-full transition-opacity duration-1000 ${isFirst ? 'opacity-100 scale-102 z-10' : 'opacity-0 scale-102 z-0'}`}
+              data-index={index}
+            >
+              {/* Media for desktop */}
+              {slide.desktopType === 'image' ? (
+                <div
+                  class="hidden md:block absolute inset-0 bg-cover bg-center"
+                  style={`background-image: url(${slide.desktopUrl});`}
+                >
+                </div>
+              ) : (
+                <div class="hidden md:block absolute inset-0 bg-slate-950">
+                  <video
+                    muted
+                    playsinline
+                    preload={isFirst ? "auto" : "none"}
+                    class="w-full h-full object-cover object-center hero-video-desktop"
+                  >
+                    <source src={slide.desktopUrl} type="video/mp4" />
+                  </video>
+                </div>
+              )}
+
+              {/* Media for mobile */}
+              {slide.mobileType === 'image' ? (
+                <div
+                  class="block md:hidden absolute inset-0 bg-cover bg-center"
+                  style={`background-image: url(${slide.mobileUrl});`}
+                >
+                </div>
+              ) : (
+                <div class="block md:hidden absolute inset-0 bg-slate-950">
+                  <video
+                    muted
+                    playsinline
+                    preload={isFirst ? "auto" : "none"}
+                    class="w-full h-full object-cover object-center hero-video-mobile"
+                  >
+                    <source src={slide.mobileUrl} type="video/mp4" />
+                  </video>
+                </div>
+              )}
+
+              {/* Subtle Overlay */}
+              <div class="absolute inset-0 bg-slate-950/30"></div>
+
+              {/* Centered Logo and Text Overlay */}
+              <div class={`absolute inset-0 flex flex-col items-center text-center px-4 z-10 ${slide.showTitleOverlay !== false ? 'justify-center' : 'justify-end pb-16 sm:pb-24'}`}>
+                {slide.showTitleOverlay !== false && (
+                  <div class="relative select-none pointer-events-none mb-6 sm:mb-8">
+                    <!-- Massive Logo Overlay Text -->
+                    <div class="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black italic tracking-tighter text-white/20 uppercase leading-none">
+                      FLEX FORM
+                    </div>
+                    <div class="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black italic tracking-wider text-red-600 uppercase -mt-2 md:-mt-4 text-center">
+                      FITNESS
+                    </div>
+                  </div>
+                )}
+
+                <!-- Hero Buttons -->
+                <div class="flex flex-wrap justify-center gap-4">
+                  {showButton2 && (
+                    <a href={button2Link} class={getButtonClass(slide.button2?.style)}>
+                      {isEn ? (slide.button2?.textEn || 'New Capsule') : (slide.button2?.text || 'Nueva Cápsula')}
+                    </a>
+                  )}
+                  {showButton1 && (
+                    <a href={button1Link} class={getButtonClass(slide.button1?.style)}>
+                      {isEn ? (slide.button1?.textEn || 'Shop now') : (slide.button1?.text || 'Comprar ahora')}
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <!-- Indicator Dots -->
+      <div class="absolute bottom-6 right-6 md:right-8 md:bottom-8 flex gap-2 md:gap-3 z-20">
+        {heroSlides.map((_, idx) => (
+          <button
+            type="button"
+            class={`hero-dot w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full border-[1.5px] md:border-2 border-white transition-all duration-300 focus:outline-none ${idx === 0 ? 'bg-white' : 'bg-transparent hover:bg-white/40'}`}
+            data-slide={idx}
+            aria-label={`Diapositiva ${idx + 1}`}
+          ></button>
+        ))}
+      </div>
+
+      <!-- Carousel Logic Script -->
       <script is:inline>
-        const video = document.getElementById('hero-video');
-        if (video) {
-          if (video.readyState >= 3) {
-            video.classList.remove('opacity-0');
-            video.classList.add('opacity-85');
-          } else {
-            video.addEventListener('playing', () => {
-              video.classList.remove('opacity-0');
-              video.classList.add('opacity-85');
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.hero-slide');
+        const dots = document.querySelectorAll('.hero-dot');
+        let autoPlayTimeout;
+
+        function showSlide(index) {
+          if (slides.length === 0) return;
+          
+          // Clear any pending transition timer
+          clearTimeout(autoPlayTimeout);
+
+          // Keep index bounded
+          currentSlide = (index + slides.length) % slides.length;
+
+          // Transition slides
+          slides.forEach((slide, idx) => {
+            const videos = slide.querySelectorAll('video');
+            if (idx === currentSlide) {
+              slide.classList.remove('opacity-0', 'z-0');
+              slide.classList.add('opacity-100', 'z-10');
+              
+              // Play only the visible video (desktop vs mobile)
+              videos.forEach(video => {
+                const isMobileVideo = video.classList.contains('hero-video-mobile');
+                const isDesktopVideo = video.classList.contains('hero-video-desktop');
+                const isMobileScreen = window.innerWidth < 768;
+                
+                if ((isMobileVideo && isMobileScreen) || (isDesktopVideo && !isMobileScreen)) {
+                  video.currentTime = 0;
+                  video.play()
+                    .then(() => { /* playing */ })
+                    .catch(err => {
+                      console.log("Video play blocked, falling back to timer:", err);
+                      setupFallbackTimer();
+                    });
+                } else {
+                  video.pause();
+                }
+              });
+            } else {
+              slide.classList.remove('opacity-100', 'z-10');
+              slide.classList.add('opacity-0', 'z-0');
+              videos.forEach(video => video.pause());
+            }
+          });
+
+          // Schedule timer if active slide has no active video playing
+          const activeSlide = slides[currentSlide];
+          const activeVideos = activeSlide.querySelectorAll('video');
+          let hasActiveVideo = false;
+          
+          activeVideos.forEach(video => {
+            const isMobileVideo = video.classList.contains('hero-video-mobile');
+            const isDesktopVideo = video.classList.contains('hero-video-desktop');
+            const isMobileScreen = window.innerWidth < 768;
+            if ((isMobileVideo && isMobileScreen) || (isDesktopVideo && !isMobileScreen)) {
+              hasActiveVideo = true;
+            }
+          });
+
+          if (!hasActiveVideo) {
+            setupFallbackTimer();
+          }
+
+          // Update dots
+          dots.forEach((dot, idx) => {
+            if (idx === currentSlide) {
+              dot.classList.remove('bg-transparent', 'hover:bg-white/40');
+              dot.classList.add('bg-white');
+            } else {
+              dot.classList.remove('bg-white');
+              dot.classList.add('bg-transparent', 'hover:bg-white/40');
+            }
+          });
+        }
+
+        function setupFallbackTimer() {
+          clearTimeout(autoPlayTimeout);
+          autoPlayTimeout = setTimeout(() => {
+            showSlide(currentSlide + 1);
+          }, 5000);
+        }
+
+        // Initialize click events for dots and video ended event listeners
+        slides.forEach((slide, idx) => {
+          const videos = slide.querySelectorAll('video');
+          videos.forEach(video => {
+            video.addEventListener('ended', () => {
+              if (currentSlide === idx) {
+                showSlide(currentSlide + 1);
+              }
             });
+          });
+        });
+
+        dots.forEach((dot, idx) => {
+          dot.addEventListener('click', () => {
+            showSlide(idx);
+          });
+        });
+
+        // Handle window resize to trigger play on correct videos if screen size crosses breakpoint
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            showSlide(currentSlide);
+          }, 250);
+        });
+
+        // Initialize carousel on slide 0
+        showSlide(0);
+      </script>
+
+      <style>
+        /* Button transitions on slide change */
+        .hero-slide .hero-slide-btn {
+          opacity: 0;
+          transform: translateY(15px);
+          transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .hero-slide.opacity-100 .hero-slide-btn {
+          opacity: 1;
+          transform: translateY(0);
+          transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+        }
+        .hero-slide.opacity-100 .hero-slide-btn:nth-child(2) {
+          transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.45s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.45s;
+        }
+        
+        @keyframes bounce-subtle {
+          0%, 100% {
+            transform: translateY(-2px);
+          }
+          50% {
+            transform: translateY(2px);
           }
         }
-      </script>
-      
-      <!-- Subtle Overlay -->
-      <div class="absolute inset-0 bg-slate-950/30"></div>
-
-      <!-- Centered Logo and Text Overlay -->
-      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-        <div class="relative select-none pointer-events-none mb-8">
-          <!-- Massive Logo Overlay Text -->
-          <div class="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black italic tracking-tighter text-white/20 uppercase leading-none">
-            FLEX FORM
-          </div>
-          <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black italic tracking-wider text-red-600 uppercase -mt-2 md:-mt-4 text-center">
-            FITNESS
-          </div>
-        </div>
-
-        <!-- Ghost Button (White border, transparent background) -->
-        <a href="#catalogo" class="px-8 py-3.5 border-2 border-white text-white font-bold uppercase tracking-widest hover:bg-white hover:text-slate-950 transition-all duration-300 text-xs md:text-sm shadow-lg active:scale-95">
-          {isEn ? "Shop now" : "Comprar ahora"}
-        </a>
-      </div>
+        .animate-bounce-subtle {
+          animation: bounce-subtle 1.8s infinite ease-in-out;
+        }
+      </style>
     </section>
+
+    <!-- Floating Scroll Down Arrow Button -->
+    <div class="relative w-full h-0 z-30">
+      <a
+        href="#catalogo"
+        class="absolute -translate-y-1/2 left-1/2 -translate-x-1/2 bg-slate-950 text-white border-2 border-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shadow-lg focus:outline-none scroll-down-btn cursor-pointer shrink-0 aspect-square"
+        aria-label={isEn ? "Scroll down to catalog" : "Bajar al catálogo"}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 md:w-5 md:h-5 text-white">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m0 0l6.75-6.75M12 19.5l-6.75-6.75" />
+        </svg>
+      </a>
+    </div>
 
     <!-- Main Products Catalog (Full Width Container) -->
     <main id="catalogo" class="w-full px-2 sm:px-4 md:px-8 py-12 flex-grow flex flex-col gap-12 md:gap-16">
@@ -412,17 +686,17 @@ const user = Astro.locals.user;
     </main>
 
     <!-- Full Width Callout Section -->
-    <section class="w-full bg-slate-950 text-white py-16 px-4 md:px-8 text-center relative overflow-hidden">
+    <section class="w-full bg-slate-950 text-white py-12 md:py-16 px-6 md:px-8 text-center relative overflow-hidden">
       <div class="absolute -top-40 -left-40 w-96 h-96 bg-rose-600 rounded-full blur-3xl opacity-10"></div>
-      <div class="relative max-w-2xl mx-auto flex flex-col items-center gap-6">
-        <span class="text-2xs font-extrabold tracking-[0.25em] text-red-500 uppercase">{isEn ? "CUTTING-EDGE TECHNOLOGY" : "TECNOLOGÍA DE VANGUARDIA"}</span>
-        <h2 class="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none">
+      <div class="relative max-w-2xl mx-auto flex flex-col items-center gap-4 md:gap-6">
+        <span class="text-[9px] md:text-2xs font-extrabold tracking-[0.25em] text-red-500 uppercase">{isEn ? "CUTTING-EDGE TECHNOLOGY" : "TECNOLOGÍA DE VANGUARDIA"}</span>
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-black italic tracking-tight uppercase leading-tight">
           {isEn ? "DESIGNED FOR YOUR BEST VERSION" : "DISEÑADO PARA TU MEJOR VERSIÓN"}
         </h2>
-        <p class="text-slate-400 text-sm leading-relaxed">
+        <p class="text-slate-400 text-xs md:text-sm leading-relaxed max-w-lg">
           {isEn ? "Our seamless elastic fabrics adapt to your every move, letting you train at your maximum level without discomfort." : "Nuestras telas elásticas sin costuras se adaptan a cada uno de tus movimientos, permitiéndote entrenar a tu máximo nivel sin molestias."}
         </p>
-        <a href="#catalogo" class="px-6 py-3 border border-white/20 text-white hover:bg-white hover:text-slate-950 text-xs font-bold uppercase tracking-wider transition-all duration-300">
+        <a href="#catalogo" class="px-4 py-2 md:px-6 md:py-3 border border-white/20 text-white hover:bg-white hover:text-slate-950 text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all duration-300">
           {isEn ? "Explore all" : "Explorar todo"}
         </a>
       </div>
@@ -461,6 +735,7 @@ const user = Astro.locals.user;
         <div class="flex flex-col gap-3 col-span-1">
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
           <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}/contacto`} class="hover:text-white transition-colors font-semibold text-rose-500">{isEn ? "Contact Support" : "Contacto / Soporte"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Size Guide" : "Guía de Tallas"}</a></li>

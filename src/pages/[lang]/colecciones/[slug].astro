@@ -359,96 +359,306 @@ const cleanFilterTitle = (title: string): string => {
     <main class="w-full px-2 sm:px-4 md:px-8 py-12 flex-grow">
       <div class="w-full flex flex-col gap-6">
         {products.length > 0 ? (
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
-            {products.map((product) => (
-              <div class="product-card group flex flex-col justify-between w-full" data-collections={getProductCollectionIds(product.id)}>
-                {/* Product Image */}
-              <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
-                <!-- Swipeable Images Container -->
-                <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
-                  {product.images.map((imgUrl, imgIdx) => (
-                    <a
-                      href={`/${lang}/productos/${product.slug}`}
-                      class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
-                      data-index={imgIdx}
-                      style="aspect-ratio: 3/4;"
+          subCollections.length > 0 ? (
+            <div class="flex flex-col gap-12 w-full">
+              {subCollections.map((subCol) => {
+                const subColTitle = isEn ? (subCol.title_en || subCol.title) : subCol.title;
+                const subProducts = products.filter((p) => (subCol.productIds || []).includes(p.id));
+                if (subProducts.length === 0) return null;
+
+                return (
+                  <div class="collection-section flex flex-col gap-6" data-collection-section-id={subCol.id}>
+                    <!-- Separador y Encabezado de Colección (estilo index centrado) -->
+                    <div class="w-full flex items-center justify-center my-4 px-2 sm:px-4 md:px-12 select-none">
+                      <div class="flex-grow h-[1px] bg-gradient-to-r from-transparent to-slate-200"></div>
+                      <h2 class="flex-shrink mx-4 sm:mx-6 text-sm sm:text-base md:text-lg font-black italic uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-800 text-center">
+                        {cleanFilterTitle(subColTitle)}
+                      </h2>
+                      <div class="flex-grow h-[1px] bg-gradient-to-l from-transparent to-slate-200"></div>
+                    </div>
+
+                    <!-- Grid de Productos de esta colección -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
+                      {subProducts.map((product) => (
+                        <div class="product-card group flex flex-col justify-between w-full" data-collections={getProductCollectionIds(product.id)}>
+                          <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
+                            <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                              {product.images.map((imgUrl, imgIdx) => (
+                                <a
+                                  href={`/${lang}/productos/${product.slug}`}
+                                  class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                                  data-index={imgIdx}
+                                  style="aspect-ratio: 3/4;"
+                                >
+                                  <img
+                                    src={imgUrl}
+                                    alt={`${isEn ? (product.title_en || product.title) : product.title} - Vista ${imgIdx + 1}`}
+                                    class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
+                                    style={`object-position: ${getObjectPosition(imgUrl)}`}
+                                    loading={imgIdx === 0 ? "eager" : "lazy"}
+                                    onload="this.classList.remove('opacity-0')"
+                                  />
+                                </a>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                              title={isEn ? "Previous image" : "Imagen anterior"}
+                            >
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                              title={isEn ? "Next image" : "Siguiente imagen"}
+                            >
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                              </svg>
+                            </button>
+
+                            {product.stock <= 5 && (
+                              <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
+                                {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
+                              </span>
+                            )}
+                          </div>
+
+                          <div class="mt-3 flex flex-col gap-1 w-full">
+                            <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
+                            <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
+                              {isEn ? (product.title_en || product.title) : product.title}
+                            </a>
+                            <p class="text-slate-500 text-xs line-clamp-1">
+                              {isEn ? (product.description_en || product.description) : product.description}
+                            </p>
+                            
+                            {getUniqueColors(product).length > 0 && (
+                              <div class="flex items-center gap-1.5 mt-1">
+                                {getUniqueColors(product).map((color) => (
+                                  <button 
+                                    type="button"
+                                    class="color-swatch-btn w-4 h-4 rounded-full border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                                    style={{ backgroundColor: color.hex }}
+                                    title={color.name}
+                                    data-variant-image={color.image}
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            <div class="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100">
+                              <span class="text-sm font-extrabold text-slate-950">
+                                ${(product.price / 100).toFixed(2)}
+                              </span>
+                              <a href={`/${lang}/productos/${product.slug}`} class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
+                                {isEn ? "View details" : "Ver más"}
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {(() => {
+                const subProdIds = new Set(subCollections.flatMap((sc) => sc.productIds || []));
+                const uncategorized = products.filter((p) => !subProdIds.has(p.id));
+                if (uncategorized.length === 0) return null;
+
+                return (
+                  <div class="collection-section flex flex-col gap-6" data-collection-section-id="all">
+                    <!-- Separador y Encabezado de Colección (Otras Prendas) -->
+                    <div class="w-full flex items-center justify-center my-4 px-2 sm:px-4 md:px-12 select-none">
+                      <div class="flex-grow h-[1px] bg-gradient-to-r from-transparent to-slate-200"></div>
+                      <h2 class="flex-shrink mx-4 sm:mx-6 text-sm sm:text-base md:text-lg font-black italic uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-800 text-center">
+                        {isEn ? 'Other Items' : 'Otras Prendas'}
+                      </h2>
+                      <div class="flex-grow h-[1px] bg-gradient-to-l from-transparent to-slate-200"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
+                      {uncategorized.map((product) => (
+                        <div class="product-card group flex flex-col justify-between w-full" data-collections={getProductCollectionIds(product.id)}>
+                          <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
+                            <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                              {product.images.map((imgUrl, imgIdx) => (
+                                <a
+                                  href={`/${lang}/productos/${product.slug}`}
+                                  class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                                  data-index={imgIdx}
+                                  style="aspect-ratio: 3/4;"
+                                >
+                                  <img
+                                    src={imgUrl}
+                                    alt={`${isEn ? (product.title_en || product.title) : product.title} - Vista ${imgIdx + 1}`}
+                                    class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
+                                    style={`object-position: ${getObjectPosition(imgUrl)}`}
+                                    loading={imgIdx === 0 ? "eager" : "lazy"}
+                                    onload="this.classList.remove('opacity-0')"
+                                  />
+                                </a>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                              title={isEn ? "Previous image" : "Imagen anterior"}
+                            >
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                              title={isEn ? "Next image" : "Siguiente imagen"}
+                            >
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                              </svg>
+                            </button>
+
+                            {product.stock <= 5 && (
+                              <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
+                                {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
+                              </span>
+                            )}
+                          </div>
+
+                          <div class="mt-3 flex flex-col gap-1 w-full">
+                            <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
+                            <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
+                              {isEn ? (product.title_en || product.title) : product.title}
+                            </a>
+                            <p class="text-slate-500 text-xs line-clamp-1">
+                              {isEn ? (product.description_en || product.description) : product.description}
+                            </p>
+                            
+                            {getUniqueColors(product).length > 0 && (
+                              <div class="flex items-center gap-1.5 mt-1">
+                                {getUniqueColors(product).map((color) => (
+                                  <button 
+                                    type="button"
+                                    class="color-swatch-btn w-4 h-4 rounded-full border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                                    style={{ backgroundColor: color.hex }}
+                                    title={color.name}
+                                    data-variant-image={color.image}
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            <div class="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100">
+                              <span class="text-sm font-extrabold text-slate-950">
+                                ${(product.price / 100).toFixed(2)}
+                              </span>
+                              <a href={`/${lang}/productos/${product.slug}`} class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
+                                {isEn ? "View details" : "Ver más"}
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
+              {products.map((product) => (
+                <div class="product-card group flex flex-col justify-between w-full" data-collections={getProductCollectionIds(product.id)}>
+                  <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
+                    <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                      {product.images.map((imgUrl, imgIdx) => (
+                        <a
+                          href={`/${lang}/productos/${product.slug}`}
+                          class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                          data-index={imgIdx}
+                          style="aspect-ratio: 3/4;"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`${isEn ? (product.title_en || product.title) : product.title} - Vista ${imgIdx + 1}`}
+                            class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
+                            style={`object-position: ${getObjectPosition(imgUrl)}`}
+                            loading={imgIdx === 0 ? "eager" : "lazy"}
+                            onload="this.classList.remove('opacity-0')"
+                          />
+                        </a>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                      title={isEn ? "Previous image" : "Imagen anterior"}
                     >
-                      <img
-                        src={imgUrl}
-                        alt={`${isEn ? (product.title_en || product.title) : product.title} - Vista ${imgIdx + 1}`}
-                        class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
-                        style={`object-position: ${getObjectPosition(imgUrl)}`}
-                        loading={imgIdx === 0 ? "eager" : "lazy"}
-                        onload="this.classList.remove('opacity-0')"
-                      />
-                    </a>
-                  ))}
-                </div>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+                      title={isEn ? "Next image" : "Siguiente imagen"}
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </button>
 
-                <!-- Hover Navigation Arrows (Desktop only) -->
-                <button
-                  type="button"
-                  class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
-                  title={isEn ? "Previous image" : "Imagen anterior"}
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
-                  title={isEn ? "Next image" : "Siguiente imagen"}
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-
-                {product.stock <= 5 && (
-                  <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
-                    {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
-                  </span>
-                )}
-              </div>
-
-              {/* Product Details (Title, Description, and Price) */}
-              <div class="mt-3 flex flex-col gap-1 w-full">
-                <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
-                <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
-                  {isEn ? (product.title_en || product.title) : product.title}
-                </a>
-                <p class="text-slate-500 text-xs line-clamp-1">
-                  {isEn ? (product.description_en || product.description) : product.description}
-                </p>
-                
-                {/* Clickable Swatches */}
-                {getUniqueColors(product).length > 0 && (
-                  <div class="flex items-center gap-1.5 mt-1">
-                    {getUniqueColors(product).map((color) => (
-                      <button 
-                        type="button"
-                        class="color-swatch-btn w-4 h-4 rounded-full border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
-                        style={{ backgroundColor: color.hex }}
-                        title={color.name}
-                        data-variant-image={color.image}
-                      />
-                    ))}
+                    {product.stock <= 5 && (
+                      <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
+                        {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
+                      </span>
+                    )}
                   </div>
-                )}
 
-                  <div class="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100">
-                    <span class="text-sm font-extrabold text-slate-950">
-                      ${(product.price / 100).toFixed(2)}
-                    </span>
-                    <a href={`/${lang}/productos/${product.slug}`} class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
-                      {isEn ? "View details" : "Ver más"}
+                  <div class="mt-3 flex flex-col gap-1 w-full">
+                    <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
+                    <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
+                      {isEn ? (product.title_en || product.title) : product.title}
                     </a>
+                    <p class="text-slate-500 text-xs line-clamp-1">
+                      {isEn ? (product.description_en || product.description) : product.description}
+                    </p>
+                    
+                    {getUniqueColors(product).length > 0 && (
+                      <div class="flex items-center gap-1.5 mt-1">
+                        {getUniqueColors(product).map((color) => (
+                          <button 
+                            type="button"
+                            class="color-swatch-btn w-4 h-4 rounded-full border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                            style={{ backgroundColor: color.hex }}
+                            title={color.name}
+                            data-variant-image={color.image}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    <div class="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100">
+                      <span class="text-sm font-extrabold text-slate-950">
+                        ${(product.price / 100).toFixed(2)}
+                      </span>
+                      <a href={`/${lang}/productos/${product.slug}`} class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
+                        {isEn ? "View details" : "Ver más"}
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         ) : (
           <div class="text-center py-16 flex flex-col items-center gap-4 bg-slate-50 rounded-3xl border border-slate-100 p-8 max-w-md mx-auto">
             <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -515,6 +725,7 @@ const cleanFilterTitle = (title: string): string => {
       <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-3xs md:text-2xs text-slate-550">
         <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
         <div class="flex items-center gap-6">
+          <a href={`/${lang}/contacto`} class="hover:text-white transition-colors font-semibold text-rose-500">{isEn ? "Contact" : "Contacto"}</a>
           <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
           <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Política de Privacidad</a>
           <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>
@@ -625,15 +836,30 @@ const cleanFilterTitle = (title: string): string => {
 
           // Filter actual product list
           let visibleCount = 0;
-          productCards.forEach((card) => {
-            const assocIds = card.getAttribute('data-collections') || '';
-            if (selectedId === 'all' || assocIds.split(' ').includes(selectedId)) {
-              (card as HTMLElement).style.display = 'flex';
-              visibleCount++;
-            } else {
-              (card as HTMLElement).style.display = 'none';
-            }
-          });
+          const collectionSections = document.querySelectorAll('.collection-section');
+
+          if (collectionSections.length > 0) {
+            collectionSections.forEach((sec) => {
+              const secId = sec.getAttribute('data-collection-section-id');
+              if (selectedId === 'all' || secId === selectedId) {
+                (sec as HTMLElement).style.display = 'flex';
+                const cards = sec.querySelectorAll('.product-card');
+                visibleCount += cards.length;
+              } else {
+                (sec as HTMLElement).style.display = 'none';
+              }
+            });
+          } else {
+            productCards.forEach((card) => {
+              const assocIds = card.getAttribute('data-collections') || '';
+              if (selectedId === 'all' || assocIds.split(' ').includes(selectedId)) {
+                (card as HTMLElement).style.display = 'flex';
+                visibleCount++;
+              } else {
+                (card as HTMLElement).style.display = 'none';
+              }
+            });
+          }
 
           // Update count badge
           if (countBadge) {
@@ -645,6 +871,16 @@ const cleanFilterTitle = (title: string): string => {
           }
         });
       });
+
+      // Automatically trigger filter from URL query parameter ?cat=...
+      const urlParams = new URLSearchParams(window.location.search);
+      const catParam = urlParams.get('cat');
+      if (catParam) {
+        const targetBtn = document.querySelector(`.category-filter-btn[data-collection-id="${catParam}"]`) as HTMLButtonElement;
+        if (targetBtn) {
+          targetBtn.click();
+        }
+      }
     </script>
     <style is:global>
       /* Hide scrollbar for Chrome, Safari and Opera */

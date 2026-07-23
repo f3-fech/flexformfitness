@@ -21,6 +21,7 @@ export const translations = {
     'nav.hello': 'Hola',
     'nav.no_collections': 'No hay colecciones',
     'nav.all_catalog': 'Ver Todo el Catálogo',
+    'nav.view_all': 'Ver Todo',
     'nav.admin_panel': 'Gestionar Carpetas (Admin)',
     
     'cart.title': 'Tu Carrito de Compra',
@@ -82,6 +83,7 @@ export const translations = {
     'nav.hello': 'Hello',
     'nav.no_collections': 'No collections available',
     'nav.all_catalog': 'View All Catalog',
+    'nav.view_all': 'View All',
     'nav.admin_panel': 'Manage Folders (Admin)',
     
     'cart.title': 'Your Shopping Cart',

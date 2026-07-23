@@ -19,6 +19,12 @@ export const state = {
     nextVisibleId: null as string | null,
     loaded: false,
   },
+  contacts: {
+    currentPage: 1,
+    pageHistory: [] as string[],
+    nextVisibleId: null as string | null,
+    loaded: false,
+  },
   product: {
     activeLang: 'es',
     translations: {
@@ -59,6 +65,8 @@ export const state = {
     images: [] as Array<{ name: string; url: string }>,
   },
   videoGallery: {
+    activeInput: null as HTMLInputElement | null,
+    activePreview: null as HTMLDivElement | null,
     selectedUrl: '',
     videos: [] as Array<{ name: string; url: string }>,
   },

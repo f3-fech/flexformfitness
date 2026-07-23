@@ -14,6 +14,21 @@ const { settings, collections, promotionCodes } = Astro.props;
 
 const popularCountries = ['ES', 'FR', 'DE', 'IT', 'PT', 'GB', 'US', 'CA', 'MX'];
 const otherCountries = settings.markets.filter((c) => !popularCountries.includes(c));
+
+const subCollectionsHombre = collections.filter((c) => {
+  if (c.slug === 'hombre' || c.slug === 'mujer') return false;
+  if (c.parentCategory) return c.parentCategory === 'Hombre';
+  const isMen = c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men');
+  return isMen;
+}).sort((a, b) => (a.indexOrder ?? 999) - (b.indexOrder ?? 999));
+
+const subCollectionsMujer = collections.filter((c) => {
+  if (c.slug === 'hombre' || c.slug === 'mujer') return false;
+  if (c.parentCategory) return c.parentCategory === 'Mujer';
+  const isMen = c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men');
+  const isWomen = c.slug.includes('mujer') || c.title.toLowerCase().includes('mujer') || c.title.toLowerCase().includes('women');
+  return isWomen && !isMen;
+}).sort((a, b) => (a.indexOrder ?? 999) - (b.indexOrder ?? 999));
 ---
 
 <section id="section-settings" class="w-full hidden">
@@ -289,34 +304,221 @@ const otherCountries = settings.markets.filter((c) => !popularCountries.includes
           </div>
         </div>
 
+        <!-- Carrusel Hero Dinámico -->
         <div class="border-t border-slate-100 pt-4 flex flex-col gap-4">
+          <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+            <div>
+              <h4 class="font-extrabold uppercase text-slate-900 tracking-wider text-xs">Diapositivas del Carrusel Hero</h4>
+              <p class="text-slate-400 text-3xs normal-case leading-normal font-medium mt-0.5">Añade, elimina o reordena las diapositivas del carrusel de la página de inicio.</p>
+            </div>
+            <button
+              type="button"
+              id="add-hero-slide-btn"
+              class="px-3.5 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-3xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              + Añadir Diapositiva
+            </button>
+          </div>
+
+          <!-- Contenedor de diapositivas dinámicas -->
+          <div id="hero-slides-list-container" class="flex flex-col gap-6">
+            {settings.heroSlides && settings.heroSlides.map((slide, index) => (
+              <div class="hero-slide-card border border-slate-200 rounded-2xl p-5 bg-slate-50 flex flex-col gap-4 relative group" data-id={slide.id}>
+                <!-- Header of the card -->
+                <div class="flex justify-between items-center border-b border-slate-200/80 pb-2">
+                  <div class="flex items-center gap-3">
+                    <span class="text-3xs font-black uppercase text-slate-500 bg-slate-200/60 px-2.5 py-1 rounded-lg slide-index-label">Diapositiva #{index + 1}</span>
+                    <div class="flex gap-1">
+                      <button type="button" class="move-slide-up-btn text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs cursor-pointer" title="Subir">↑</button>
+                      <button type="button" class="move-slide-down-btn text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs cursor-pointer" title="Bajar">↓</button>
+                    </div>
+                    <label class="flex items-center gap-1.5 cursor-pointer ml-2">
+                      <input type="checkbox" class="slide-show-title w-3.5 h-3.5 rounded text-rose-600 border-slate-300 focus:ring-rose-600 cursor-pointer" checked={slide.showTitleOverlay !== false} />
+                      <span class="text-3xs font-extrabold uppercase text-slate-500 select-none">Mostrar Título (FLEX FORM FITNESS)</span>
+                    </label>
+                  </div>
+                  <button type="button" class="delete-slide-btn text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl transition-colors font-extrabold text-2xs uppercase tracking-wider cursor-pointer">
+                    Eliminar
+                  </button>
+                </div>
+
+                <!-- Media (Desktop vs Mobile) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Versión Desktop -->
+                  <div class="flex flex-col gap-2 bg-white p-3.5 rounded-xl border border-slate-200/60">
+                    <div class="flex justify-between items-center mb-1">
+                      <span class="font-extrabold uppercase text-slate-800 text-3xs tracking-wider">Versión Escritorio (Desktop)</span>
+                      <select class="slide-desktop-type px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-950 focus:outline-none focus:border-rose-600 text-3xs font-extrabold uppercase tracking-wider cursor-pointer">
+                        <option value="image" selected={slide.desktopType === 'image'}>Imagen</option>
+                        <option value="video" selected={slide.desktopType === 'video'}>Video</option>
+                      </select>
+                    </div>
+                    <div class="flex gap-1.5">
+                      <input
+                        type="text"
+                        class="slide-desktop-url flex-grow min-w-0 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-2xs"
+                        placeholder="URL de imagen/video o selecciona de la galería"
+                        value={slide.desktopUrl}
+                        id={`slide-${slide.id}-desktop-input`}
+                      />
+                      <button
+                        type="button"
+                        class={`${slide.desktopType === 'video' ? 'open-settings-video-gallery-btn' : 'open-settings-gallery-btn'} px-2.5 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors shrink-0 cursor-pointer`}
+                        data-input={`slide-${slide.id}-desktop-input`}
+                        data-preview={`slide-${slide.id}-desktop-preview`}
+                      >
+                        Galería
+                      </button>
+                    </div>
+                    <div id={`slide-${slide.id}-desktop-preview`} class="h-48 aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center mt-1 mx-auto">
+                      {slide.desktopType === 'video' ? (
+                        <video src={slide.desktopUrl} autoplay loop muted playsinline class="w-full h-full object-cover"></video>
+                      ) : (
+                        <img src={slide.desktopUrl} class="w-full h-full object-cover" />
+                      )}
+                    </div>
+                  </div>
+
+                  <!-- Versión Mobile -->
+                  <div class="flex flex-col gap-2 bg-white p-3.5 rounded-xl border border-slate-200/60">
+                    <div class="flex justify-between items-center mb-1">
+                      <span class="font-extrabold uppercase text-slate-800 text-3xs tracking-wider">Versión Móvil (Mobile)</span>
+                      <select class="slide-mobile-type px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-950 focus:outline-none focus:border-rose-600 text-3xs font-extrabold uppercase tracking-wider cursor-pointer">
+                        <option value="image" selected={slide.mobileType === 'image'}>Imagen</option>
+                        <option value="video" selected={slide.mobileType === 'video'}>Video</option>
+                      </select>
+                    </div>
+                    <div class="flex gap-1.5">
+                      <input
+                        type="text"
+                        class="slide-mobile-url flex-grow min-w-0 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-2xs"
+                        placeholder="URL de imagen/video o selecciona de la galería"
+                        value={slide.mobileUrl}
+                        id={`slide-${slide.id}-mobile-input`}
+                      />
+                      <button
+                        type="button"
+                        class={`${slide.mobileType === 'video' ? 'open-settings-video-gallery-btn' : 'open-settings-gallery-btn'} px-2.5 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors shrink-0 cursor-pointer`}
+                        data-input={`slide-${slide.id}-mobile-input`}
+                        data-preview={`slide-${slide.id}-mobile-preview`}
+                      >
+                        Galería
+                      </button>
+                    </div>
+                    <div id={`slide-${slide.id}-mobile-preview`} class="h-48 aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center mt-1 mx-auto">
+                      {slide.mobileType === 'video' ? (
+                        <video src={slide.mobileUrl} autoplay loop muted playsinline class="w-full h-full object-cover"></video>
+                      ) : (
+                        <img src={slide.mobileUrl} class="w-full h-full object-cover" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CTA Button and Target Collection Configuration -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-200/60">
+                  <!-- Botón Secundario (Izquierda) -->
+                  <div class="bg-white p-3.5 rounded-xl border border-slate-200/60 flex flex-col gap-2">
+                    <div class="flex justify-between items-center mb-1">
+                      <span class="font-extrabold uppercase text-slate-800 text-3xs tracking-wider">Botón Izquierdo</span>
+                      <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" class="slide-btn2-enabled w-3.5 h-3.5 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={slide.button2?.enabled === true} />
+                        <span class="text-3xs font-extrabold uppercase text-slate-500">Habilitado</span>
+                      </label>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Texto (ES)</label>
+                        <input type="text" class="slide-btn2-text w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs" placeholder="Ej: Nueva Cápsula" value={slide.button2?.text || ''} />
+                      </div>
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Texto (EN)</label>
+                        <input type="text" class="slide-btn2-text-en w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs" placeholder="Ej: New Capsule" value={slide.button2?.textEn || ''} />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Colección de Destino</label>
+                        <select class="slide-btn2-collection-id w-full px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs cursor-pointer">
+                          <option value="">-- Catálogo General --</option>
+                          {collections.map((col) => (
+                            <option value={col.id} selected={slide.button2?.collectionId === col.id}>
+                              {col.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Estilo de Botón</label>
+                        <select class="slide-btn2-style w-full px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs cursor-pointer">
+                          <option value="primary" selected={slide.button2?.style === 'primary'}>Rojo Relleno (Nueva Cápsula)</option>
+                          <option value="secondary" selected={slide.button2?.style === 'secondary' || !slide.button2?.style}>Borde Blanco (Outline)</option>
+                          <option value="pink" selected={slide.button2?.style === 'pink'}>Rosa Relleno (Chica)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Botón Principal (Derecha) -->
+                  <div class="bg-white p-3.5 rounded-xl border border-slate-200/60 flex flex-col gap-2">
+                    <div class="flex justify-between items-center mb-1">
+                      <span class="font-extrabold uppercase text-slate-800 text-3xs tracking-wider">Botón Derecho</span>
+                      <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" class="slide-btn1-enabled w-3.5 h-3.5 rounded text-rose-600 border-slate-300 focus:ring-rose-600" checked={slide.button1?.enabled !== false} />
+                        <span class="text-3xs font-extrabold uppercase text-slate-500">Habilitado</span>
+                      </label>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Texto (ES)</label>
+                        <input type="text" class="slide-btn1-text w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs" placeholder="Ej: Comprar ahora" value={slide.button1?.text || ''} />
+                      </div>
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Texto (EN)</label>
+                        <input type="text" class="slide-btn1-text-en w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs" placeholder="Ej: Shop now" value={slide.button1?.textEn || ''} />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Colección de Destino</label>
+                        <select class="slide-btn1-collection-id w-full px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs cursor-pointer">
+                          <option value="">-- Catálogo General --</option>
+                          {collections.map((col) => (
+                            <option value={col.id} selected={slide.button1?.collectionId === col.id}>
+                              {col.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block font-semibold mb-1 text-slate-400 uppercase tracking-wider text-[10px]">Estilo de Botón</label>
+                        <select class="slide-btn1-style w-full px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 text-xs cursor-pointer">
+                          <option value="secondary" selected={slide.button1?.style === 'secondary' || !slide.button1?.style}>Borde Blanco (Outline)</option>
+                          <option value="primary" selected={slide.button1?.style === 'primary'}>Rojo Relleno (Nueva Cápsula)</option>
+                          <option value="pink" selected={slide.button1?.style === 'pink'}>Rosa Relleno (Chica)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div>
-            <label for="settings-hero-video" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">URL del Video del Hero</label>
-            <div class="flex gap-2">
-              <input
-                type="text"
-                id="settings-hero-video"
-                value={settings.heroVideoUrl || ''}
-                placeholder="Ej: https://..."
-                class="flex-grow px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono text-sm"
-              />
-              <button
-                type="button"
-                id="open-video-gallery-btn"
-                class="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-xs font-bold uppercase transition-colors shrink-0"
-              >
-                Seleccionar Video
-              </button>
-            </div>
-            
-            <!-- Preview of the current video -->
-            <div id="settings-hero-video-preview" class="mt-3 aspect-video max-w-sm rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
-              {settings.heroVideoUrl ? (
-                <video src={settings.heroVideoUrl} autoplay loop muted playsinline class="w-full h-full object-cover" />
-              ) : (
-                <span class="text-3xs text-slate-400 font-bold uppercase tracking-widest">Sin Vista Previa</span>
-              )}
-            </div>
+            <label for="settings-capsule-collection" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Colección de la Nueva Cápsula (Hero)</label>
+            <select
+              id="settings-capsule-collection"
+              class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 focus:outline-none focus:border-rose-600 text-sm font-medium"
+            >
+              <option value="">-- Seleccionar Colección --</option>
+              {collections.map((col) => (
+                <option value={col.id} selected={settings.heroCapsuleCollectionId === col.id}>
+                  {col.title} ({col.slug})
+                </option>
+              ))}
+            </select>
+            <p class="text-slate-400 text-3xs normal-case leading-normal font-medium mt-1">El botón de "Nueva Cápsula" en la portada de la web llevará a la colección seleccionada aquí.</p>
           </div>
         </div>
 
@@ -334,8 +536,22 @@ const otherCountries = settings.markets.filter((c) => !popularCountries.includes
       <!-- SUBSECTION: MEGA MENU EDITOR -->
       <form id="form-sub-megamenu" class="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col gap-6 shadow-sm hidden">
         <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
-          <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Editor de Mega Menú</h3>
-          <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Configura los títulos, colecciones e imágenes promocionales que aparecen en el menú desplegable "Colecciones".</p>
+          <h3 class="text-xs font-extrabold uppercase tracking-widest text-slate-900">Editor de Mega Menús</h3>
+          <p class="text-slate-400 text-3xs normal-case leading-normal font-medium">Configura las secciones, categorías e imágenes promocionales (drops/novedades) para los mega menús de Colecciones, Hombre y Mujer.</p>
+        </div>
+
+        <!-- Selector de Menú Objetivo (Colecciones, Hombre, Mujer) -->
+        <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 select-none">
+          <span class="text-3xs font-extrabold uppercase text-slate-400 tracking-widest mr-1">Menú a editar:</span>
+          <button type="button" id="megamenu-target-col" class="megamenu-target-btn px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-rose-600 text-white shadow-3xs cursor-pointer" data-target="col">
+            📁 Colecciones (General)
+          </button>
+          <button type="button" id="megamenu-target-hombre" class="megamenu-target-btn px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 cursor-pointer" data-target="hombre">
+            👨 Hombre
+          </button>
+          <button type="button" id="megamenu-target-mujer" class="megamenu-target-btn px-3.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 cursor-pointer" data-target="mujer">
+            👩 Mujer
+          </button>
         </div>
 
         <!-- Columnas de Colecciones -->
@@ -688,9 +904,12 @@ const otherCountries = settings.markets.filter((c) => !popularCountries.includes
 
         <!-- Bridge for megamenu initial lists -->
         <div id="megamenu-initial-bridge" 
-          data-s1={JSON.stringify(settings.megaMenu?.section1?.collectionIds || [])}
-          data-s2={JSON.stringify(settings.megaMenu?.section2?.collectionIds || [])}
-          data-all={JSON.stringify(collections.map(c => ({ id: c.id, title: c.title })))}
+          data-mm-col={JSON.stringify(settings.megaMenu || null)}
+          data-mm-hombre={JSON.stringify(settings.megaMenuHombre || null)}
+          data-mm-mujer={JSON.stringify(settings.megaMenuMujer || null)}
+          data-mm-sub-hombre={JSON.stringify(subCollectionsHombre.map(c => ({ id: c.id, title: c.title })))}
+          data-mm-sub-mujer={JSON.stringify(subCollectionsMujer.map(c => ({ id: c.id, title: c.title })))}
+          data-all={JSON.stringify(collections.map(c => ({ id: c.id, title: c.title, slug: c.slug })))}
           class="hidden"
         ></div>
 

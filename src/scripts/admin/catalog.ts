@@ -505,6 +505,9 @@ function syncCollectionFormToState(lang: string) {
 }
 
 function syncCollectionStateToForm(lang: string) {
+  const collectionSlugInput = document.getElementById('form-collection-slug') as HTMLInputElement;
+  const currentSlug = collectionSlugInput?.value;
+
   if (lang === 'es') {
     (document.getElementById('form-collection-title') as HTMLInputElement).value = state.collection.translations.title;
     (document.getElementById('form-collection-desc') as HTMLTextAreaElement).value = state.collection.translations.description;
@@ -512,6 +515,11 @@ function syncCollectionStateToForm(lang: string) {
     (document.getElementById('form-collection-seo-title') as HTMLInputElement).value = state.collection.translations.seo_title;
     (document.getElementById('form-collection-seo-keywords') as HTMLInputElement).value = state.collection.translations.seo_keywords;
     (document.getElementById('form-collection-seo-desc') as HTMLTextAreaElement).value = state.collection.translations.seo_desc;
+
+    if (collectionSlugInput && currentSlug !== 'hombre' && currentSlug !== 'mujer') {
+      collectionSlugInput.readOnly = false;
+      collectionSlugInput.classList.remove('bg-slate-50', 'text-slate-400', 'cursor-not-allowed');
+    }
   } else {
     (document.getElementById('form-collection-title') as HTMLInputElement).value = state.collection.translations.title_en;
     (document.getElementById('form-collection-desc') as HTMLTextAreaElement).value = state.collection.translations.description_en;
@@ -519,6 +527,11 @@ function syncCollectionStateToForm(lang: string) {
     (document.getElementById('form-collection-seo-title') as HTMLInputElement).value = state.collection.translations.seo_title_en;
     (document.getElementById('form-collection-seo-keywords') as HTMLInputElement).value = state.collection.translations.seo_keywords_en;
     (document.getElementById('form-collection-seo-desc') as HTMLTextAreaElement).value = state.collection.translations.seo_desc_en;
+
+    if (collectionSlugInput) {
+      collectionSlugInput.readOnly = true;
+      collectionSlugInput.classList.add('bg-slate-50', 'text-slate-400', 'cursor-not-allowed');
+    }
   }
 
   updateVisualFromTextarea('iframe-col-desc', 'form-collection-desc');
@@ -1111,10 +1124,16 @@ cancelVideoGalleryModal?.addEventListener('click', () => toggleVideoGalleryModal
 
 insertVideoGalleryBtn?.addEventListener('click', () => {
   if (state.videoGallery.selectedUrl) {
-    const heroVideoInput = document.getElementById('settings-hero-video') as HTMLInputElement;
-    if (heroVideoInput) {
-      heroVideoInput.value = state.videoGallery.selectedUrl;
-      heroVideoInput.dispatchEvent(new Event('input'));
+    if (state.videoGallery.activeInput && state.videoGallery.activePreview) {
+      state.videoGallery.activeInput.value = state.videoGallery.selectedUrl;
+      state.videoGallery.activeInput.dispatchEvent(new Event('input'));
+      state.videoGallery.activePreview.innerHTML = `<video src="${state.videoGallery.selectedUrl}" autoplay loop muted playsinline class="w-full h-full object-cover"></video>`;
+    } else {
+      const heroVideoInput = document.getElementById('settings-hero-video') as HTMLInputElement;
+      if (heroVideoInput) {
+        heroVideoInput.value = state.videoGallery.selectedUrl;
+        heroVideoInput.dispatchEvent(new Event('input'));
+      }
     }
     toggleVideoGalleryModal(false);
   }
@@ -1167,7 +1186,18 @@ videoGalleryFileInput?.addEventListener('change', async () => {
   }
 });
 
-// Video live preview
+// Hero Hybrid Carousel live previews & gallery select
+const heroImage1Input = document.getElementById('settings-hero-image1') as HTMLInputElement;
+const heroImage1Preview = document.getElementById('settings-hero-image1-preview') as HTMLDivElement;
+heroImage1Input?.addEventListener('input', () => {
+  const url = heroImage1Input.value.trim();
+  if (url) {
+    heroImage1Preview.innerHTML = `<img src="${url}" class="w-full h-full object-cover" />`;
+  } else {
+    heroImage1Preview.innerHTML = `<span class="text-3xs text-slate-400 font-bold uppercase tracking-widest">Sin Vista Previa</span>`;
+  }
+});
+
 const heroVideoInput = document.getElementById('settings-hero-video') as HTMLInputElement;
 const heroVideoPreview = document.getElementById('settings-hero-video-preview') as HTMLDivElement;
 heroVideoInput?.addEventListener('input', () => {
@@ -1176,6 +1206,137 @@ heroVideoInput?.addEventListener('input', () => {
     heroVideoPreview.innerHTML = `<video src="${url}" autoplay loop muted playsinline class="w-full h-full object-cover"></video>`;
   } else {
     heroVideoPreview.innerHTML = `<span class="text-3xs text-slate-400 font-bold uppercase tracking-widest">Sin Vista Previa</span>`;
+  }
+});
+
+const heroImage3Input = document.getElementById('settings-hero-image3') as HTMLInputElement;
+const heroImage3Preview = document.getElementById('settings-hero-image3-preview') as HTMLDivElement;
+heroImage3Input?.addEventListener('input', () => {
+  const url = heroImage3Input.value.trim();
+  if (url) {
+    heroImage3Preview.innerHTML = `<img src="${url}" class="w-full h-full object-cover" />`;
+  } else {
+    heroImage3Preview.innerHTML = `<span class="text-3xs text-slate-400 font-bold uppercase tracking-widest">Sin Vista Previa</span>`;
+  }
+});
+
+const heroImage2Input = document.getElementById('settings-hero-image2') as HTMLInputElement;
+const heroImage2Preview = document.getElementById('settings-hero-image2-preview') as HTMLDivElement;
+heroImage2Input?.addEventListener('input', () => {
+  const url = heroImage2Input.value.trim();
+  if (url) {
+    heroImage2Preview.innerHTML = `<img src="${url}" class="w-full h-full object-cover" />`;
+  } else {
+    heroImage2Preview.innerHTML = `<span class="text-3xs text-slate-400 font-bold uppercase tracking-widest">Sin Vista Previa</span>`;
+  }
+});
+
+// Toggle visibility of Slide 2 media type containers
+const slide2TypeSelect = document.getElementById('settings-hero-slide2-type') as HTMLSelectElement;
+const slide2VideoContainer = document.getElementById('settings-slide2-video-container');
+const slide2ImageContainer = document.getElementById('settings-slide2-image-container');
+
+function updateSlide2Visibility() {
+  if (!slide2TypeSelect) return;
+  if (slide2TypeSelect.value === 'video') {
+    slide2VideoContainer?.classList.remove('hidden');
+    slide2ImageContainer?.classList.add('hidden');
+  } else {
+    slide2VideoContainer?.classList.add('hidden');
+    slide2ImageContainer?.classList.remove('hidden');
+  }
+}
+
+slide2TypeSelect?.addEventListener('change', updateSlide2Visibility);
+// Run visibility check on load/init
+if (slide2TypeSelect) {
+  updateSlide2Visibility();
+}
+
+// Toggle visibility of Slide 3 media type containers
+const slide3TypeSelect = document.getElementById('settings-hero-slide3-type') as HTMLSelectElement;
+const slide3ImageContainer = document.getElementById('settings-slide3-image-container');
+const slide3VideoContainer = document.getElementById('settings-slide3-video-container');
+
+function updateSlide3Visibility() {
+  if (!slide3TypeSelect) return;
+  if (slide3TypeSelect.value === 'video') {
+    slide3VideoContainer?.classList.remove('hidden');
+    slide3ImageContainer?.classList.add('hidden');
+  } else {
+    slide3VideoContainer?.classList.add('hidden');
+    slide3ImageContainer?.classList.remove('hidden');
+  }
+}
+
+slide3TypeSelect?.addEventListener('change', updateSlide3Visibility);
+if (slide3TypeSelect) {
+  updateSlide3Visibility();
+}
+
+// Live preview for hero-video2 input (Slide 3 video)
+const heroVideo2Input = document.getElementById('settings-hero-video2') as HTMLInputElement;
+const heroVideo2Preview = document.getElementById('settings-hero-video2-preview') as HTMLDivElement;
+heroVideo2Input?.addEventListener('input', () => {
+  const url = heroVideo2Input.value.trim();
+  if (url) {
+    heroVideo2Preview.innerHTML = `<video src="${url}" autoplay loop muted playsinline class="w-full h-full object-cover"></video>`;
+  } else {
+    heroVideo2Preview.innerHTML = `<span class="text-3xs text-slate-400 font-bold uppercase tracking-widest">Sin Vista Previa</span>`;
+  }
+});
+
+// Open video gallery for Slide 3 video input
+const openVideo2GalleryBtn = document.getElementById('open-video2-gallery-btn') as HTMLButtonElement;
+openVideo2GalleryBtn?.addEventListener('click', () => {
+  // Re-wire video gallery to target the Slide 3 video input
+  const originalInsertHandler = () => {
+    if (state.videoGallery.selectedUrl) {
+      if (heroVideo2Input) heroVideo2Input.value = state.videoGallery.selectedUrl;
+      if (heroVideo2Preview) {
+        heroVideo2Preview.innerHTML = `<video src="${state.videoGallery.selectedUrl}" autoplay loop muted playsinline class="w-full h-full object-cover"></video>`;
+      }
+      toggleVideoGalleryModal(false);
+    }
+  };
+  // Temporarily override insert btn for slide 3 target
+  const insertBtn = document.getElementById('insert-video-gallery-btn') as HTMLButtonElement;
+  if (insertBtn) {
+    const newInsert = insertBtn.cloneNode(true) as HTMLButtonElement;
+    insertBtn.parentNode?.replaceChild(newInsert, insertBtn);
+    newInsert.addEventListener('click', originalInsertHandler);
+  }
+  toggleVideoGalleryModal(true);
+});
+
+// Bind image and video gallery buttons in brand settings using event delegation
+document.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.open-settings-gallery-btn');
+  if (btn) {
+    const inputId = btn.getAttribute('data-input') || '';
+    const previewId = btn.getAttribute('data-preview') || '';
+    const inputEl = document.getElementById(inputId) as HTMLInputElement;
+    const previewEl = document.getElementById(previewId) as HTMLDivElement;
+    if (inputEl && previewEl) {
+      state.gallery.activeInput = inputEl;
+      state.gallery.activePreview = previewEl;
+      toggleGalleryModal(true);
+    }
+  }
+});
+
+document.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.open-settings-video-gallery-btn');
+  if (btn) {
+    const inputId = btn.getAttribute('data-input') || '';
+    const previewId = btn.getAttribute('data-preview') || '';
+    const inputEl = document.getElementById(inputId) as HTMLInputElement;
+    const previewEl = document.getElementById(previewId) as HTMLDivElement;
+    if (inputEl && previewEl) {
+      state.videoGallery.activeInput = inputEl;
+      state.videoGallery.activePreview = previewEl;
+      toggleVideoGalleryModal(true);
+    }
   }
 });
 
@@ -1967,7 +2128,7 @@ const collectionTitleInput = document.getElementById('form-collection-title') as
 const collectionSlugInput = document.getElementById('form-collection-slug') as HTMLInputElement;
 collectionTitleInput?.addEventListener('input', () => {
   const idVal = (document.getElementById('form-collection-id') as HTMLInputElement).value;
-  if (!idVal) {
+  if (!idVal && state.collection.activeLang === 'es') {
     collectionSlugInput.value = collectionTitleInput.value
       .toLowerCase()
       .trim()

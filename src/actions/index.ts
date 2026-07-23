@@ -720,8 +720,93 @@ export const server = {
       admins: z.array(z.string()),
       logoUrl: z.string().optional(),
       faviconUrl: z.string().optional(),
+      heroImage1Url: z.string().optional(),
       heroVideoUrl: z.string().optional(),
+      heroImage2Url: z.string().optional(),
+      heroImage3Url: z.string().optional(),
+      heroVideo2Url: z.string().optional(),
+      heroSlide2Type: z.enum(['image', 'video']).optional(),
+      heroSlide3Type: z.enum(['image', 'video']).optional(),
+      heroCapsuleCollectionId: z.string().optional(),
+      heroSlides: z.array(z.object({
+        id: z.string(),
+        desktopType: z.enum(['image', 'video']),
+        desktopUrl: z.string(),
+        mobileType: z.enum(['image', 'video']),
+        mobileUrl: z.string(),
+        button1: z.object({
+          text: z.string(),
+          textEn: z.string().optional(),
+          collectionId: z.string(),
+          style: z.enum(['primary', 'secondary', 'pink']),
+          enabled: z.boolean(),
+        }),
+        button2: z.object({
+          text: z.string(),
+          textEn: z.string().optional(),
+          collectionId: z.string(),
+          style: z.enum(['primary', 'secondary', 'pink']),
+          enabled: z.boolean(),
+        }),
+        showTitleOverlay: z.boolean().optional(),
+      })).optional(),
       megaMenu: z.object({
+        section1: z.object({
+          title: z.string().min(1, 'El título de la sección 1 es obligatorio'),
+          titleEn: z.string().optional(),
+          collectionIds: z.array(z.string()),
+        }),
+        section2: z.object({
+          title: z.string().min(1, 'El título de la sección 2 es obligatorio'),
+          titleEn: z.string().optional(),
+          collectionIds: z.array(z.string()),
+        }),
+        promo1: z.object({
+          imageUrl: z.string(),
+          title: z.string().optional(),
+          titleEn: z.string().optional(),
+          subtitle: z.string().optional(),
+          subtitleEn: z.string().optional(),
+          linkUrl: z.string().optional(),
+        }),
+        promo2: z.object({
+          imageUrl: z.string(),
+          title: z.string().optional(),
+          titleEn: z.string().optional(),
+          subtitle: z.string().optional(),
+          subtitleEn: z.string().optional(),
+          linkUrl: z.string().optional(),
+        }),
+      }).optional(),
+      megaMenuHombre: z.object({
+        section1: z.object({
+          title: z.string().min(1, 'El título de la sección 1 es obligatorio'),
+          titleEn: z.string().optional(),
+          collectionIds: z.array(z.string()),
+        }),
+        section2: z.object({
+          title: z.string().min(1, 'El título de la sección 2 es obligatorio'),
+          titleEn: z.string().optional(),
+          collectionIds: z.array(z.string()),
+        }),
+        promo1: z.object({
+          imageUrl: z.string(),
+          title: z.string().optional(),
+          titleEn: z.string().optional(),
+          subtitle: z.string().optional(),
+          subtitleEn: z.string().optional(),
+          linkUrl: z.string().optional(),
+        }),
+        promo2: z.object({
+          imageUrl: z.string(),
+          title: z.string().optional(),
+          titleEn: z.string().optional(),
+          subtitle: z.string().optional(),
+          subtitleEn: z.string().optional(),
+          linkUrl: z.string().optional(),
+        }),
+      }).optional(),
+      megaMenuMujer: z.object({
         section1: z.object({
           title: z.string().min(1, 'El título de la sección 1 es obligatorio'),
           titleEn: z.string().optional(),
@@ -2124,5 +2209,208 @@ export const server = {
         });
       }
     },
+  }),
+  submitContactForm: defineAction({
+    accept: 'json',
+    input: z.object({
+      name: z.string().min(1, 'El nombre es obligatorio'),
+      email: z.string().email('El correo electrónico no es válido'),
+      message: z.string().min(10, 'El mensaje debe tener al menos 10 caracteres'),
+    }),
+    handler: async (input, context) => {
+      const ip = context.clientAddress || '127.0.0.1';
+      const rateLimit = await checkRateLimit('email', ip);
+      if (!rateLimit.success) {
+        throw new ActionError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Demasiadas solicitudes. Por favor, intenta de nuevo más tarde.',
+        });
+      }
+
+      try {
+        await db.collection('contacts').add({
+          name: input.name,
+          email: input.email,
+          message: input.message,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          status: 'unread',
+        });
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error submitting contact form:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al enviar el mensaje de contacto.',
+        });
+      }
+    },
+  }),
+  getContactMessages: defineAction({
+    accept: 'json',
+    input: z.object({
+      limit: z.number().default(50),
+      lastVisibleId: z.string().optional(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        let query = db.collection('contacts').orderBy('createdAt', 'desc').limit(input.limit);
+        
+        if (input.lastVisibleId) {
+          const startDoc = await db.collection('contacts').doc(input.lastVisibleId).get();
+          if (startDoc.exists) {
+            query = query.startAfter(startDoc);
+          }
+        }
+
+        const snap = await query.get();
+        const contacts = snap.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            email: data.email,
+            message: data.message,
+            status: data.status || 'unread',
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+          };
+        });
+
+        const nextVisibleId = snap.docs.length === input.limit ? snap.docs[snap.docs.length - 1].id : null;
+        const hasMore = snap.docs.length === input.limit;
+
+        return { success: true, contacts, nextVisibleId, hasMore };
+      } catch (error: any) {
+        console.error('Error fetching contact messages:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener los mensajes de contacto.',
+        });
+      }
+    },
+  }),
+  deleteContactMessage: defineAction({
+    accept: 'json',
+    input: z.object({
+      id: z.string().min(1),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        await db.collection('contacts').doc(input.id).delete();
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error deleting contact message:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al eliminar el mensaje de contacto.',
+        });
+      }
+    },
+  }),
+  updateContactStatus: defineAction({
+    accept: 'json',
+    input: z.object({
+      id: z.string().min(1),
+      status: z.enum(['read', 'unread']),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        await db.collection('contacts').doc(input.id).update({
+          status: input.status,
+        });
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error updating contact status:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al actualizar el estado del mensaje.',
+        });
+      }
+    },
+  }),
+  getAdminNotifications: defineAction({
+    accept: 'json',
+    input: z.object({}),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        const notifications: Array<{
+          id: string;
+          type: 'order' | 'return' | 'message';
+          title: string;
+          description: string;
+          link: string;
+          createdAt: string;
+        }> = [];
+
+        // 1. Fetch unread contact messages
+        const contactsSnap = await db.collection('contacts')
+          .where('status', '==', 'unread')
+          .limit(20)
+          .get();
+
+        contactsSnap.docs.forEach(doc => {
+          const data = doc.data();
+          notifications.push({
+            id: doc.id,
+            type: 'message',
+            title: `Nuevo mensaje de ${data.name}`,
+            description: data.message.length > 50 ? data.message.substring(0, 50) + '...' : data.message,
+            link: 'contacts',
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+          });
+        });
+
+        // 2. Fetch pending return requests in orders
+        const returnsSnap = await db.collection('orders')
+          .where('returnRequest.status', '==', 'pending')
+          .limit(10)
+          .get();
+
+        returnsSnap.docs.forEach(doc => {
+          const data = doc.data();
+          notifications.push({
+            id: doc.id,
+            type: 'return',
+            title: `Solicitud de devolución`,
+            description: `Pedido #${doc.id.substring(0, 8)} - ${data.customerDetails?.name || 'Cliente'}`,
+            link: 'orders',
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+          });
+        });
+
+        // 3. Fetch pending orders
+        const pendingOrdersSnap = await db.collection('orders')
+          .where('shippingStatus', '==', 'pending')
+          .limit(10)
+          .get();
+
+        pendingOrdersSnap.docs.forEach(doc => {
+          const data = doc.data();
+          notifications.push({
+            id: doc.id,
+            type: 'order',
+            title: `Nuevo pedido pendiente`,
+            description: `Pedido #${doc.id.substring(0, 8)} - Total: $${(data.total / 100).toFixed(2)}`,
+            link: 'orders',
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+          });
+        });
+
+        // Sort notifications by date descending
+        notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        return { success: true, notifications };
+      } catch (error: any) {
+        console.error('Error fetching admin notifications:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener las notificaciones.',
+        });
+      }
+    }
   }),
 };

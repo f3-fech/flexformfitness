@@ -223,8 +223,14 @@ const productJsonLd = {
       </div>
     </main>
 
-    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400 mt-20">
+    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-xs text-slate-400 mt-20 flex flex-col sm:flex-row justify-between items-center gap-4 max-w-7xl mx-auto w-full">
       <p>&copy; {new Date().getFullYear()} FlexForm Fitness. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+      <div class="flex items-center gap-6 text-2xs uppercase tracking-wider font-extrabold text-slate-500">
+        <a href={`/${lang}/contacto`} class="hover:text-slate-900 transition-colors text-rose-500">{isEn ? "Contact" : "Contacto"}</a>
+        <a href={`/${lang}/condiciones`} class="hover:text-slate-900 transition-colors">{isEn ? "Terms" : "Condiciones"}</a>
+        <a href={`/${lang}/privacidad`} class="hover:text-slate-900 transition-colors">{isEn ? "Privacy" : "Privacidad"}</a>
+        <a href={`/${lang}/cookies`} class="hover:text-slate-900 transition-colors">Cookies</a>
+      </div>
     </footer>
     <script>
       // Execute when DOM is ready

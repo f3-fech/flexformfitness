@@ -1,0 +1,264 @@
+---
+import SEO from '../../components/SEO.astro';
+import Navbar from '../../components/Navbar.astro';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'es' } },
+    { params: { lang: 'en' } }
+  ];
+}
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
+const t = {
+  es: {
+    title: "Contacto",
+    subtitle: "¿Tienes alguna duda o problema con tu pedido? Escríbenos y te responderemos lo antes posible.",
+    nameLabel: "Nombre Completo",
+    namePlaceholder: "Ej: Javier García",
+    emailLabel: "Correo Electrónico",
+    emailPlaceholder: "tu@email.com",
+    messageLabel: "Mensaje / Consulta",
+    messagePlaceholder: "Escribe aquí tu consulta detallada...",
+    submitBtn: "Enviar Mensaje",
+    sendingBtn: "Enviando...",
+    successTitle: "¡Mensaje Enviado!",
+    successMsg: "Hemos recibido tu consulta correctamente. Nuestro equipo de soporte te responderá en tu correo electrónico lo antes posible.",
+    backToShop: "Volver a la tienda",
+    seoTitle: "Contacto | FLEX FORM FITNESS",
+    seoDesc: "Ponte en contacto con el equipo de soporte de FLEX FORM FITNESS para resolver dudas o problemas con tu pedido."
+  },
+  en: {
+    title: "Contact Us",
+    subtitle: "Have any questions or issues with your order? Write to us and we will reply as soon as possible.",
+    nameLabel: "Full Name",
+    namePlaceholder: "e.g. John Doe",
+    emailLabel: "Email Address",
+    emailPlaceholder: "you@example.com",
+    messageLabel: "Message / Inquiry",
+    messagePlaceholder: "Write your detailed inquiry here...",
+    submitBtn: "Send Message",
+    sendingBtn: "Sending...",
+    successTitle: "Message Sent!",
+    successMsg: "We have received your inquiry. Our support team will get back to you at your email address as soon as possible.",
+    backToShop: "Back to Shop",
+    seoTitle: "Contact Us | FLEX FORM FITNESS",
+    seoDesc: "Get in touch with the FLEX FORM FITNESS support team to resolve queries or order issues."
+  }
+};
+
+const texts = isEn ? t.en : t.es;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <SEO
+      title={texts.seoTitle}
+      description={texts.seoDesc}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between w-full overflow-x-hidden">
+    <Navbar />
+
+    <!-- Main Content Container with background glow effects -->
+    <main class="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24 flex-grow w-full flex items-center justify-center">
+      <!-- Glow background circles -->
+      <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-pink-500/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+      <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+
+      <div class="w-full">
+        <!-- Contact Form Card -->
+        <div id="contact-card" class="bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-2xl rounded-3xl p-8 sm:p-10 max-w-xl w-full mx-auto transition-all duration-500 relative overflow-hidden">
+          
+          <!-- Inner Form State -->
+          <div id="form-container" class="transition-opacity duration-300">
+            <div class="text-center mb-8">
+              <h1 class="text-3xl font-black italic tracking-tight text-slate-900 uppercase">
+                {texts.title}
+              </h1>
+              <p class="text-xs sm:text-sm text-slate-500 mt-2 font-medium">
+                {texts.subtitle}
+              </p>
+            </div>
+
+            <!-- Form -->
+            <form id="contact-form" class="flex flex-col gap-5">
+              <!-- Name Input -->
+              <div>
+                <label for="name" class="block text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">{texts.nameLabel}</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  required
+                  placeholder={texts.namePlaceholder}
+                  class="w-full px-4 py-3 rounded-xl bg-slate-100/50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-sm"
+                />
+              </div>
+
+              <!-- Email Input -->
+              <div>
+                <label for="email" class="block text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">{texts.emailLabel}</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  required
+                  placeholder={texts.emailPlaceholder}
+                  class="w-full px-4 py-3 rounded-xl bg-slate-100/50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-sm"
+                />
+              </div>
+
+              <!-- Message Textarea -->
+              <div>
+                <label for="message" class="block text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">{texts.messageLabel}</label>
+                <textarea
+                  id="message"
+                  name="message"
+                  required
+                  rows="5"
+                  placeholder={texts.messagePlaceholder}
+                  class="w-full px-4 py-3 rounded-xl bg-slate-100/50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-sm resize-none"
+                ></textarea>
+              </div>
+
+              <!-- Error Alert -->
+              <div id="error-alert" class="hidden bg-rose-50 border border-rose-100 text-rose-700 px-4 py-3.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 shrink-0">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                </svg>
+                <span id="error-message"></span>
+              </div>
+
+              <!-- Submit Button -->
+              <button
+                type="submit"
+                id="submit-btn"
+                class="w-full mt-2 py-4 bg-slate-950 text-white rounded-xl text-xs sm:text-sm font-bold uppercase tracking-widest hover:bg-rose-600 active:scale-98 transition-all shadow-lg hover:shadow-rose-600/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{texts.submitBtn}</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Success State (Hidden initially) -->
+          <div id="success-container" class="hidden flex flex-col items-center text-center py-6 transition-all duration-500 scale-95 opacity-0">
+            <!-- Icon with pulse ring -->
+            <div class="relative w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mb-6">
+              <div class="absolute inset-0 bg-rose-100 rounded-full animate-ping opacity-20"></div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-10 h-10 text-rose-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </div>
+
+            <h2 class="text-2xl font-black italic tracking-tight text-slate-900 uppercase">
+              {texts.successTitle}
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-3 font-medium max-w-sm leading-relaxed">
+              {texts.successMsg}
+            </p>
+
+            <a
+              href={`/${lang}`}
+              class="mt-8 px-8 py-3.5 bg-slate-950 text-white border border-slate-950 font-bold uppercase tracking-widest hover:bg-rose-600 hover:border-rose-600 transition-all duration-300 text-xs shadow-lg active:scale-95 cursor-pointer rounded-xl"
+            >
+              {texts.backToShop}
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+    <!-- Simple generic footer aligned to privacy pages -->
+    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400">
+      <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+    </footer>
+
+    <!-- Client-side actions handler -->
+    <script>
+      import { actions, isInputError } from 'astro:actions';
+
+      const form = document.getElementById('contact-form') as HTMLFormElement;
+      const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+      const errorAlert = document.getElementById('error-alert') as HTMLDivElement;
+      const errorMessage = document.getElementById('error-message') as HTMLSpanElement;
+      const formContainer = document.getElementById('form-container') as HTMLDivElement;
+      const successContainer = document.getElementById('success-container') as HTMLDivElement;
+
+      if (form && submitBtn) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          // Reset errors
+          errorAlert.classList.add('hidden');
+          
+          // Disable button & show loading state
+          submitBtn.disabled = true;
+          const originalText = submitBtn.innerHTML;
+          const isEn = window.location.pathname.startsWith('/en');
+          submitBtn.innerHTML = `
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>${isEn ? 'Sending...' : 'Enviando...'}</span>
+          `;
+
+          const formData = new FormData(form);
+          const name = formData.get('name') as string;
+          const email = formData.get('email') as string;
+          const message = formData.get('message') as string;
+
+          try {
+            const { data, error } = await actions.submitContactForm({ name, email, message });
+
+            if (error) {
+              if (isInputError(error)) {
+                const fields = error.fields as Record<string, string[] | undefined>;
+                const fieldNames = Object.keys(fields);
+                if (fieldNames.length > 0) {
+                  const firstField = fieldNames[0];
+                  const messages = fields[firstField];
+                  if (messages && messages.length > 0) {
+                    throw new Error(messages[0]);
+                  }
+                }
+              }
+              throw new Error(error.message || (isEn ? 'Failed to send message.' : 'Error al enviar el mensaje.'));
+            }
+
+            if (data?.success) {
+              formContainer.style.display = 'none';
+              successContainer.classList.remove('hidden');
+              setTimeout(() => {
+                successContainer.classList.remove('opacity-0', 'scale-95');
+                successContainer.classList.add('opacity-100', 'scale-100');
+              }, 50);
+            } else {
+              throw new Error(isEn ? 'Failed to send message.' : 'Error al enviar el mensaje.');
+            }
+          } catch (err: any) {
+            console.error('Contact submit error:', err);
+            errorMessage.textContent = err.message || (isEn ? 'Failed to send message.' : 'Error al enviar el mensaje.');
+            errorAlert.classList.remove('hidden');
+            
+            // Restore button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

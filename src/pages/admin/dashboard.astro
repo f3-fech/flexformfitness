@@ -238,6 +238,13 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
         </button>
         <button
           type="button"
+          id="tab-contacts-btn"
+          class="pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all"
+        >
+          Mensajes
+        </button>
+        <button
+          type="button"
           id="tab-settings-btn"
           class="pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all"
         >
@@ -1109,9 +1116,127 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
 
           </div>
       </section>
+
+      <!-- TAB: CONTACT MESSAGES SECTION -->
+      <section id="section-contacts" class="w-full hidden">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 w-full">
+          <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wider">Mensajes de Contacto / Soporte</h2>
+        </div>
+        <div class="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex flex-col gap-6 w-full">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900 uppercase tracking-wider mb-1">Bandeja de Entrada</h3>
+            <p class="text-xs text-slate-400">Consulta los mensajes de soporte enviados por los clientes a través del formulario de contacto.</p>
+          </div>
+
+          <div class="overflow-x-auto w-full border border-slate-100 rounded-2xl">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase tracking-wider font-extrabold text-3xs">
+                  <th class="py-4 px-5">Remitente</th>
+                  <th class="py-4 px-5">Mensaje (Vista Previa)</th>
+                  <th class="py-4 px-5">Fecha</th>
+                  <th class="py-4 px-5">Estado</th>
+                  <th class="py-4 px-5 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="contacts-table-body" class="divide-y divide-slate-50 text-slate-700">
+                <tr>
+                  <td colspan="5" class="py-8 text-center text-slate-400 font-medium">Cargando bandeja de entrada...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Buttons -->
+          <div class="flex justify-between items-center mt-2">
+            <span class="text-3xs text-slate-400 font-bold uppercase tracking-wider" id="contacts-page-info">Página 1</span>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                id="contacts-prev-btn"
+                disabled
+                class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-slate-100 text-slate-700 text-3xs font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                id="contacts-next-btn"
+                disabled
+                class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-slate-100 text-slate-700 text-3xs font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- TAB: SETTINGS SECTION -->
       <SettingsTab settings={settings} collections={collections} promotionCodes={promotionCodes} />
     </main>
+
+    <!-- Contact Details Modal -->
+    <div id="contact-details-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+      <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+          <h3 class="text-xs font-black tracking-widest text-slate-900 uppercase">Detalles del Mensaje</h3>
+          <button type="button" id="close-contact-modal" class="text-slate-400 hover:text-slate-950 focus:outline-none p-1 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <!-- Body -->
+        <div class="p-6 flex flex-col gap-4 text-xs">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <span class="text-3xs font-extrabold uppercase text-slate-400 tracking-wider">Nombre</span>
+              <p id="contact-detail-name" class="font-bold text-slate-800 text-sm mt-0.5"></p>
+            </div>
+            <div>
+              <span class="text-3xs font-extrabold uppercase text-slate-400 tracking-wider">Fecha</span>
+              <p id="contact-detail-date" class="font-medium text-slate-500 mt-0.5"></p>
+            </div>
+          </div>
+          <div>
+            <span class="text-3xs font-extrabold uppercase text-slate-400 tracking-wider">Correo Electrónico</span>
+            <p id="contact-detail-email" class="font-mono text-slate-800 font-bold mt-0.5"></p>
+          </div>
+          <div class="border-t border-slate-100 pt-4">
+            <span class="text-3xs font-extrabold uppercase text-slate-400 tracking-wider">Mensaje</span>
+            <div id="contact-detail-message" class="bg-slate-50 border border-slate-100 rounded-xl p-5 text-sm sm:text-base text-slate-800 leading-relaxed font-medium mt-1.5 whitespace-pre-line max-h-60 overflow-y-auto"></div>
+          </div>
+        </div>
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center gap-3">
+          <button
+            type="button"
+            id="contact-delete-btn"
+            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          >
+            Eliminar
+          </button>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              id="contact-toggle-status-btn"
+              class="px-4 py-2 bg-slate-200 hover:bg-slate-350 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Marcar como no leído
+            </button>
+            <button
+              type="button"
+              id="close-contact-modal-btn"
+              class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Footer -->
     <footer class="bg-white text-slate-400 py-8 px-6 text-center text-xs border-t border-slate-200 mt-12 w-full">
@@ -1143,9 +1268,11 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
       import '../../scripts/admin/state.ts';
       import '../../scripts/admin/utils.ts';
       import '../../scripts/admin/navigation.ts';
+      import '../../scripts/admin/notifications.ts';
       import '../../scripts/admin/emails.ts';
       import '../../scripts/admin/orders.ts';
       import '../../scripts/admin/users.ts';
+      import '../../scripts/admin/contacts.ts';
       import '../../scripts/admin/catalog.ts';
       import '../../scripts/admin/settings.ts';
     </script>
