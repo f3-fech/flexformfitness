@@ -141,7 +141,7 @@ function compileSettingsData() {
 
   const logoUrl = (document.getElementById('settings-logo') as HTMLInputElement).value.trim() || undefined;
   const faviconUrl = (document.getElementById('settings-favicon') as HTMLInputElement).value.trim() || undefined;
-  const heroCapsuleCollectionId = (document.getElementById('settings-capsule-collection') as HTMLSelectElement)?.value?.trim() || undefined;
+
   const admins = Array.from(document.querySelectorAll('.admin-row')).map(el => el.getAttribute('data-email') || '').filter(Boolean);
 
   // Compile dynamic Hero slides
@@ -203,7 +203,7 @@ function compileSettingsData() {
     logoUrl, 
     faviconUrl, 
     heroSlides,
-    heroCapsuleCollectionId,
+
     admins, 
     megaMenu: megaMenuColState || undefined,
     megaMenuHombre: megaMenuHombreState || undefined,

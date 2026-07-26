@@ -509,28 +509,13 @@ const subCollectionsMujer = collections.filter((c) => {
             ))}
           </div>
 
-          <div>
-            <label for="settings-capsule-collection" class="block font-semibold mb-1 text-slate-500 uppercase tracking-wider">Colección de la Nueva Cápsula (Hero)</label>
-            <select
-              id="settings-capsule-collection"
-              class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 focus:outline-none focus:border-rose-600 text-sm font-medium"
-            >
-              <option value="">-- Seleccionar Colección --</option>
-              {collections.map((col) => (
-                <option value={col.id} selected={settings.heroCapsuleCollectionId === col.id}>
-                  {col.title} ({col.slug})
-                </option>
-              ))}
-            </select>
-            <p class="text-slate-400 text-3xs normal-case leading-normal font-medium mt-1">El botón de "Nueva Cápsula" en la portada de la web llevará a la colección seleccionada aquí.</p>
-          </div>
         </div>
 
-        <div class="flex justify-end pt-4 border-t border-slate-100">
+        <div class="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-slate-100 py-4 -mx-6 -mb-6 px-6 rounded-b-2xl shadow-[0_-8px_20px_rgba(0,0,0,0.04)] z-20 flex justify-end">
           <button
             type="submit"
             id="save-branding-btn"
-            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
           >
             Guardar Imagen y Marca
           </button>
@@ -918,11 +903,11 @@ const subCollectionsMujer = collections.filter((c) => {
         ></div>
 
         <!-- Submit button -->
-        <div class="flex justify-end pt-4 border-t border-slate-100">
+        <div class="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-slate-100 py-4 -mx-6 -mb-6 px-6 rounded-b-2xl shadow-[0_-8px_20px_rgba(0,0,0,0.04)] z-20 flex justify-end">
           <button
             type="submit"
             id="save-megamenu-btn"
-            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-2xs font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-md hover:shadow-lg cursor-pointer"
           >
             Guardar Configuración de Menú
           </button>

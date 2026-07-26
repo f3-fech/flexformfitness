@@ -10,6 +10,7 @@ const isConfigured = !!(redisUrl && redisToken);
 let checkoutLimiter: any = null;
 let authLimiter: any = null;
 let emailLimiter: any = null;
+let notificationsLimiter: any = null;
 
 if (isConfigured) {
   try {
@@ -35,6 +36,12 @@ if (isConfigured) {
       limiter: Ratelimit.slidingWindow(3, '10 m'), // 3 requests per 10 minutes
       prefix: '@upstash/ratelimit/email',
     });
+
+    notificationsLimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(4, '1 m'), // 4 requests per 1 minute
+      prefix: '@upstash/ratelimit/notifications',
+    });
   } catch (err) {
     console.error('[Rate Limiting] Error initializing Upstash Redis clients:', err);
   }
@@ -57,7 +64,7 @@ export interface RateLimitResult {
  * Fail-open design: if Upstash Redis fails or is unconfigured, it returns success=true.
  */
 export async function checkRateLimit(
-  limiterName: 'checkout' | 'auth' | 'email',
+  limiterName: 'checkout' | 'auth' | 'email' | 'notifications',
   identifier: string
 ): Promise<RateLimitResult> {
   if (!isConfigured) {
@@ -74,6 +81,9 @@ export async function checkRateLimit(
       break;
     case 'email':
       limiter = emailLimiter;
+      break;
+    case 'notifications':
+      limiter = notificationsLimiter;
       break;
   }
 

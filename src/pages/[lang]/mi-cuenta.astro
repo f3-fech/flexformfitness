@@ -452,9 +452,9 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
         </div>
       </div>
 
-      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-3xs md:text-2xs text-slate-550">
-        <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
-        <div class="flex items-center gap-6">
+      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] md:text-2xs text-slate-550">
+        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+        <div class="flex flex-wrap justify-center gap-x-4 gap-y-1.5 md:gap-x-6">
           <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
           <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Política de Privacidad</a>
           <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>

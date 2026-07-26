@@ -2337,6 +2337,16 @@ export const server = {
     input: z.object({}),
     handler: async (input, context) => {
       await checkAdminAuth(context);
+
+      // Rate Limit Check
+      const ip = context.clientAddress || '127.0.0.1';
+      const rateLimit = await checkRateLimit('notifications', ip);
+      if (!rateLimit.success) {
+        throw new ActionError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Demasiadas solicitudes de notificaciones. Por favor, inténtalo de nuevo más tarde.',
+        });
+      }
       try {
         const notifications: Array<{
           id: string;

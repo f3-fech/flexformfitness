@@ -143,7 +143,7 @@ const productJsonLd = {
             <img
               src={product.images[0]}
               alt={productTitle}
-              class="w-full h-full object-cover transition-opacity duration-300 rounded-2xl opacity-0"
+              class="w-full h-full object-cover transition-opacity duration-300 rounded-2xl opacity-0 cursor-zoom-in"
               style={`object-position: ${getObjectPosition(product.images[0])}`}
               id="main-product-image"
               onload="this.classList.remove('opacity-0')"
@@ -223,13 +223,119 @@ const productJsonLd = {
       </div>
     </main>
 
-    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-xs text-slate-400 mt-20 flex flex-col sm:flex-row justify-between items-center gap-4 max-w-7xl mx-auto w-full">
-      <p>&copy; {new Date().getFullYear()} FlexForm Fitness. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
-      <div class="flex items-center gap-6 text-2xs uppercase tracking-wider font-extrabold text-slate-500">
-        <a href={`/${lang}/contacto`} class="hover:text-slate-900 transition-colors text-rose-500">{isEn ? "Contact" : "Contacto"}</a>
-        <a href={`/${lang}/condiciones`} class="hover:text-slate-900 transition-colors">{isEn ? "Terms" : "Condiciones"}</a>
-        <a href={`/${lang}/privacidad`} class="hover:text-slate-900 transition-colors">{isEn ? "Privacy" : "Privacidad"}</a>
-        <a href={`/${lang}/cookies`} class="hover:text-slate-900 transition-colors">Cookies</a>
+    <!-- Zoom Lightbox Modal -->
+    <div id="image-zoom-modal" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 backdrop-blur-md">
+      <!-- Close Button -->
+      <button 
+        type="button" 
+        id="close-zoom-modal" 
+        class="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors border border-white/10 z-10 cursor-pointer focus:outline-none"
+        aria-label={isEn ? "Close zoom" : "Cerrar zoom"}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- Prev Arrow -->
+      {product.images.length > 1 && (
+        <button 
+          type="button" 
+          id="modal-prev-btn" 
+          class="absolute left-6 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors border border-white/10 z-10 cursor-pointer focus:outline-none"
+          aria-label={isEn ? "Previous image" : "Imagen anterior"}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+      )}
+
+      <!-- Next Arrow -->
+      {product.images.length > 1 && (
+        <button 
+          type="button" 
+          id="modal-next-btn" 
+          class="absolute right-6 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors border border-white/10 z-10 cursor-pointer focus:outline-none"
+          aria-label={isEn ? "Next image" : "Siguiente imagen"}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+      )}
+
+      <!-- Modal Image Container -->
+      <div id="modal-image-wrapper" class="relative overflow-hidden cursor-zoom-in flex items-center justify-center max-w-[90vw] max-h-[85vh] select-none rounded-lg">
+        <img 
+          id="modal-zoomed-image" 
+          src="" 
+          alt={productTitle}
+          class="max-w-full max-h-[85vh] object-contain transition-transform duration-300 ease-out origin-center" 
+          draggable="false"
+        />
+      </div>
+    </div>
+
+    <!-- Footer (Full Width) -->
+    <footer id="contacto" class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850 mt-20">
+      <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <!-- Logo and info -->
+        <div class="flex flex-col gap-4 col-span-2 md:col-span-1">
+          <a href={`/${lang}`} class="flex flex-col">
+            <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
+              FLEX <span class="text-red-550">FORM</span>
+            </span>
+            <span class="text-[8px] font-extrabold tracking-[0.25em] text-slate-500 uppercase leading-none mt-0.5">
+              FITNESS
+            </span>
+          </a>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            {isEn ? "High-performance sportswear and premium accessories designed for dedicated athletes." : "Ropa deportiva de alto rendimiento y accesorios premium diseñados para atletas dedicados."}
+          </p>
+        </div>
+
+        <!-- Links Colecciones -->
+        <div class="flex flex-col gap-3 col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "COLLECTIONS" : "COLECCIONES"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "New Arrivals" : "Novedades"}</a></li>
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Men" : "Hombre"}</a></li>
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Women" : "Mujer"}</a></li>
+            <li><a href={`/${lang}#catalogo`} class="hover:text-white transition-colors">{isEn ? "Bestsellers" : "Más Vendidos"}</a></li>
+          </ul>
+        </div>
+
+        <!-- Links Soporte -->
+        <div class="flex flex-col gap-3 col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}/contacto`} class="hover:text-white transition-colors font-semibold text-rose-500">{isEn ? "Contact Support" : "Contacto / Soporte"}</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Size Guide" : "Guía de Tallas"}</a></li>
+            <li><a href="/admin/login" class="hover:text-white transition-colors">{isEn ? "Admin Login" : "Acceso de Administrador"}</a></li>
+          </ul>
+        </div>
+
+        <!-- Newsletter -->
+        <div class="flex flex-col gap-3 col-span-2 md:col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">NEWSLETTER</h4>
+          <p class="text-xs text-slate-500 leading-relaxed">{isEn ? "Subscribe to receive a 10% discount on your first order and exclusive deals." : "Suscríbete para recibir un 10% de descuento en tu primer pedido y ofertas exclusivas."}</p>
+          <div class="flex gap-2 mt-1">
+            <input type="email" id="newsletter-email" placeholder={isEn ? "Your email" : "Tu email"} class="bg-slate-800 text-white placeholder-slate-500 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:border-white w-full" />
+            <button id="newsletter-submit-btn" class="bg-white text-slate-900 px-4 py-2 text-xs font-bold uppercase hover:bg-red-600 hover:text-white transition-colors">OK</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] md:text-2xs text-slate-550">
+        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+        <div class="flex flex-wrap justify-center gap-x-4 gap-y-1.5 md:gap-x-6">
+          <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
+          <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Política de Privacidad</a>
+          <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>
+        </div>
       </div>
     </footer>
     <script>
@@ -371,7 +477,133 @@ const productJsonLd = {
                 changeToImage(currentIndex + 1);
               }
             }
-          }, { passive: true });
+          });
+        }
+
+        // Zoom Modal Elements & Initialization
+        const zoomModal = document.getElementById('image-zoom-modal');
+        const modalImg = document.getElementById('modal-zoomed-image') as HTMLImageElement;
+        const closeModal = document.getElementById('close-zoom-modal');
+        const modalPrevBtn = document.getElementById('modal-prev-btn');
+        const modalNextBtn = document.getElementById('modal-next-btn');
+        const wrapper = document.getElementById('modal-image-wrapper');
+
+        let isZoomed = false;
+
+        if (zoomModal && modalImg && closeModal && wrapper) {
+          mainImg.addEventListener('click', () => {
+            modalImg.src = mainImg.src;
+            zoomModal.classList.remove('hidden');
+            setTimeout(() => {
+              zoomModal.classList.remove('opacity-0');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+          });
+
+          const handleClose = () => {
+            zoomModal.classList.add('opacity-0');
+            setTimeout(() => {
+              zoomModal.classList.add('hidden');
+              isZoomed = false;
+              modalImg.style.transform = 'scale(1)';
+              modalImg.style.transformOrigin = 'center';
+              wrapper.classList.remove('cursor-zoom-out');
+              wrapper.classList.add('cursor-zoom-in');
+            }, 300);
+            document.body.style.overflow = '';
+          };
+
+          closeModal.addEventListener('click', handleClose);
+
+          zoomModal.addEventListener('click', (e) => {
+            if (e.target === zoomModal) {
+              handleClose();
+            }
+          });
+
+          wrapper.addEventListener('click', (e: any) => {
+            if (e.target.closest('#close-zoom-modal') || e.target.closest('#modal-prev-btn') || e.target.closest('#modal-next-btn')) return;
+
+            isZoomed = !isZoomed;
+            if (isZoomed) {
+              modalImg.style.transform = 'scale(2.5)';
+              wrapper.classList.remove('cursor-zoom-in');
+              wrapper.classList.add('cursor-zoom-out');
+              pan(e);
+            } else {
+              modalImg.style.transform = 'scale(1)';
+              modalImg.style.transformOrigin = 'center';
+              wrapper.classList.remove('cursor-zoom-out');
+              wrapper.classList.add('cursor-zoom-in');
+            }
+          });
+
+          const pan = (e: MouseEvent | TouchEvent) => {
+            if (!isZoomed) return;
+            const rect = wrapper.getBoundingClientRect();
+            let clientX = 0;
+            let clientY = 0;
+
+            if (window.TouchEvent && e instanceof TouchEvent) {
+              if (e.touches.length === 0) return;
+              clientX = e.touches[0].clientX;
+              clientY = e.touches[0].clientY;
+            } else if (e instanceof MouseEvent) {
+              clientX = e.clientX;
+              clientY = e.clientY;
+            }
+
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const xPercent = (x / rect.width) * 100;
+            const yPercent = (y / rect.height) * 100;
+            modalImg.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+          };
+
+          wrapper.addEventListener('mousemove', pan);
+          wrapper.addEventListener('touchmove', pan, { passive: true });
+
+          if (modalPrevBtn) {
+            modalPrevBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              changeToImage(currentIndex - 1);
+              modalImg.src = mainImg.src;
+              isZoomed = false;
+              modalImg.style.transform = 'scale(1)';
+              wrapper.classList.remove('cursor-zoom-out');
+              wrapper.classList.add('cursor-zoom-in');
+            });
+          }
+
+          if (modalNextBtn) {
+            modalNextBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              changeToImage(currentIndex + 1);
+              modalImg.src = mainImg.src;
+              isZoomed = false;
+              modalImg.style.transform = 'scale(1)';
+              wrapper.classList.remove('cursor-zoom-out');
+              wrapper.classList.add('cursor-zoom-in');
+            });
+          }
+
+          const keydownHandler = (ev: KeyboardEvent) => {
+            if (zoomModal.classList.contains('hidden')) return;
+            if (ev.key === 'Escape') {
+              handleClose();
+            } else if (ev.key === 'ArrowLeft' && modalPrevBtn) {
+              modalPrevBtn.click();
+            } else if (ev.key === 'ArrowRight' && modalNextBtn) {
+              modalNextBtn.click();
+            }
+          };
+
+          document.addEventListener('keydown', keydownHandler);
+          
+          document.addEventListener('astro:before-swap', () => {
+            document.removeEventListener('keydown', keydownHandler);
+            document.body.style.overflow = '';
+          }, { once: true });
         }
       }
 

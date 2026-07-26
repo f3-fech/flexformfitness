@@ -8,10 +8,18 @@ const notifDropdown = document.getElementById('admin-notif-dropdown') as HTMLDiv
 const notifList = document.getElementById('admin-notif-list') as HTMLDivElement;
 
 let isOpen = false;
+let lastFetchTime = 0;
+const THROTTLE_MS = 4000; // 4 seconds
 
 // Fetch and load notifications
 export async function loadNotifications() {
   if (!notifList) return;
+
+  const now = Date.now();
+  if (now - lastFetchTime < THROTTLE_MS) {
+    return;
+  }
+  lastFetchTime = now;
 
   try {
     const { data, error } = await actions.getAdminNotifications({});
@@ -137,6 +145,5 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Load on start and poll every 30s
+// Load once on start to show count badge
 loadNotifications();
-setInterval(loadNotifications, 30000);

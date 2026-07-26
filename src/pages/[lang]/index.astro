@@ -253,7 +253,7 @@ const storeJsonLd = {
     <Navbar />
 
     <!-- Hero Image Carousel Section (Edge to Edge / Full Width) -->
-    <section class="w-full h-[55vh] md:h-[85vh] relative overflow-hidden bg-slate-950">
+    <section class="w-full aspect-[4/5] md:aspect-[8/3] relative overflow-hidden bg-slate-950">
       <!-- Carousel Slides -->
       <div class="absolute inset-0 w-full h-full">
         {heroSlides.map((slide, index) => {
@@ -589,7 +589,7 @@ const storeJsonLd = {
           )}
 
           {/* 4 columns on desktop, full-width grid, large images (aspect-[3/4]) */}
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-x-1 gap-y-12 sm:gap-x-1.5 sm:gap-y-16 md:gap-x-2 md:gap-y-20">
             {col.products.map((product) => (
               <div 
                 class="product-card group flex flex-col justify-between w-full" 
@@ -647,18 +647,19 @@ const storeJsonLd = {
                 </div>
 
                 {/* Product Details (Title, Description, and Price) */}
-                <div class="mt-3 flex flex-col gap-1 w-full">
-                  <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest">FLEX FORM</span>
-                  <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1">
+                <div class="mt-3 pt-2.5 border-t border-slate-200 flex flex-col gap-1 w-full text-center md:text-left">
+                  <a href={`/${lang}/productos/${product.slug}`} class="text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-10 block">
                     {isEn ? (product.title_en || product.title) : product.title}
                   </a>
-                  <p class="text-slate-500 text-xs line-clamp-1">
+                  <p class="text-slate-500 text-xs hidden md:line-clamp-1">
                     {isEn ? (product.description_en || product.description) : product.description}
                   </p>
                   
-                  {/* Clickable Swatches */}
-                  {getUniqueColors(product).length > 0 && (
-                    <div class="flex items-center gap-1.5 mt-1">
+                  <div class="flex flex-col items-center md:relative md:flex-row md:items-center w-full mt-0.5 md:mt-2 gap-3 md:gap-0 md:min-h-[20px]">
+                    <span class="text-xs font-semibold text-slate-500 shrink-0">
+                      ${(product.price / 100).toFixed(2)}
+                    </span>
+                    <div class="flex items-center gap-1.5 justify-center md:absolute md:left-1/2 md:-translate-x-1/2">
                       {getUniqueColors(product).map((color) => (
                         <button 
                           type="button"
@@ -669,15 +670,6 @@ const storeJsonLd = {
                         />
                       ))}
                     </div>
-                  )}
-
-                  <div class="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100">
-                    <span class="text-sm font-extrabold text-slate-950">
-                      ${(product.price / 100).toFixed(2)}
-                    </span>
-                    <a href={`/${lang}/productos/${product.slug}`} class="text-[10px] font-bold text-rose-600 group-hover:underline hover:text-rose-700 uppercase tracking-wider">
-                      {isEn ? "View details" : "Ver más"}
-                    </a>
                   </div>
                 </div>
               </div>
@@ -756,9 +748,9 @@ const storeJsonLd = {
         </div>
       </div>
 
-      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-3xs md:text-2xs text-slate-550">
-        <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
-        <div class="flex items-center gap-6">
+      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] md:text-2xs text-slate-550">
+        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
+        <div class="flex flex-wrap justify-center gap-x-4 gap-y-1.5 md:gap-x-6">
           <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
           <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Política de Privacidad</a>
           <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>
