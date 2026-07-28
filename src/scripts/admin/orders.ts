@@ -129,7 +129,7 @@ export async function loadOrdersList(lastVisibleId: string | null = null) {
             <span class="block text-slate-400 text-3xs font-mono">${order.customerDetails?.email || 'N/A'}</span>
           </td>
           <td class="p-4 font-mono font-bold text-emerald-600">
-            $${(order.totalAmount / 100).toFixed(2)}
+            ${(order.totalAmount / 100).toFixed(2)} €
           </td>
           <td class="p-4">
             <div class="flex flex-col gap-1 max-w-[200px]">
@@ -200,7 +200,7 @@ export function renderOrderDetails(order: any) {
         ${item.variantSku ? `<span class="block text-slate-400 text-[9px] font-mono font-extrabold uppercase">SKU: ${item.variantSku}</span>` : ''}
       </div>
       <div class="text-right shrink-0">
-        <span class="block font-bold text-slate-900">$${(item.price / 100).toFixed(2)}</span>
+        <span class="block font-bold text-slate-900">${(item.price / 100).toFixed(2)} €</span>
         <span class="block text-slate-400 text-3xs">Cant: ${item.quantity}</span>
       </div>
     </div>

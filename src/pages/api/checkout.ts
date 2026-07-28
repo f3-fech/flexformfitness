@@ -26,7 +26,8 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
       );
     }
 
-    const { items, promoCodeId } = await request.json();
+    const { items, promoCodeId, lang = 'es' } = await request.json();
+    const userLang = (lang === 'en' || lang === 'es') ? lang : 'es';
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return new Response(JSON.stringify({ error: 'Cart is empty or invalid.' }), { status: 400 });
@@ -73,7 +74,7 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
       // 2. Build Stripe line items
       lineItems.push({
         price_data: {
-          currency: 'usd',
+          currency: 'eur',
           product_data: {
             name: finalName,
             images: product.images[0] ? [product.images[0]] : [],
@@ -100,9 +101,34 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
     const settings = await getGeneralSettings();
     const subtotal = sanitizedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
+    // Verify promoCodeId server-side if provided to prevent API bypass or hacking
+    if (promoCodeId) {
+      try {
+        const promoCodeObj = await stripe.promotionCodes.retrieve(promoCodeId, { expand: ['coupon'] });
+        const isShipping = 
+          promoCodeObj.metadata?.isShippingCoupon === 'true' || 
+          promoCodeObj.coupon?.metadata?.isShippingCoupon === 'true' ||
+          (promoCodeObj.coupon?.amount_off !== undefined && promoCodeObj.coupon.amount_off === settings.shippingPrice) ||
+          promoCodeObj.code?.includes('ENVIO') ||
+          promoCodeObj.code?.includes('FREESHIP') ||
+          promoCodeObj.code?.includes('SHIPPING') ||
+          promoCodeObj.code?.includes('GRATIS');
+
+        if (isShipping && subtotal >= settings.freeShippingMin) {
+          const minFormatted = (settings.freeShippingMin / 100).toFixed(2);
+          return new Response(
+            JSON.stringify({ 
+              error: `Este código de envío gratis solo es aplicable en compras inferiores a ${minFormatted} € (tu pedido ya dispone de envío gratuito).` 
+            }), 
+            { status: 400 }
+          );
+        }
+      } catch (err) {
+        console.error('Server-side promo code verification error:', err);
+      }
+    }
+
     const shippingCost = (subtotal >= settings.freeShippingMin || subtotal === 0) ? 0 : settings.shippingPrice;
-
-
 
     // Save draft checkout in Firestore to avoid Stripe 500-char metadata limit
     const checkoutRef = db.collection('draft_checkouts').doc();
@@ -133,7 +159,7 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
             type: 'fixed_amount',
             fixed_amount: {
               amount: shippingCost,
-              currency: 'usd',
+              currency: 'eur',
             },
             display_name: shippingCost === 0 ? 'Envío gratuito' : 'Envío estándar',
           },
@@ -144,7 +170,7 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
         enabled: true,
       },
       success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/carrito`,
+      cancel_url: `${siteUrl}/${userLang}/carrito`,
       metadata: {
         checkoutId: checkoutId,
       },

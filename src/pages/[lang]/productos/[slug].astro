@@ -80,7 +80,7 @@ const productJsonLd = {
   'sku': product.variants[0]?.sku || product.id,
   'offers': {
     '@type': 'AggregateOffer',
-    'priceCurrency': 'USD',
+    'priceCurrency': 'EUR',
     'lowPrice': parseFloat((Math.min(product.price, ...product.variants.map((v) => v.price)) / 100).toFixed(2)),
     'highPrice': parseFloat((Math.max(product.price, ...product.variants.map((v) => v.price)) / 100).toFixed(2)),
     'offerCount': product.variants.length || 1,
@@ -183,7 +183,6 @@ const productJsonLd = {
             <h1 class="text-3xl lg:text-4xl font-extrabold text-slate-950 tracking-tight">
               {productTitle}
             </h1>
-            <p class="text-sm text-slate-400 mt-1">{isEn ? "Product ID" : "ID del Producto"}: {product.id}</p>
           </div>
 
           <div class="prose prose-slate max-w-none text-slate-600 leading-relaxed">

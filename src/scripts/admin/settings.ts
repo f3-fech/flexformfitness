@@ -345,7 +345,7 @@ const promoCodeValueInput = document.getElementById('promo-code-value') as HTMLI
 
 createPromoBtn?.addEventListener('click', async () => {
   const code = promoCodeNameInput.value.trim().toUpperCase();
-  const discountType = promoCodeTypeSelect.value as 'percent' | 'amount';
+  const discountType = promoCodeTypeSelect.value as 'percent' | 'amount' | 'shipping';
   const value = parseFloat(promoCodeValueInput.value);
 
   if (!code) {
@@ -353,7 +353,7 @@ createPromoBtn?.addEventListener('click', async () => {
     return;
   }
 
-  if (isNaN(value) || value <= 0) {
+  if (discountType !== 'shipping' && (isNaN(value) || value <= 0)) {
     alert('Por favor, introduce un valor de descuento positivo.');
     return;
   }
@@ -366,7 +366,7 @@ createPromoBtn?.addEventListener('click', async () => {
     const { error } = await actions.createDiscountCode({
       code,
       discountType,
-      value,
+      value: discountType === 'shipping' ? undefined : value,
     });
 
     if (error) throw error;

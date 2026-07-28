@@ -142,7 +142,7 @@ export async function loadAbandonedCarts(lastVisibleId: string | null = null) {
             ${itemsSummary}
           </td>
           <td class="py-4 px-5 font-bold font-mono text-slate-900">
-            $${(cart.totalAmount / 100).toFixed(2)}
+            ${(cart.totalAmount / 100).toFixed(2)} €
           </td>
           <td class="py-4 px-5 text-right">
             <button

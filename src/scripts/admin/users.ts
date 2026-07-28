@@ -142,7 +142,7 @@ export function renderUserDetails(user: any, orders: any[]) {
                   <span class="text-slate-400 text-4xs">${orderDate}</span>
                 </div>
                 <div class="flex items-center gap-4">
-                  <span class="font-bold text-slate-700 font-mono">$${(order.totalAmount / 100).toFixed(2)}</span>
+                  <span class="font-bold text-slate-700 font-mono">${(order.totalAmount / 100).toFixed(2)} €</span>
                   <span class="px-2 py-0.5 rounded text-4xs font-extrabold uppercase border ${
                     order.paymentStatus === 'paid' 
                       ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 

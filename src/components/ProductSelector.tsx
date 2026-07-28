@@ -145,6 +145,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
       quantity,
       price: currentPrice,
       image: selectedVariant?.image || product.images[0] || null,
+      maxStock: currentStock,
     });
 
     setAddedFeedback(true);
@@ -153,12 +154,11 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
 
   return (
     <div className="flex flex-col gap-6 p-6 rounded-3xl bg-white border border-slate-100 shadow-premium">
-      {/* Price & SKU */}
+      {/* Price */}
       <div className="flex justify-between items-baseline">
         <span className="text-3xl font-extrabold text-slate-950 font-mono">
-          ${(currentPrice / 100).toFixed(2)}
+          {(currentPrice / 100).toFixed(2)} €
         </span>
-        <span className="text-xs text-slate-400 font-mono">SKU: {currentSku}</span>
       </div>
 
       {/* Stock Status */}
@@ -277,7 +277,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
               <button
                 type="button"
                 onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
-                className="px-3 py-1 text-slate-600 hover:bg-slate-200 rounded-r-xl transition-colors font-bold"
+                disabled={quantity >= currentStock}
+                className="px-3 py-1 text-slate-600 hover:bg-slate-200 rounded-r-xl transition-colors font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                title={quantity >= currentStock ? (isEn ? "Maximum stock reached" : "Máximo de stock alcanzado") : undefined}
               >
                 +
               </button>

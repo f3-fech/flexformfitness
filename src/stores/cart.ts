@@ -10,6 +10,7 @@ export interface CartItem {
   quantity: number;
   price: number; // in cents
   image?: string | null;
+  maxStock?: number;
 }
 
 // Map store to hold active cart items indexed by a unique key (productId + optional variantSku)
@@ -86,7 +87,9 @@ if (typeof window !== 'undefined') {
             for (const [key, guestItem] of Object.entries(guestCart)) {
               hasMerged = true;
               if (mergedCart[key]) {
-                mergedCart[key].quantity += guestItem.quantity;
+                const max = guestItem.maxStock ?? mergedCart[key].maxStock;
+                const desired = mergedCart[key].quantity + guestItem.quantity;
+                mergedCart[key].quantity = max !== undefined ? Math.min(desired, max) : desired;
               } else {
                 mergedCart[key] = guestItem;
               }
@@ -187,14 +190,19 @@ export function addToCart(item: CartItem) {
   const key = item.variantSku ? `${item.productId}_${item.variantSku}` : item.productId;
   const currentCart = cartStore.get();
   const existingItem = currentCart[key];
+  const max = item.maxStock ?? existingItem?.maxStock;
 
   if (existingItem) {
+    const desired = existingItem.quantity + item.quantity;
+    const capped = max !== undefined ? Math.min(desired, max) : desired;
     cartStore.setKey(key, {
       ...existingItem,
-      quantity: existingItem.quantity + item.quantity,
+      maxStock: max !== undefined ? max : existingItem.maxStock,
+      quantity: capped,
     });
   } else {
-    cartStore.setKey(key, item);
+    const capped = item.maxStock !== undefined ? Math.min(item.quantity, item.maxStock) : item.quantity;
+    cartStore.setKey(key, { ...item, quantity: capped });
   }
 }
 
@@ -217,7 +225,9 @@ export function updateQuantity(key: string, quantity: number) {
   }
   const currentItem = cartStore.get()[key];
   if (currentItem) {
-    cartStore.setKey(key, { ...currentItem, quantity });
+    const max = currentItem.maxStock;
+    const capped = max !== undefined ? Math.min(quantity, max) : quantity;
+    cartStore.setKey(key, { ...currentItem, quantity: capped });
   }
 }
 

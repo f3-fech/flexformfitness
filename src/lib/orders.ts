@@ -159,7 +159,7 @@ export async function fulfillOrder(sessionId: string) {
           <li>
             ${item.title} ${item.variantName ? `(${item.variantName})` : ''} - 
             Cantidad: ${item.quantity} - 
-            Precio: $${(item.price / 100).toFixed(2)}
+            Precio: ${(item.price / 100).toFixed(2)} €
           </li>`
           )
           .join('')}
@@ -173,7 +173,7 @@ export async function fulfillOrder(sessionId: string) {
         .replace(/{{customerName}}/g, customerDetails.name || 'Cliente')
         .replace(/{{orderId}}/g, session.id)
         .replace(/{{orderItems}}/g, itemsHtml)
-        .replace(/{{totalAmount}}/g, `$${(totalAmount / 100).toFixed(2)}`)
+        .replace(/{{totalAmount}}/g, `${(totalAmount / 100).toFixed(2)} €`)
         .replace(/{{invoiceUrl}}/g, invoiceLink);
 
       const subject = emailSettings.orderSubject

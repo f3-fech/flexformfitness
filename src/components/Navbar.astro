@@ -560,26 +560,28 @@ const cleanTitle = (title: string): string => {
     </div>
 
     <!-- Drawer Navigation -->
-    <div class="flex-grow overflow-y-auto p-6 flex flex-col gap-6 text-xs">
-      <a href={`/${lang}`} class="text-xs font-bold tracking-widest text-slate-900 hover:text-rose-600 uppercase">
-        {t('nav.home')}
-      </a>
+    <div class="flex-grow overflow-y-auto p-6 flex flex-col gap-4 text-xs">
+      <div class="border-b border-slate-100/80 pb-4 pt-1">
+        <a href={`/${lang}`} class="text-xs font-extrabold tracking-widest text-slate-900 hover:text-rose-600 uppercase block">
+          {t('nav.home')}
+        </a>
+      </div>
       
       <!-- Mobile Hombre Accordion -->
-      <div class="border-b border-slate-100 pb-5 flex flex-col gap-3">
-        <button type="button" id="mobile-men-trigger" class="w-full flex justify-between items-center text-xs font-black tracking-widest text-slate-800 hover:text-rose-600 uppercase cursor-pointer">
+      <div class="border-b border-slate-100/80 pb-4 pt-1 flex flex-col gap-3">
+        <button type="button" id="mobile-men-trigger" class="w-full flex justify-between items-center text-xs font-extrabold tracking-widest text-slate-900 hover:text-rose-600 uppercase cursor-pointer">
           <span>{t('nav.men')}</span>
-          <svg id="mobile-men-arrow" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <svg id="mobile-men-arrow" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
         <div id="mobile-men-list" class="flex flex-col gap-4 pl-2 mt-1 hidden transition-all">
           {m1Collections.length > 0 && (
             <div class="flex flex-col gap-2">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">{m1Title}</span>
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest block">{m1Title}</span>
               <div class="flex flex-col gap-2 pl-2 border-l border-slate-100">
                 {m1Collections.map((col) => (
-                  <a href={`/${lang}/colecciones/hombre?cat=${col.id}`} class="text-2xs font-bold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
+                  <a href={`/${lang}/colecciones/hombre?cat=${col.id}`} class="text-2xs font-semibold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
                     {cleanTitle(isEn ? (col.title_en || col.title) : col.title)}
                   </a>
@@ -590,10 +592,10 @@ const cleanTitle = (title: string): string => {
 
           {m2Collections.length > 0 && (
             <div class="flex flex-col gap-2">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">{m2Title}</span>
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest block">{m2Title}</span>
               <div class="flex flex-col gap-2 pl-2 border-l border-slate-100">
                 {m2Collections.map((col) => (
-                  <a href={`/${lang}/colecciones/hombre?cat=${col.id}`} class="text-2xs font-bold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
+                  <a href={`/${lang}/colecciones/hombre?cat=${col.id}`} class="text-2xs font-semibold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
                     {cleanTitle(isEn ? (col.title_en || col.title) : col.title)}
                   </a>
@@ -602,7 +604,7 @@ const cleanTitle = (title: string): string => {
             </div>
           )}
 
-          <a href={`/${lang}/colecciones/hombre`} class="text-2xs font-extrabold uppercase text-rose-600 hover:text-rose-700 flex items-center gap-1.5 py-1.5 mt-1 self-start">
+          <a href={`/${lang}/colecciones/hombre`} class="text-2xs font-bold uppercase text-rose-600 hover:text-rose-700 flex items-center gap-1.5 py-1.5 mt-1 self-start">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
             {t('nav.view_all')}
           </a>
@@ -629,20 +631,20 @@ const cleanTitle = (title: string): string => {
       </div>
 
       <!-- Mobile Mujer Accordion -->
-      <div class="border-b border-slate-100 pb-5 flex flex-col gap-3">
-        <button type="button" id="mobile-women-trigger" class="w-full flex justify-between items-center text-xs font-black tracking-widest text-slate-800 hover:text-rose-600 uppercase cursor-pointer">
+      <div class="border-b border-slate-100/80 pb-4 pt-1 flex flex-col gap-3">
+        <button type="button" id="mobile-women-trigger" class="w-full flex justify-between items-center text-xs font-extrabold tracking-widest text-slate-900 hover:text-rose-600 uppercase cursor-pointer">
           <span>{t('nav.women')}</span>
-          <svg id="mobile-women-arrow" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <svg id="mobile-women-arrow" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
         <div id="mobile-women-list" class="flex flex-col gap-4 pl-2 mt-1 hidden transition-all">
           {w1Collections.length > 0 && (
             <div class="flex flex-col gap-2">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">{w1Title}</span>
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest block">{w1Title}</span>
               <div class="flex flex-col gap-2 pl-2 border-l border-slate-100">
                 {w1Collections.map((col) => (
-                  <a href={`/${lang}/colecciones/mujer?cat=${col.id}`} class="text-2xs font-bold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
+                  <a href={`/${lang}/colecciones/mujer?cat=${col.id}`} class="text-2xs font-semibold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
                     {cleanTitle(isEn ? (col.title_en || col.title) : col.title)}
                   </a>
@@ -653,10 +655,10 @@ const cleanTitle = (title: string): string => {
 
           {w2Collections.length > 0 && (
             <div class="flex flex-col gap-2">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">{w2Title}</span>
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest block">{w2Title}</span>
               <div class="flex flex-col gap-2 pl-2 border-l border-slate-100">
                 {w2Collections.map((col) => (
-                  <a href={`/${lang}/colecciones/mujer?cat=${col.id}`} class="text-2xs font-bold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
+                  <a href={`/${lang}/colecciones/mujer?cat=${col.id}`} class="text-2xs font-semibold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2">
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
                     {cleanTitle(isEn ? (col.title_en || col.title) : col.title)}
                   </a>
@@ -665,7 +667,7 @@ const cleanTitle = (title: string): string => {
             </div>
           )}
 
-          <a href={`/${lang}/colecciones/mujer`} class="text-2xs font-extrabold uppercase text-rose-600 hover:text-rose-700 flex items-center gap-1.5 py-1.5 mt-1 self-start">
+          <a href={`/${lang}/colecciones/mujer`} class="text-2xs font-bold uppercase text-rose-600 hover:text-rose-700 flex items-center gap-1.5 py-1.5 mt-1 self-start">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
             {t('nav.view_all')}
           </a>
@@ -692,22 +694,22 @@ const cleanTitle = (title: string): string => {
       </div>
 
       <!-- Expandable Collections accordion -->
-      <div class="border-b border-slate-100 pb-5 flex flex-col gap-3">
-        <button type="button" id="mobile-coll-trigger" class="w-full flex justify-between items-center text-xs font-black tracking-widest text-slate-800 hover:text-rose-600 uppercase cursor-pointer">
+      <div class="border-b border-slate-100/80 pb-4 pt-1 flex flex-col gap-3">
+        <button type="button" id="mobile-coll-trigger" class="w-full flex justify-between items-center text-xs font-extrabold tracking-widest text-slate-900 hover:text-rose-600 uppercase cursor-pointer">
           <span>{t('nav.collections')}</span>
-          <svg id="mobile-coll-arrow" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <svg id="mobile-coll-arrow" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
         <div id="mobile-coll-list" class="flex flex-col gap-5 pl-3 mt-1 hidden transition-all">
           {s1Collections.length > 0 && (
             <div class="flex flex-col gap-2.5">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">{s1Title}</span>
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest block">{s1Title}</span>
               <div class="flex flex-col gap-2 pl-2 border-l border-slate-100">
                 {s1Collections.map((col) => (
                   <a 
                     href={`/${lang}/colecciones/${col.slug}`} 
-                    class="text-2xs font-bold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2"
+                    class="text-2xs font-semibold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2"
                   >
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
                     {isEn ? (col.title_en || col.title) : col.title}
@@ -719,12 +721,12 @@ const cleanTitle = (title: string): string => {
 
           {s2Collections.length > 0 && (
             <div class="flex flex-col gap-2.5">
-              <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest block">{s2Title}</span>
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest block">{s2Title}</span>
               <div class="flex flex-col gap-2 pl-2 border-l border-slate-100">
                 {s2Collections.map((col) => (
                   <a 
                     href={`/${lang}/colecciones/${col.slug}`} 
-                    class="text-2xs font-bold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2"
+                    class="text-2xs font-semibold uppercase text-slate-700 hover:text-rose-600 transition-colors flex items-center gap-2"
                   >
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
                     {isEn ? (col.title_en || col.title) : col.title}
@@ -755,33 +757,72 @@ const cleanTitle = (title: string): string => {
           </div>
         </div>
       </div>
-      <a href={`/${lang}/contacto`} class="text-xs font-bold tracking-widest text-slate-900 hover:text-rose-600 uppercase pb-2">
-        {t('nav.contact')}
-      </a>
+
+      <div class="border-b border-slate-100/80 pb-4 pt-1">
+        <a href={`/${lang}/contacto`} class="text-xs font-extrabold tracking-widest text-slate-900 hover:text-rose-600 uppercase block">
+          {t('nav.contact')}
+        </a>
+      </div>
     </div>
 
     <!-- Drawer Footer (Dynamic client-side hydration container) -->
-    <div id="mobile-drawer-user-section" class="p-6 border-t border-slate-100 bg-slate-50 flex flex-col gap-4 text-3xs font-extrabold tracking-widest uppercase">
+    <div id="mobile-drawer-user-section" class="p-6 border-t border-slate-100 bg-slate-50 flex flex-col gap-4 text-xs font-extrabold tracking-widest uppercase">
       {user ? (
-        <div class="flex flex-col gap-2.5">
-          <div class="flex flex-col gap-2.5 p-3.5 bg-white rounded-xl border border-slate-100 shadow-3xs">
-            <div class="flex items-center gap-2 truncate">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-              <span class="text-3xs font-bold text-slate-700 normal-case truncate max-w-[180px]">{user.name}</span>
-            </div>
-            <a href={`/${lang}/mi-cuenta`} class="block text-center text-3xs font-extrabold uppercase text-rose-600 hover:text-rose-700 bg-rose-50 py-2 rounded-lg transition-colors border border-rose-100">
-              {isEn ? 'My Account' : 'Mi Cuenta'}
-            </a>
-          </div>
-          <a href="/api/auth/logout" class="block text-center border border-slate-200 hover:border-rose-600 text-slate-600 hover:text-rose-600 py-2 rounded-lg transition-colors">
-            {t('nav.signout')}
+        <div class="flex items-center gap-2 w-full">
+          <a href={`/${lang}/mi-cuenta`} class="flex-1 text-center bg-slate-900 hover:bg-rose-600 text-white py-2.5 px-4 rounded-lg transition-colors shadow-2xs text-xs font-extrabold tracking-widest uppercase">
+            {isEn ? 'My Account' : 'Mi Cuenta'}
+          </a>
+          <a href="/api/auth/logout" class="w-10 h-10 shrink-0 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 hover:text-rose-600 rounded-lg flex items-center justify-center transition-colors" title={isEn ? 'Sign Out' : 'Cerrar Sesión'}>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
           </a>
         </div>
       ) : (
-        <a href={`/${lang}/login`} class="block text-center bg-slate-900 hover:bg-rose-600 text-white py-2.5 rounded-lg transition-colors shadow-2xs">
+        <a href={`/${lang}/login`} class="block text-center bg-slate-900 hover:bg-rose-600 text-white py-2.5 rounded-lg transition-colors shadow-2xs text-xs font-extrabold tracking-widest uppercase">
           {t('nav.signin')}
         </a>
       )}
+    </div>
+  </div>
+</div>
+
+<!-- Custom Styled Logout Confirmation Modal -->
+<div id="logout-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[120] flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-200">
+  <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100 flex flex-col items-center text-center gap-5 scale-95 transition-transform duration-200" id="logout-modal-pane">
+    <!-- Logout Icon Badge -->
+    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100 shadow-3xs">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+      </svg>
+    </div>
+
+    <!-- Text Content -->
+    <div class="flex flex-col gap-1.5">
+      <h3 class="text-lg font-black text-slate-950 tracking-tight">
+        {isEn ? "Sign Out" : "Cerrar Sesión"}
+      </h3>
+      <p class="text-xs text-slate-500 font-medium leading-relaxed">
+        {isEn ? "Are you sure you want to sign out of your account?" : "¿Estás seguro de que deseas cerrar sesión en tu cuenta?"}
+      </p>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-3 w-full pt-1">
+      <button
+        type="button"
+        id="cancel-logout-btn"
+        class="flex-1 py-3 px-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+      >
+        {isEn ? "Cancel" : "Cancelar"}
+      </button>
+      <button
+        type="button"
+        id="confirm-logout-btn"
+        class="flex-1 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold uppercase tracking-wider transition-colors shadow-sm cursor-pointer"
+      >
+        {isEn ? "Sign Out" : "Cerrar Sesión"}
+      </button>
     </div>
   </div>
 </div>
@@ -868,20 +909,54 @@ const cleanTitle = (title: string): string => {
     return (segs[1] === 'en' || segs[1] === 'es') ? segs[1] : 'es';
   }
 
-  // Intercept logout clicks to sign out of Firebase Client SDK before hitting server-side logout
-  document.addEventListener('click', async (e) => {
+  // Custom Logout Confirmation Modal logic
+  const logoutModal = document.getElementById('logout-modal');
+  const logoutModalPane = document.getElementById('logout-modal-pane');
+  const cancelLogoutBtn = document.getElementById('cancel-logout-btn');
+  const confirmLogoutBtn = document.getElementById('confirm-logout-btn');
+
+  const openLogoutModal = () => {
+    if (logoutModal && logoutModalPane) {
+      logoutModal.classList.remove('opacity-0', 'pointer-events-none');
+      logoutModal.classList.add('opacity-100', 'pointer-events-auto');
+      logoutModalPane.classList.remove('scale-95');
+      logoutModalPane.classList.add('scale-100');
+    }
+  };
+
+  const closeLogoutModal = () => {
+    if (logoutModal && logoutModalPane) {
+      logoutModal.classList.remove('opacity-100', 'pointer-events-auto');
+      logoutModal.classList.add('opacity-0', 'pointer-events-none');
+      logoutModalPane.classList.remove('scale-100');
+      logoutModalPane.classList.add('scale-95');
+    }
+  };
+
+  document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     const logoutLink = target.closest('a[href="/api/auth/logout"]');
     if (logoutLink) {
       e.preventDefault();
-      try {
-        const { signOut } = await import('firebase/auth');
-        await signOut(auth);
-      } catch (err) {
-        console.error('Error signing out client-side:', err);
-      }
-      window.location.href = '/api/auth/logout';
+      openLogoutModal();
     }
+  });
+
+  cancelLogoutBtn?.addEventListener('click', closeLogoutModal);
+  logoutModal?.addEventListener('click', (e) => {
+    if (e.target === logoutModal) {
+      closeLogoutModal();
+    }
+  });
+
+  confirmLogoutBtn?.addEventListener('click', async () => {
+    try {
+      const { signOut } = await import('firebase/auth');
+      await signOut(auth);
+    } catch (err) {
+      console.error('Error signing out client-side:', err);
+    }
+    window.location.href = '/api/auth/logout';
   });
 
   // Language switching script
@@ -925,18 +1000,14 @@ const cleanTitle = (title: string): string => {
       
       if (mobileContainer) {
         mobileContainer.innerHTML = `
-          <div class="flex flex-col gap-2.5">
-            <div class="flex flex-col gap-2.5 p-3.5 bg-white rounded-xl border border-slate-100 shadow-3xs">
-              <div class="flex items-center gap-2 truncate">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                <span class="text-3xs font-bold text-slate-700 normal-case truncate max-w-[180px]">${name}</span>
-              </div>
-              <a href="/${lang}/mi-cuenta" class="block text-center text-3xs font-extrabold uppercase text-rose-600 hover:text-rose-700 bg-rose-50 py-2 rounded-lg transition-colors border border-rose-100">
-                ${isEn ? 'My Account' : 'Mi Cuenta'}
-              </a>
-            </div>
-            <a href="/api/auth/logout" class="block text-center border border-slate-200 hover:border-rose-600 text-slate-600 hover:text-rose-600 py-2 rounded-lg transition-colors">
-              ${isEn ? 'Sign Out' : 'Cerrar Sesión'}
+          <div class="flex items-center gap-2 w-full">
+            <a href="/${lang}/mi-cuenta" class="flex-1 text-center bg-slate-900 hover:bg-rose-600 text-white py-2.5 px-4 rounded-lg transition-colors shadow-2xs text-xs font-extrabold tracking-widest uppercase">
+              ${isEn ? 'My Account' : 'Mi Cuenta'}
+            </a>
+            <a href="/api/auth/logout" class="w-10 h-10 shrink-0 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 hover:text-rose-600 rounded-lg flex items-center justify-center transition-colors" title="${isEn ? 'Sign Out' : 'Cerrar Sesión'}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              </svg>
             </a>
           </div>
         `;
@@ -955,11 +1026,9 @@ const cleanTitle = (title: string): string => {
       
       if (mobileContainer) {
         mobileContainer.innerHTML = `
-          <div class="flex flex-col gap-3">
-            <a href="/${lang}/login" class="block text-center bg-slate-900 hover:bg-rose-600 text-white py-2.5 rounded-lg transition-colors shadow-2xs">
-              ${isEn ? 'Sign In' : 'Iniciar Sesión'}
-            </a>
-          </div>
+          <a href="/${lang}/login" class="block text-center bg-slate-900 hover:bg-rose-600 text-white py-2.5 rounded-lg transition-colors shadow-2xs text-xs font-extrabold tracking-widest uppercase">
+            ${isEn ? 'Sign In' : 'Iniciar Sesión'}
+          </a>
         `;
       }
     }
@@ -1329,7 +1398,7 @@ const cleanTitle = (title: string): string => {
                   
                   <div class="flex flex-col items-center md:relative md:flex-row md:items-center w-full mt-0.5 md:mt-2 gap-3 md:gap-0 md:min-h-[20px]">
                     <span class="text-xs font-semibold text-slate-500 shrink-0">
-                      $${(p.price / 100).toFixed(2)}
+                      ${(p.price / 100).toFixed(2)} €
                     </span>
                     ${p.uniqueColors && p.uniqueColors.length > 0 ? `
                       <div class="flex items-center gap-1.5 justify-center md:absolute md:left-1/2 md:-translate-x-1/2">

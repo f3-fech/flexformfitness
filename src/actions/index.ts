@@ -880,8 +880,8 @@ export const server = {
     accept: 'json',
     input: z.object({
       code: z.string().min(1),
-      discountType: z.enum(['percent', 'amount']),
-      value: z.number().positive(),
+      discountType: z.enum(['percent', 'amount', 'shipping']),
+      value: z.number().optional(),
     }),
     handler: async (input, context) => {
       await checkAdminAuth(context);
@@ -894,11 +894,22 @@ export const server = {
           duration: 'forever',
         };
 
-        if (discountType === 'percent') {
+        if (discountType === 'shipping') {
+          const settings = await getGeneralSettings();
+          couponParams.amount_off = settings.shippingPrice || 499; // Default 4.99 € shipping cost
+          couponParams.currency = 'eur';
+          couponParams.metadata = { isShippingCoupon: 'true' };
+        } else if (discountType === 'percent') {
+          if (!value || value <= 0) {
+            throw new ActionError({ code: 'BAD_REQUEST', message: 'El valor de descuento debe ser mayor que 0.' });
+          }
           couponParams.percent_off = value;
         } else {
-          couponParams.amount_off = Math.round(value * 100); // convert dollars/euros to cents
-          couponParams.currency = 'usd'; // using store currency
+          if (!value || value <= 0) {
+            throw new ActionError({ code: 'BAD_REQUEST', message: 'El valor de descuento debe ser mayor que 0.' });
+          }
+          couponParams.amount_off = Math.round(value * 100); // convert euros to cents
+          couponParams.currency = 'eur';
         }
 
         const coupon = await stripe.coupons.create(couponParams);
@@ -907,11 +918,13 @@ export const server = {
         const promoCode = await stripe.promotionCodes.create({
           coupon: coupon.id,
           code: code.trim().toUpperCase(),
+          metadata: discountType === 'shipping' ? { isShippingCoupon: 'true' } : undefined,
         });
 
         return { success: true, promoCodeId: promoCode.id };
       } catch (error: any) {
         console.error('Error in createDiscountCode action:', error);
+        if (error instanceof ActionError) throw error;
         throw new ActionError({
           code: 'BAD_REQUEST',
           message: error.message || 'Failed to create discount code.',
@@ -951,6 +964,7 @@ export const server = {
     accept: 'json',
     input: z.object({
       code: z.string().min(1),
+      subtotal: z.number().optional(),
     }),
     handler: async (input, context) => {
       // Rate Limit Check to prevent brute-forcing coupon codes
@@ -964,11 +978,12 @@ export const server = {
       }
 
       try {
-        const { code } = input;
-        
+        const { code, subtotal } = input;
+        const normalizedCode = code.trim().toUpperCase();
+
         // List promotion codes matching this exact code that are active
         const promoCodes = await stripe.promotionCodes.list({
-          code: code.trim().toUpperCase(),
+          code: normalizedCode,
           active: true,
           limit: 1,
           expand: ['data.coupon'],
@@ -984,10 +999,30 @@ export const server = {
         const promoCode = promoCodes.data[0];
         const coupon = promoCode.coupon;
 
+        const settings = await getGeneralSettings();
+        const isShippingCoupon = 
+          promoCode.metadata?.isShippingCoupon === 'true' || 
+          coupon.metadata?.isShippingCoupon === 'true' ||
+          (coupon.amount_off !== undefined && coupon.amount_off === settings.shippingPrice) ||
+          normalizedCode.includes('ENVIO') ||
+          normalizedCode.includes('FREESHIP') ||
+          normalizedCode.includes('SHIPPING') ||
+          normalizedCode.includes('GRATIS');
+
+        // If it is a special shipping discount coupon, check if subtotal is already over freeShippingMin threshold
+        if (isShippingCoupon && subtotal !== undefined && subtotal >= settings.freeShippingMin) {
+          const minFormatted = (settings.freeShippingMin / 100).toFixed(2);
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: `Este código de envío gratis solo es aplicable en compras inferiores a ${minFormatted} € (tu pedido ya dispone de envío gratuito).`,
+          });
+        }
+
         return {
           success: true,
           id: promoCode.id,
           code: promoCode.code,
+          isShippingCoupon,
           coupon: {
             id: coupon.id,
             percent_off: coupon.percent_off || null,
