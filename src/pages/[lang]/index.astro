@@ -237,8 +237,8 @@ const storeJsonLd = {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <SEO
-      title={isEn ? "Official Store | FLEX FORM FITNESS" : "Tienda Oficial | FLEX FORM FITNESS"}
-      description={isEn ? "Explore the official activewear collection of FLEX FORM FITNESS. High-performance shirts, leggings, joggers, and hoodies." : "Explora la colección oficial de ropa deportiva técnica de FLEX FORM FITNESS. Camisetas, mallas, joggers y sudaderas de alto rendimiento."}
+      title={isEn ? "Flex Form Fitness | Gymwear & Fitness Clothing" : "Flex Form Fitness | Ropa Fitness, Ropa Gym y Culturismo"}
+      description={isEn ? "Discover Flex Form Fitness premium gymwear and fitness clothing. Specialized clothing bodybuilding and activewear engineered for peak performance." : "Descubre Flex Form Fitness, la marca líder en ropa fitness, ropa gym y ropa culturismo de alto rendimiento con tecnología sin costuras."}
       jsonLd={storeJsonLd}
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -588,16 +588,16 @@ const storeJsonLd = {
             </div>
           )}
 
-          {/* 4 columns on desktop, compact vertical gap on mobile to eliminate excess whitespace */}
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-x-1.5 gap-y-5 sm:gap-x-2 sm:gap-y-10 md:gap-x-2 md:gap-y-20">
+          {/* 4 columns on desktop, balanced grid spacing */}
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-5 sm:gap-x-3 sm:gap-y-8 md:gap-x-4 md:gap-y-8 lg:gap-x-5 lg:gap-y-10">
             {col.products.map((product) => (
               <div 
-                class="product-card group flex flex-col justify-between w-full" 
+                class="product-card group flex flex-col justify-start w-full" 
                 data-in-men={menProductIds.includes(product.id) ? "true" : "false"}
                 data-in-women={womenProductIds.includes(product.id) ? "true" : "false"}
               >
                 <!-- Product Image Slider -->
-                <div class="relative aspect-[3/4] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 3/4; overflow: hidden;">
+                <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
                   <!-- Swipeable Images Container -->
                   <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
                     {product.images.map((imgUrl, imgIdx) => (
@@ -605,7 +605,7 @@ const storeJsonLd = {
                         href={`/${lang}/productos/${product.slug}`}
                         class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
                         data-index={imgIdx}
-                        style="aspect-ratio: 3/4;"
+                        style="aspect-ratio: 2/3;"
                       >
                         <img
                           src={imgUrl}
@@ -644,32 +644,29 @@ const storeJsonLd = {
                       {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
                     </span>
                   )}
+
+                  <!-- Price badge overlay in bottom right corner (compact on mobile, square edges) -->
+                  <span class="absolute bottom-1.5 right-1.5 sm:bottom-2.5 sm:right-2.5 px-1.5 py-0.5 sm:px-2.5 sm:py-1 bg-slate-950/85 backdrop-blur-xs text-white text-[10px] sm:text-xs font-extrabold font-mono rounded-none shadow-sm z-10 border border-white/10 select-none">
+                    {(product.price / 100).toFixed(2)} €
+                  </span>
                 </div>
 
-                {/* Product Details (Title, Description, and Price) */}
-                <div class="mt-2 pt-1.5 md:mt-3 md:pt-2.5 border-t border-slate-200 flex flex-col gap-0.5 md:gap-1 w-full text-center md:text-left">
-                  <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-8 sm:h-10 block leading-tight sm:leading-normal">
+                {/* Product Details (Title and Colors) */}
+                <div class="mt-1.5 pt-1.5 md:mt-2 md:pt-2 border-t border-slate-200 flex flex-col items-center gap-1 w-full text-center">
+                  <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
                     {isEn ? (product.title_en || product.title) : product.title}
                   </a>
-                  <p class="text-slate-500 text-xs hidden md:line-clamp-1">
-                    {isEn ? (product.description_en || product.description) : product.description}
-                  </p>
                   
-                  <div class="flex flex-col items-center md:relative md:flex-row md:items-center w-full mt-0.5 md:mt-2 gap-1 sm:gap-1.5 md:gap-0 md:min-h-[20px]">
-                    <span class="text-xs font-semibold text-slate-600 shrink-0">
-                      {(product.price / 100).toFixed(2)} €
-                    </span>
-                    <div class="flex items-center gap-1.5 justify-center md:absolute md:left-1/2 md:-translate-x-1/2">
-                      {getUniqueColors(product).map((color) => (
-                        <button 
-                          type="button"
-                          class="color-swatch-btn w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
-                          style={{ backgroundColor: color.hex }}
-                          title={color.name}
-                          data-variant-image={color.image}
-                        />
-                      ))}
-                    </div>
+                  <div class="flex items-center gap-1.5 justify-center min-h-[20px] md:min-h-[24px] mt-0.5">
+                    {getUniqueColors(product).map((color) => (
+                      <button 
+                        type="button"
+                        class="color-swatch-btn w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                        data-variant-image={color.image}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
@@ -679,20 +676,115 @@ const storeJsonLd = {
       ))}
     </main>
 
-    <!-- Full Width Callout Section -->
-    <section class="w-full bg-slate-950 text-white py-12 md:py-16 px-6 md:px-8 text-center relative overflow-hidden">
-      <div class="absolute -top-40 -left-40 w-96 h-96 bg-rose-600 rounded-full blur-3xl opacity-10"></div>
-      <div class="relative max-w-2xl mx-auto flex flex-col items-center gap-4 md:gap-6">
-        <span class="text-[9px] md:text-2xs font-extrabold tracking-[0.25em] text-red-500 uppercase">{isEn ? "CUTTING-EDGE TECHNOLOGY" : "TECNOLOGÍA DE VANGUARDIA"}</span>
-        <h2 class="text-xl sm:text-2xl md:text-4xl font-black italic tracking-tight uppercase leading-tight">
-          {isEn ? "DESIGNED FOR YOUR BEST VERSION" : "DISEÑADO PARA TU MEJOR VERSIÓN"}
-        </h2>
-        <p class="text-slate-400 text-xs md:text-sm leading-relaxed max-w-lg">
-          {isEn ? "Our seamless elastic fabrics adapt to your every move, letting you train at your maximum level without discomfort." : "Nuestras telas elásticas sin costuras se adaptan a cada uno de tus movimientos, permitiéndote entrenar a tu máximo nivel sin molestias."}
-        </p>
-        <a href="#catalogo" class="px-4 py-2 md:px-6 md:py-3 border border-white/20 text-white hover:bg-white hover:text-slate-950 text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all duration-300">
-          {isEn ? "Explore all" : "Explorar todo"}
-        </a>
+    <!-- Full Width Callout Section (2-Column Desktop Split Layout) -->
+    <section class="w-full bg-white border-t border-slate-100 py-16 md:py-24 px-6 md:px-12 relative overflow-hidden">
+      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center">
+        <!-- Left Side: Overline Tag + H2 Title -->
+        <div class="lg:col-span-6 flex flex-col items-start text-left gap-3">
+          <span class="text-[9px] md:text-2xs font-extrabold tracking-[0.25em] text-red-500 uppercase">
+            {isEn ? "CUTTING-EDGE FITNESS CLOTHING" : "TECNOLOGÍA DE VANGUARDIA EN ROPA FITNESS"}
+          </span>
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-black italic tracking-tight uppercase leading-tight text-slate-950">
+            {isEn ? "FLEX FORM FITNESS: PREMIUM GYMWEAR & CLOTHING BODYBUILDING" : "FLEX FORM FITNESS: ROPA GYM Y ROPA CULTURISMO DE ALTO RENDIMIENTO"}
+          </h2>
+        </div>
+
+        <!-- Right Side: Paragraph Text + Call to Action Button -->
+        <div class="lg:col-span-6 flex flex-col items-start text-left gap-6">
+          <p class="text-slate-600 text-xs md:text-sm leading-relaxed">
+            {isEn ? (
+              "Discover the ultimate collection of gymwear and high-performance fitness clothing designed to push your boundaries. At Flex Form Fitness, we combine seamless textile technology, ergonomic support, and premium activewear engineered for your peak performance. Whether you are looking for specialized clothing bodybuilding gear or versatile training apparel, our pieces are crafted to deliver maximum durability and an elevated aesthetic during every workout session."
+            ) : (
+              "Descubre la colección definitiva de ropa fitness y ropa gym diseñada para superar tus límites. En Flex Form Fitness fusionamos ingeniería textil de alta compresión, patrones ergonómicos y confección premium sin costuras. Nuestra línea de ropa culturismo está específicamente moldeada para acompañar cada uno de tus entrenamientos al máximo nivel, ofreciendo una durabilidad superior y una estética impecable en cada repetición."
+            )}
+          </p>
+          <a href="#catalogo" class="px-6 py-3 md:px-8 md:py-3.5 bg-slate-950 hover:bg-rose-600 text-white font-extrabold text-[10px] md:text-xs uppercase tracking-widest transition-all duration-300 shadow-md hover:shadow-lg rounded-none">
+            {isEn ? "Explore collection" : "Explorar colección"}
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Semantic Pre-Footer SEO Content Block (2-Column Desktop Split Layout) -->
+    <section class="w-full bg-white py-16 md:py-24 px-6 md:px-12 border-t border-slate-100">
+      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+        
+        <!-- Left Side: Overline Tag + H2 Title -->
+        <div class="lg:col-span-5 flex flex-col items-start text-left gap-3 lg:sticky lg:top-28">
+          <span class="text-[9px] md:text-2xs font-extrabold tracking-[0.25em] text-red-500 uppercase">
+            {isEn ? "WHY CHOOSE US" : "NUESTROS PILARES"}
+          </span>
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-black italic uppercase tracking-tight text-slate-950 leading-tight">
+            {isEn ? "The Standard in Premium Gymwear & Activewear" : "La Excelencia en Ropa Fitness y Equipamiento Deportivo"}
+          </h2>
+        </div>
+
+        <!-- Right Side: 3 Feature Cards (2 on top, 1 below) -->
+        <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
+          <!-- Feature 1 -->
+          <div class="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col gap-4 group">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+              </svg>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <h3 class="text-lg font-bold text-slate-900 uppercase tracking-wide group-hover:text-rose-600 transition-colors">
+                {isEn ? "Modern Ergonomic Gymwear" : "Ropa Gym Ergonómica"}
+              </h3>
+              <p class="text-xs md:text-sm text-slate-600 leading-relaxed">
+                {isEn ? (
+                  "Our gymwear lineup delivers an unmatched ergonomic and biomechanical fit. Engineered for active lifestyle and training, it provides total freedom of movement and premium comfort."
+                ) : (
+                  "Nuestra línea de ropa gym ofrece un ajuste ergonómico y biomecánico perfecto. Diseñada para adaptarse a cada movimiento, garantiza libertad total de movimiento y máxima comodidad."
+                )}
+              </p>
+            </div>
+          </div>
+
+          <!-- Feature 2 -->
+          <div class="bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col gap-4 group">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+              </svg>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <h3 class="text-lg font-bold text-slate-900 uppercase tracking-wide group-hover:text-rose-600 transition-colors">
+                {isEn ? "High-Durability Clothing Bodybuilding" : "Ropa Culturismo de Alta Resistencia"}
+              </h3>
+              <p class="text-xs md:text-sm text-slate-600 leading-relaxed">
+                {isEn ? (
+                  "Heavy lifting demands heavy-duty activewear. The clothing bodybuilding range at Flex Form Fitness features reinforced seams and elastic fabrics built to endure extreme muscular tension."
+                ) : (
+                  "Entrenar con peso exigente requiere prendas a la altura. La colección de ropa culturismo de Flex Form Fitness cuenta con costuras reforzadas y tejidos elásticos que soportan la máxima tensión muscular."
+                )}
+              </p>
+            </div>
+          </div>
+
+          <!-- Feature 3 (Spans full width below) -->
+          <div class="sm:col-span-2 bg-white p-6 md:p-8 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start group">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+              </svg>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <h3 class="text-lg font-bold text-slate-900 uppercase tracking-wide group-hover:text-rose-600 transition-colors">
+                {isEn ? "Next-Gen Fitness Clothing" : "Innovación en Ropa Fitness"}
+              </h3>
+              <p class="text-xs md:text-sm text-slate-600 leading-relaxed">
+                {isEn ? (
+                  "Every piece of our fitness clothing collection integrates ergonomic design and high-quality flexible fabrics to ensure long-lasting durability and style both inside and outside the gym."
+                ) : (
+                  "Cada pieza de nuestra colección de ropa fitness incorpora patrones ergonómicos y tejidos elásticos de máxima calidad para garantizar la máxima durabilidad y estilo tanto en el gimnasio como en la calle."
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -733,7 +825,6 @@ const storeJsonLd = {
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Size Guide" : "Guía de Tallas"}</a></li>
-            <li><a href="/admin/login" class="hover:text-white transition-colors">{isEn ? "Admin Login" : "Acceso de Administrador"}</a></li>
           </ul>
         </div>
 

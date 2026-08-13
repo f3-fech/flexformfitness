@@ -125,12 +125,12 @@ const productJsonLd = {
         <div id="product-gallery" data-images={JSON.stringify(product.images)} class="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-5">
           <!-- Thumbnails list (vertical on desktop, horizontal on mobile) -->
           {product.images.length > 1 && (
-            <div class="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto shrink-0 w-full sm:w-[84px] max-h-[500px] pr-1.5 custom-scrollbar">
+            <div class="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto shrink-0 w-full sm:w-[78px] max-h-[550px] pr-1.5 custom-scrollbar">
               {product.images.map((img, idx) => (
                 <button
                   type="button"
                   data-index={idx}
-                  class={`thumbnail-btn w-14 h-18 sm:w-[76px] sm:h-[101px] shrink-0 rounded-xl overflow-hidden bg-white border ${idx === 0 ? 'border-brand-600 ring-2 ring-brand-100 shadow-sm' : 'border-slate-200'} hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all duration-200 shadow-2xs`}
+                  class={`thumbnail-btn w-14 h-[84px] sm:w-[68px] sm:h-[102px] aspect-[2/3] shrink-0 rounded-xl overflow-hidden bg-white border ${idx === 0 ? 'border-brand-600 ring-2 ring-brand-100 shadow-sm' : 'border-slate-200'} hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all duration-200 shadow-2xs`}
                 >
                   <img src={img} alt={`${productTitle} vista ${idx + 1}`} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(img)}`} />
                 </button>
@@ -139,7 +139,7 @@ const productJsonLd = {
           )}
           
           <!-- Main featured product image (large box, object-cover to occupy full space with rounded corners) -->
-          <div class="flex-grow aspect-[3/4] w-full max-w-[550px] rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm relative group" style="aspect-ratio: 3/4; overflow: hidden;">
+          <div class="flex-grow aspect-[2/3] w-full max-w-[520px] rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm relative group" style="aspect-ratio: 2/3; overflow: hidden;">
             <img
               src={product.images[0]}
               alt={productTitle}
@@ -180,7 +180,7 @@ const productJsonLd = {
         <!-- Product Purchase Information -->
         <div class="lg:col-span-5 flex flex-col gap-6">
           <div>
-            <h1 class="text-3xl lg:text-4xl font-extrabold text-slate-950 tracking-tight">
+            <h1 class="text-4xl sm:text-4xl lg:text-5xl font-extrabold text-slate-950 tracking-tight leading-tight">
               {productTitle}
             </h1>
           </div>
@@ -313,7 +313,6 @@ const productJsonLd = {
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Size Guide" : "Guía de Tallas"}</a></li>
-            <li><a href="/admin/login" class="hover:text-white transition-colors">{isEn ? "Admin Login" : "Acceso de Administrador"}</a></li>
           </ul>
         </div>
 

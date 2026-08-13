@@ -600,7 +600,7 @@ function openCropModal(imageUrl: string, imageIndex: number) {
     cropPreviewImg.onload = () => {
       // @ts-ignore
       state.cropper.instance = new (window as any).Cropper(cropPreviewImg, {
-        aspectRatio: 3 / 4,
+        aspectRatio: 2 / 3,
         viewMode: 1,
         autoCropArea: 0.9,
         responsive: true,
@@ -794,7 +794,7 @@ export function renderProductMedia() {
 
   state.product.images.forEach((url, idx) => {
     const card = document.createElement('div');
-    card.className = "group relative aspect-[3/4] bg-white border border-slate-200 rounded-xl overflow-hidden cursor-move transition-all duration-200 select-none shadow-3xs hover:border-rose-400";
+    card.className = "group relative aspect-[2/3] bg-white border border-slate-200 rounded-xl overflow-hidden cursor-move transition-all duration-200 select-none shadow-3xs hover:border-rose-400";
     if (idx === 0) {
       card.className += " ring-2 ring-rose-600 border-rose-600";
     }
@@ -894,7 +894,7 @@ async function loadGalleryImages() {
     } else {
       state.gallery.images.forEach((img) => {
         const card = document.createElement('div');
-        card.className = "group relative aspect-[3/4] bg-white border border-slate-200 rounded-xl overflow-hidden cursor-pointer hover:border-rose-500 hover:shadow-sm transition-all duration-200";
+        card.className = "group relative aspect-[2/3] bg-white border border-slate-200 rounded-xl overflow-hidden cursor-pointer hover:border-rose-500 hover:shadow-sm transition-all duration-200";
         card.innerHTML = `
           <img src="${img.url}" class="w-full h-full object-cover select-none" alt="${img.name}" />
           <div class="absolute inset-0 bg-rose-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>

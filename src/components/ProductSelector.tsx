@@ -156,7 +156,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
     <div className="flex flex-col gap-6 p-6 rounded-3xl bg-white border border-slate-100 shadow-premium">
       {/* Price */}
       <div className="flex justify-between items-baseline">
-        <span className="text-3xl font-extrabold text-slate-950 font-mono">
+        <span className="text-4xl sm:text-3xl lg:text-4xl font-extrabold text-slate-950 font-mono">
           {(currentPrice / 100).toFixed(2)} €
         </span>
       </div>
@@ -164,11 +164,11 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
       {/* Stock Status */}
       <div>
         {isOutOfStock ? (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">
+          <span className="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">
             {isEn ? 'Out of Stock' : 'Agotado'}
           </span>
         ) : (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <span className="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
             {isEn ? `In Stock (${currentStock} available)` : `En Stock (${currentStock} disponibles)`}
           </span>
         )}
@@ -183,12 +183,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
             const setValue = groupIdx === 0 ? setSelectedOpt1 : setSelectedOpt2;
 
             return (
-              <div key={group.name} className="flex flex-col gap-2.5">
-                <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+              <div key={group.name} className="flex flex-col gap-1">
+                <span className="text-xs sm:text-sm font-extrabold text-slate-400 uppercase tracking-widest">
                   {group.name}: <span className="text-slate-900 font-bold tracking-normal normal-case">{currentValue}</span>
                 </span>
                 
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-2.5 mt-0.5">
                   {group.values.map((value) => {
                     const isSelected = currentValue === value;
                     
@@ -204,7 +204,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
                             setQuantity(1);
                           }}
                           style={{ backgroundColor: hex }}
-                          className={`w-9 h-9 rounded-full relative cursor-pointer border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${
+                          className={`w-11 h-11 md:w-14 md:h-14 rounded-none relative cursor-pointer border-2 transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center ${
                             isSelected
                               ? 'border-rose-600 ring-2 ring-red-200 ring-offset-2 ring-offset-white'
                               : 'border-slate-200/80'
@@ -218,7 +218,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
                               viewBox="0 0 24 24" 
                               strokeWidth="3" 
                               stroke="currentColor" 
-                              className={`w-4 h-4 ${isWhite ? 'text-slate-900' : 'text-white'}`}
+                              className={`w-5 h-5 md:w-7 md:h-7 ${isWhite ? 'text-slate-900' : 'text-white'}`}
                             >
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                             </svg>
@@ -226,7 +226,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
                         </button>
                       );
                     } else {
-                      // Size / Text Box Selector
+                      // Size / Text Box Selector (square)
                       const available = isCombinationAvailable(value);
                       return (
                         <button
@@ -236,7 +236,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
                             setValue(value);
                             setQuantity(1);
                           }}
-                          className={`px-4 py-2 text-xs font-extrabold font-mono tracking-wider uppercase rounded-xl border transition-all duration-200 ${
+                          className={`px-5 py-2.5 md:px-7 md:py-3.5 text-sm md:text-lg font-extrabold font-mono tracking-wider uppercase rounded-none border transition-all duration-200 ${
                             isSelected
                               ? 'border-slate-950 bg-slate-950 text-white shadow-sm'
                               : !available
@@ -267,18 +267,18 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
               <button
                 type="button"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-3 py-1 text-slate-600 hover:bg-slate-200 rounded-l-xl transition-colors font-bold"
+                className="px-3.5 py-1.5 text-slate-600 hover:bg-slate-200 rounded-l-xl transition-colors font-bold text-sm sm:text-base"
               >
                 -
               </button>
-              <span className="px-4 py-1 text-sm font-semibold text-slate-800 font-mono">
+              <span className="px-4 py-1.5 text-base sm:text-sm font-semibold text-slate-800 font-mono">
                 {quantity}
               </span>
               <button
                 type="button"
                 onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
                 disabled={quantity >= currentStock}
-                className="px-3 py-1 text-slate-600 hover:bg-slate-200 rounded-r-xl transition-colors font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                className="px-3.5 py-1.5 text-slate-600 hover:bg-slate-200 rounded-r-xl transition-colors font-bold text-sm sm:text-base disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 title={quantity >= currentStock ? (isEn ? "Maximum stock reached" : "Máximo de stock alcanzado") : undefined}
               >
                 +
@@ -289,7 +289,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
           <button
             type="button"
             onClick={handleAddToCart}
-            className={`w-full py-4 px-6 rounded-xl text-white font-bold text-center tracking-widest uppercase text-xs shadow-md transition-all duration-300 hover:shadow-lg ${
+            className={`w-full py-4 px-6 rounded-xl text-white font-bold text-center tracking-widest uppercase text-sm sm:text-xs shadow-md transition-all duration-300 hover:shadow-lg ${
               addedFeedback
                 ? 'bg-emerald-600 hover:bg-emerald-700 scale-98 shadow-inner'
                 : 'bg-slate-950 hover:bg-rose-600 active:scale-98'
