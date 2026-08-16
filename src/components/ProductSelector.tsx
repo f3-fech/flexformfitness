@@ -204,10 +204,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
                             setQuantity(1);
                           }}
                           style={{ backgroundColor: hex }}
-                          className={`w-11 h-11 md:w-14 md:h-14 rounded-none relative cursor-pointer border-2 transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center ${
+                          className={`w-8 h-8 md:w-9 md:h-9 rounded-md relative cursor-pointer border-2 transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center ${
                             isSelected
-                              ? 'border-rose-600 ring-2 ring-red-200 ring-offset-2 ring-offset-white'
-                              : 'border-slate-200/80'
+                              ? 'border-rose-600 ring-2 ring-rose-200 ring-offset-1 ring-offset-white'
+                              : 'border-slate-200/80 hover:border-slate-400'
                           }`}
                           title={value}
                         >
@@ -218,7 +218,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
                               viewBox="0 0 24 24" 
                               strokeWidth="3" 
                               stroke="currentColor" 
-                              className={`w-5 h-5 md:w-7 md:h-7 ${isWhite ? 'text-slate-900' : 'text-white'}`}
+                              className={`w-4 h-4 md:w-5 md:h-5 ${isWhite ? 'text-slate-900' : 'text-white'}`}
                             >
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                             </svg>
@@ -236,7 +236,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
                             setValue(value);
                             setQuantity(1);
                           }}
-                          className={`px-5 py-2.5 md:px-7 md:py-3.5 text-sm md:text-lg font-extrabold font-mono tracking-wider uppercase rounded-none border transition-all duration-200 ${
+                          className={`h-9 min-w-[40px] px-3 py-1 text-xs md:text-sm font-bold font-mono tracking-wider uppercase rounded-md border transition-all duration-200 flex items-center justify-center ${
                             isSelected
                               ? 'border-slate-950 bg-slate-950 text-white shadow-sm'
                               : !available

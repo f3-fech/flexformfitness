@@ -535,8 +535,8 @@ const storeJsonLd = {
       </a>
     </div>
 
-    <!-- Main Products Catalog (Full Width Container) -->
-    <main id="catalogo" class="w-full px-2 sm:px-4 md:px-8 py-12 flex-grow flex flex-col gap-12 md:gap-16">
+    <!-- Main Products Catalog (Slightly Reduced Side Margins) -->
+    <main id="catalogo" class="w-full px-3 sm:px-6 md:px-8 lg:px-12 xl:px-14 py-12 flex-grow flex flex-col gap-12 md:gap-16" style="padding-left: clamp(0.75rem, 2.5vw, 3.5rem); padding-right: clamp(0.75rem, 2.5vw, 3.5rem);">
       {homepageCollections.map((col, idx) => (
         <section class="collection-section w-full flex flex-col gap-6" data-collection-id={col.id}>
           {idx === 0 ? (
@@ -588,8 +588,8 @@ const storeJsonLd = {
             </div>
           )}
 
-          {/* 4 columns on desktop, balanced grid spacing */}
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-5 sm:gap-x-3 sm:gap-y-8 md:gap-x-4 md:gap-y-8 lg:gap-x-5 lg:gap-y-10">
+          {/* Grid layout: 2 cols on mobile, 3 cols under 1000px (sm/md), 4 cols on desktop (lg) */}
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-1.5 gap-y-3.5 sm:gap-x-4 sm:gap-y-8 md:gap-x-5 md:gap-y-10 lg:gap-x-6 lg:gap-y-12">
             {col.products.map((product) => (
               <div 
                 class="product-card group flex flex-col justify-start w-full" 
@@ -653,7 +653,7 @@ const storeJsonLd = {
 
                 {/* Product Details (Title and Colors) */}
                 <div class="mt-1.5 pt-1.5 md:mt-2 md:pt-2 border-t border-slate-200 flex flex-col items-center gap-1 w-full text-center">
-                  <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
+                  <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-normal text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
                     {isEn ? (product.title_en || product.title) : product.title}
                   </a>
                   
@@ -840,7 +840,7 @@ const storeJsonLd = {
       </div>
 
       <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] md:text-2xs text-slate-550">
-        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
+        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."} {isEn ? "in collaboration with" : "en colaboración con"} <a href="https://javiphoto.es" target="_blank" class="hover:text-white underline transition-colors">javiphoto.es</a></p>
         <div class="flex flex-wrap justify-center gap-x-4 gap-y-1.5 md:gap-x-6">
           <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
           <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Política de Privacidad</a>

@@ -69,7 +69,7 @@ export const defaultSettings: GeneralSettings = {
   markets: ['US', 'CA', 'ES', 'MX'],
   admins: [],
   logoUrl: '/logo.png',
-  faviconUrl: '/favicon.ico',
+  faviconUrl: '/favicon.png',
   heroImage1Url: '/images/hero-slide1.png',
   heroVideoUrl: 'https://firebasestorage.googleapis.com/v0/b/flexformfitness-673f4.firebasestorage.app/o/assets%2Fhero.mp4?alt=media&token=d2387591-833c-42d9-8342-45f30551a908',
   heroImage2Url: '/images/hero-slide2.png',

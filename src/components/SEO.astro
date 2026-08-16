@@ -23,7 +23,7 @@ const siteName = 'FlexForm Fitness';
 const fullTitle = `${title} | ${siteName}`;
 
 const settings = await getGeneralSettings();
-const faviconUrl = settings.faviconUrl || '/logo.png'; // default fallback to logo.png which we optimized
+const faviconUrl = settings.faviconUrl || '/favicon.png';
 
 // Generate localized alternate links for search engine indexing (hreflang)
 const pathname = Astro.url.pathname;
@@ -57,8 +57,16 @@ const enUrl = `${origin}${enPath}`;
 <link rel="alternate" hreflang="es" href={esUrl} />
 <link rel="alternate" hreflang="en" href={enUrl} />
 <link rel="alternate" hreflang="x-default" href={esUrl} />
+
+<!-- Favicon Tags for Google Search Snippets, Browser Tabs & Mobile Icons -->
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="shortcut icon" href="/favicon.ico" />
 <link rel="icon" href={faviconUrl} />
-<meta name="robots" content="noindex, nofollow" />
+
+<meta name="robots" content="index, follow" />
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content={ogType} />

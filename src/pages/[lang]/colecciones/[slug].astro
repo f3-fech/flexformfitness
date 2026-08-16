@@ -368,8 +368,8 @@ const formatRichText = (content: string | undefined | null): string => {
       </section>
     )}
 
-    <!-- Products Catalog Grid -->
-    <main class="w-full px-2 sm:px-4 md:px-8 py-12 flex-grow">
+    <!-- Products Catalog Grid (Slightly Reduced Side Margins) -->
+    <main class="w-full px-3 sm:px-6 md:px-8 lg:px-12 xl:px-14 py-12 flex-grow" style="padding-left: clamp(0.75rem, 2.5vw, 3.5rem); padding-right: clamp(0.75rem, 2.5vw, 3.5rem);">
       <div class="w-full flex flex-col gap-6">
         {products.length > 0 ? (
           subCollections.length > 0 ? (
@@ -390,8 +390,8 @@ const formatRichText = (content: string | undefined | null): string => {
                       <div class="flex-grow h-[1px] bg-gradient-to-l from-transparent to-slate-200"></div>
                     </div>
 
-                    <!-- Grid de Productos de esta colección -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-5 sm:gap-x-3 sm:gap-y-8 md:gap-x-4 md:gap-y-8 lg:gap-x-5 lg:gap-y-10">
+                    <!-- Grid de Productos de esta colección (2 en móvil, 3 en 3 <1000px, 4 en desktop) -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-1.5 gap-y-3.5 sm:gap-x-4 sm:gap-y-8 md:gap-x-5 md:gap-y-10 lg:gap-x-6 lg:gap-y-12">
                       {subProducts.map((product) => (
                         <div class="product-card group flex flex-col justify-start w-full" data-collections={getProductCollectionIds(product.id)}>
                           <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
@@ -448,7 +448,7 @@ const formatRichText = (content: string | undefined | null): string => {
 
                           {/* Product Details (Title and Colors) */}
                           <div class="mt-1.5 pt-1.5 md:mt-2 md:pt-2 border-t border-slate-200 flex flex-col items-center gap-1 w-full text-center">
-                            <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
+                            <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-normal text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
                               {isEn ? (product.title_en || product.title) : product.title}
                             </a>
                             
@@ -487,7 +487,7 @@ const formatRichText = (content: string | undefined | null): string => {
                       <div class="flex-grow h-[1px] bg-gradient-to-l from-transparent to-slate-200"></div>
                     </div>
 
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-5 sm:gap-x-3 sm:gap-y-8 md:gap-x-4 md:gap-y-8 lg:gap-x-5 lg:gap-y-10">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-1.5 gap-y-3.5 sm:gap-x-4 sm:gap-y-8 md:gap-x-5 md:gap-y-10 lg:gap-x-6 lg:gap-y-12">
                       {uncategorized.map((product) => (
                         <div class="product-card group flex flex-col justify-start w-full" data-collections={getProductCollectionIds(product.id)}>
                           <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
@@ -544,7 +544,7 @@ const formatRichText = (content: string | undefined | null): string => {
 
                           {/* Product Details (Title and Colors) */}
                           <div class="mt-1.5 pt-1.5 md:mt-2 md:pt-2 border-t border-slate-200 flex flex-col items-center gap-1 w-full text-center">
-                            <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
+                            <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-normal text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
                               {isEn ? (product.title_en || product.title) : product.title}
                             </a>
                             
@@ -568,7 +568,7 @@ const formatRichText = (content: string | undefined | null): string => {
               })()}
             </div>
           ) : (
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-5 sm:gap-x-3 sm:gap-y-8 md:gap-x-4 md:gap-y-8 lg:gap-x-5 lg:gap-y-10">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-1.5 gap-y-3.5 sm:gap-x-4 sm:gap-y-8 md:gap-x-5 md:gap-y-10 lg:gap-x-6 lg:gap-y-12">
               {products.map((product) => (
                 <div class="product-card group flex flex-col justify-start w-full" data-collections={getProductCollectionIds(product.id)}>
                   <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
@@ -625,7 +625,7 @@ const formatRichText = (content: string | undefined | null): string => {
 
                   {/* Product Details (Title and Colors) */}
                   <div class="mt-1.5 pt-1.5 md:mt-2 md:pt-2 border-t border-slate-200 flex flex-col items-center gap-1 w-full text-center">
-                    <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-bold text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
+                    <a href={`/${lang}/productos/${product.slug}`} class="text-xs sm:text-sm md:text-base font-normal text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
                       {isEn ? (product.title_en || product.title) : product.title}
                     </a>
                     
@@ -708,7 +708,7 @@ const formatRichText = (content: string | undefined | null): string => {
       </div>
 
       <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] md:text-2xs text-slate-550">
-        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
+        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."} {isEn ? "in collaboration with" : "en colaboración con"} <a href="https://javiphoto.es" target="_blank" class="hover:text-white underline transition-colors">javiphoto.es</a></p>
         <div class="flex flex-wrap justify-center gap-x-4 gap-y-1.5 md:gap-x-6">
           <a href={`/${lang}/contacto`} class="hover:text-white transition-colors font-semibold text-rose-500">{isEn ? "Contact" : "Contacto"}</a>
           <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones de Uso</a>
