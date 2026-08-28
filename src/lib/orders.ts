@@ -3,6 +3,7 @@ import { sendEmail } from './mail';
 import { db } from './firebase';
 import type { Order, OrderItem, Product } from '../types';
 import { getEmailSettings } from './emailSettings';
+import { encryptCustomerDetails } from './crypto';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20' as any,
@@ -118,10 +119,10 @@ export async function fulfillOrder(sessionId: string) {
       });
     });
 
-    // Construct complete Order object
+    // Construct complete Order object (sensitive customer details encrypted at rest)
     const orderData: Order = {
       id: session.id,
-      customerDetails,
+      customerDetails: encryptCustomerDetails(customerDetails),
       items,
       totalAmount,
       paymentStatus,

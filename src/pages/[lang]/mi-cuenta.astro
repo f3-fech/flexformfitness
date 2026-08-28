@@ -4,6 +4,7 @@ export const prerender = false;
 import { db } from '../../lib/firebase';
 import SEO from '../../components/SEO.astro';
 import Navbar from '../../components/Navbar.astro';
+import { decrypt, decryptAddress } from '../../lib/crypto';
 
 const { lang } = Astro.params;
 const isEn = lang === 'en';
@@ -38,7 +39,12 @@ let customerProfile: any = {};
 try {
   const customerDoc = await db.collection('customers').doc(user.uid).get();
   if (customerDoc.exists) {
-    customerProfile = customerDoc.data() || {};
+    const data = customerDoc.data() || {};
+    customerProfile = {
+      ...data,
+      phone: decrypt(data.phone),
+      address: decryptAddress(data.address),
+    };
   }
 } catch (e) {
   console.error('Error fetching customer profile:', e);
@@ -219,6 +225,7 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
                 {orders.map((order) => {
                   const date = order.createdAt?.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
                   const dateString = date.toLocaleDateString(isEn ? 'en-US' : 'es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+                  const orderTotal = Number(order.totalAmount ?? order.amountTotal ?? order.total ?? 0) || 0;
                   
                   return (
                     <div class="border border-slate-150 rounded-2xl overflow-hidden shadow-2xs">
@@ -234,7 +241,7 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
                         </div>
                         <div class="flex flex-col gap-0.5 text-right">
                           <span class="text-3xs font-bold text-slate-400 uppercase tracking-wider">TOTAL</span>
-                          <span class="text-xs font-black text-rose-600">{(order.amountTotal / 100).toFixed(2)} €</span>
+                          <span class="text-xs font-black text-rose-600">{(orderTotal / 100).toFixed(2)} €</span>
                         </div>
                       </div>
 

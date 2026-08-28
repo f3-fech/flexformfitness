@@ -2109,6 +2109,8 @@ openNewCollectionModal?.addEventListener('click', () => {
   const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
   if (indexOrderInput) indexOrderInput.value = "0";
   deleteCurrentCollectionBtn?.classList.add('hidden');
+  const modalViewLink = document.getElementById('modal-view-collection-link') as HTMLAnchorElement;
+  if (modalViewLink) modalViewLink.classList.add('hidden');
   if (collCatalogSearch) collCatalogSearch.value = "";
   
   switchCollectionTab('info');
@@ -2201,9 +2203,12 @@ collectionForm?.addEventListener('submit', async (e) => {
   }
 });
 
-// Edit Collection via Folder double click
+// Edit Collection via Folder click
 document.querySelectorAll('.collection-folder').forEach((folder) => {
-  folder.addEventListener('click', () => {
+  folder.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('.view-collection-link')) {
+      return;
+    }
     const htmlEl = folder as HTMLDivElement;
     const colData = JSON.parse(htmlEl.dataset.collectionJson || '{}');
 
@@ -2214,6 +2219,12 @@ document.querySelectorAll('.collection-folder').forEach((folder) => {
     if (showOnIndexCheckbox) showOnIndexCheckbox.checked = !!colData.showOnIndex;
     const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
     if (indexOrderInput) indexOrderInput.value = colData.indexOrder !== undefined ? String(colData.indexOrder) : "0";
+
+    const modalViewLink = document.getElementById('modal-view-collection-link') as HTMLAnchorElement;
+    if (modalViewLink) {
+      modalViewLink.href = `/es/colecciones/${colData.slug}`;
+      modalViewLink.classList.remove('hidden');
+    }
 
     state.collection.translations = {
       title: colData.title || '',

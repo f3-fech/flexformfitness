@@ -13,6 +13,7 @@ import type { Order } from '../types';
 import { getEmailSettings } from '../lib/emailSettings';
 import { triggerRebuild } from '../lib/deploy';
 import { checkRateLimit } from '../lib/ratelimit';
+import { encrypt, decrypt, encryptAddress, decryptAddress, decryptCustomerDetails } from '../lib/crypto';
 
 // Schema Definitions
 const variantSchema = z.object({
@@ -1471,8 +1472,8 @@ export const server = {
         await db.collection('customers').doc(user.uid).set({
           name: input.name,
           name_lowercase: input.name.toLowerCase(),
-          phone: input.phone,
-          address: input.address,
+          phone: encrypt(input.phone),
+          address: encryptAddress(input.address),
           updatedAt: new Date(),
         }, { merge: true });
         
@@ -1648,6 +1649,7 @@ export const server = {
           return {
             id: doc.id,
             ...data,
+            customerDetails: decryptCustomerDetails(data.customerDetails),
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
             updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
           };
@@ -2215,6 +2217,7 @@ export const server = {
             return {
               id: doc.id,
               ...data,
+              customerDetails: decryptCustomerDetails(data.customerDetails),
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
               updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
             };
@@ -2231,6 +2234,8 @@ export const server = {
         const user = {
           uid: userDoc.id,
           ...userData,
+          phone: decrypt(userData?.phone),
+          address: decryptAddress(userData?.address),
           createdAt: userData?.createdAt?.toDate ? userData.createdAt.toDate().toISOString() : userData?.createdAt,
           updatedAt: userData?.updatedAt?.toDate ? userData.updatedAt.toDate().toISOString() : userData?.updatedAt,
         };

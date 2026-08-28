@@ -10,6 +10,20 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 });
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
+export const GET: APIRoute = async () => {
+  return new Response(
+    JSON.stringify({
+      status: 'active',
+      service: 'Stripe Webhook Listener',
+      message: 'Endpoint listo para recibir eventos POST firmados de Stripe.',
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    }
+  );
+};
+
 export const POST: APIRoute = async ({ request }) => {
   const sig = request.headers.get('stripe-signature');
   if (!sig) {

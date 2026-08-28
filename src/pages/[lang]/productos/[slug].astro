@@ -70,23 +70,39 @@ const canonicalUrl = `${siteUrl}/${lang}/productos/${product.slug}`;
 const productTitle = isEn ? (product.title_en || product.title) : product.title;
 const productDescription = isEn ? (product.description_en || product.description) : product.description;
 
-// Construct product schema JSON-LD for rich snippets
+// Construct product schema JSON-LD for rich snippets (Google Shopping & Rich Results)
+const minPrice = product.variants && product.variants.length > 0 
+  ? Math.min(product.price, ...product.variants.map((v) => v.price)) 
+  : product.price;
+const maxPrice = product.variants && product.variants.length > 0 
+  ? Math.max(product.price, ...product.variants.map((v) => v.price)) 
+  : product.price;
+
 const productJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Product',
   'name': productTitle,
   'image': product.images,
   'description': productDescription,
-  'sku': product.variants[0]?.sku || product.id,
+  'sku': product.variants?.[0]?.sku || product.id,
+  'brand': {
+    '@type': 'Brand',
+    'name': 'FlexForm Fitness'
+  },
   'offers': {
     '@type': 'AggregateOffer',
     'priceCurrency': 'EUR',
-    'lowPrice': parseFloat((Math.min(product.price, ...product.variants.map((v) => v.price)) / 100).toFixed(2)),
-    'highPrice': parseFloat((Math.max(product.price, ...product.variants.map((v) => v.price)) / 100).toFixed(2)),
-    'offerCount': product.variants.length || 1,
+    'lowPrice': parseFloat((minPrice / 100).toFixed(2)),
+    'highPrice': parseFloat((maxPrice / 100).toFixed(2)),
+    'offerCount': product.variants?.length || 1,
     'price': parseFloat((product.price / 100).toFixed(2)),
+    'itemCondition': 'https://schema.org/NewCondition',
     'availability': product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
     'url': canonicalUrl,
+    'seller': {
+      '@type': 'Organization',
+      'name': 'FlexForm Fitness'
+    }
   },
 };
 ---

@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
+Disallow: /api/
+Disallow: /checkout/
 
 Sitemap: https://flexformfitness.com/sitemap.xml
+Sitemap: https://flexformfitness.vercel.app/sitemap.xml

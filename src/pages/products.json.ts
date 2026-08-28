@@ -21,7 +21,7 @@ export const GET: APIRoute = async () => {
             id: variant.sku,
             title: `${product.title} - ${variant.name}`,
             description: product.description.substring(0, 5000), // Google max description length is 5000
-            link: `${siteUrl}/productos/${product.slug}?variant=${variant.sku}`,
+            link: `${siteUrl}/es/productos/${product.slug}?variant=${variant.sku}`,
             image_link: product.images[0] || '',
             additional_image_link: product.images.slice(1),
             availability: variant.stock > 0 ? 'in_stock' : 'out_of_stock',
@@ -38,7 +38,7 @@ export const GET: APIRoute = async () => {
           id: product.id,
           title: product.title,
           description: product.description.substring(0, 5000),
-          link: `${siteUrl}/productos/${product.slug}`,
+          link: `${siteUrl}/es/productos/${product.slug}`,
           image_link: product.images[0] || '',
           additional_image_link: product.images.slice(1),
           availability: product.stock > 0 ? 'in_stock' : 'out_of_stock',

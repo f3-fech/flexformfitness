@@ -473,6 +473,19 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                           >
                             <svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
                             <span>Fijada: {mainCol.title}</span>
+                            <a
+                              href={`/es/colecciones/${mainCol.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="view-collection-link ml-1 p-0.5 text-amber-600/70 hover:text-amber-900 rounded transition-colors"
+                              title={`Ver colección "${mainCol.title}" en la tienda`}
+                              onclick="event.stopPropagation();"
+                            >
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                              </svg>
+                            </a>
                           </div>
                         )}
                       </div>
@@ -492,7 +505,7 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 min-h-[90px] p-2 bg-white/45 rounded-xl border border-dashed border-slate-200/50">
                       {colInCat.map((col) => (
                         <div 
-                          class="collection-folder draggable-folder group flex flex-col items-center justify-center p-3 rounded-xl border border-transparent hover:border-slate-200 hover:bg-white cursor-grab active:cursor-grabbing transition-all duration-200 select-none text-center bg-white shadow-3xs"
+                          class="collection-folder draggable-folder group relative flex flex-col items-center justify-center p-3 rounded-xl border border-transparent hover:border-slate-200 hover:bg-white cursor-grab active:cursor-grabbing transition-all duration-200 select-none text-center bg-white shadow-3xs"
                           data-id={col.id}
                           data-collection-slug={col.slug}
                           data-collection-json={JSON.stringify(col)}
@@ -500,6 +513,20 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                           data-slug={col.slug.toLowerCase()}
                           draggable="true"
                         >
+                          <a
+                            href={`/es/colecciones/${col.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="view-collection-link absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-all z-20 cursor-pointer shadow-3xs opacity-75 hover:opacity-100"
+                            title={`Ver colección "${col.title}" en la tienda`}
+                            onclick="event.stopPropagation();"
+                          >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                          </a>
+
                           <div class="w-14 h-10 relative flex items-end justify-center shrink-0">
                             <div class="absolute inset-0 bg-amber-500 rounded-lg shadow-sm border border-amber-600"></div>
                             <div class="absolute -top-0.5 left-1.5 w-5 h-1 bg-amber-600 rounded-t"></div>
