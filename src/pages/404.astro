@@ -1,0 +1,122 @@
+---
+import SEO from '../components/SEO.astro';
+import Navbar from '../components/Navbar.astro';
+import { useTranslations } from '../lib/i18n';
+
+export const prerender = true;
+
+const lang = 'es';
+const t = useTranslations(lang);
+const langPrefix = '/es';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <SEO
+      title={t('404.title')}
+      description={t('404.description')}
+      noindex={true}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-900 text-slate-100 font-sans min-h-screen antialiased flex flex-col justify-between w-full overflow-x-hidden selection:bg-rose-500 selection:text-white">
+    <Navbar />
+
+    <!-- Main Content Container with dynamic fitness backdrop glows -->
+    <main class="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 lg:py-20 flex-grow w-full flex items-center justify-center">
+      <!-- Glow background circles -->
+      <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-600/20 rounded-full blur-[120px] pointer-events-none -z-10"></div>
+      <div class="absolute bottom-10 right-1/4 w-80 h-80 bg-pink-600/15 rounded-full blur-[100px] pointer-events-none -z-10"></div>
+
+      <div class="w-full max-w-3xl text-center mx-auto px-4">
+        
+        <!-- Animated Fitness Graphic / 404 Badge -->
+        <div class="relative inline-flex items-center justify-center mb-6">
+          <div class="absolute -inset-4 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full opacity-20 blur-xl animate-pulse"></div>
+          
+          <div class="relative flex items-center justify-center bg-slate-800/80 border border-slate-700/60 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
+            <svg class="w-20 h-20 sm:w-28 sm:h-28 text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.4)] transform -rotate-12 transition-transform hover:rotate-0 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 6h2m0 0v12m0-12h14m0 0h2m-2 0v12m0 0h2M5 18h14M8 6v12M16 6v12" />
+              <circle cx="12" cy="12" r="3" class="fill-rose-500/20 stroke-rose-400" stroke-width="1.5"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Big 404 Heading -->
+        <div class="space-y-3">
+          <span class="inline-block px-3.5 py-1 text-xs font-black uppercase tracking-widest text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-full">
+            {t('404.badge')}
+          </span>
+          <h1 class="text-5xl sm:text-7xl font-black italic tracking-tight text-white uppercase drop-shadow-md">
+            404
+          </h1>
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-200">
+            {t('404.subtitle')}
+          </h2>
+          <p class="text-sm sm:text-base text-slate-400 max-w-xl mx-auto font-normal leading-relaxed">
+            {t('404.description')}
+          </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href={langPrefix}
+            class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-rose-600/30 hover:shadow-rose-600/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 00-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            {t('404.back_home')}
+          </a>
+
+          <a
+            href={`${langPrefix}/colecciones/hombre`}
+            class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-2xl bg-slate-800 border border-slate-700/80 text-slate-200 hover:text-white hover:bg-slate-750 font-extrabold text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+          >
+            <svg class="w-4 h-4 mr-2 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            {t('404.view_catalog')}
+          </a>
+        </div>
+
+        <!-- Quick Category Shortcuts -->
+        <div class="mt-12 pt-8 border-t border-slate-800/80">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">
+            {t('404.popular_links')}
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            <a href={`${langPrefix}/colecciones/hombre`} class="px-4 py-2 rounded-xl bg-slate-850 border border-slate-750 text-xs font-semibold text-slate-300 hover:text-white hover:border-rose-500/50 hover:bg-rose-500/10 transition-all">
+              🏋️‍♂️ Hombre
+            </a>
+            <a href={`${langPrefix}/colecciones/mujer`} class="px-4 py-2 rounded-xl bg-slate-850 border border-slate-750 text-xs font-semibold text-slate-300 hover:text-white hover:border-rose-500/50 hover:bg-rose-500/10 transition-all">
+              🤸‍♀️ Mujer
+            </a>
+            <a href={`${langPrefix}/contacto`} class="px-4 py-2 rounded-xl bg-slate-850 border border-slate-750 text-xs font-semibold text-slate-300 hover:text-white hover:border-rose-500/50 hover:bg-rose-500/10 transition-all">
+              📩 {t('404.contact')}
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Generic clean dark footer -->
+    <footer class="w-full bg-slate-950 border-t border-slate-850 py-8 px-6 text-center text-xs text-slate-500">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. Todos los derechos reservados.</p>
+        <div class="flex items-center gap-6">
+          <a href={`${langPrefix}/privacidad`} class="hover:text-slate-300 transition-colors">Privacidad</a>
+          <a href={`${langPrefix}/condiciones`} class="hover:text-slate-300 transition-colors">Condiciones</a>
+          <a href={`${langPrefix}/contacto`} class="hover:text-slate-300 transition-colors">Contacto</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

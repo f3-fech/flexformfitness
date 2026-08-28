@@ -66,7 +66,16 @@ export const translations = {
     'account.welcome': 'Hola, {name}',
     'account.logout': 'Cerrar Sesión',
     'account.orders': 'Mis Pedidos',
-    'account.no_orders': 'Aún no has realizado ningún pedido.'
+    'account.no_orders': 'Aún no has realizado ningún pedido.',
+    
+    '404.title': 'PÁGINA NO ENCONTRADA',
+    '404.badge': 'ERROR 404',
+    '404.subtitle': '¡Te has salido de la ruta de entrenamiento!',
+    '404.description': 'La página que estás buscando no existe, ha sido movida o ya no está disponible. No detengas tu progreso: vuelve al ritmo en un instante.',
+    '404.back_home': 'Volver al Inicio',
+    '404.view_catalog': 'Explorar Colecciones',
+    '404.contact': 'Contactar Soporte',
+    '404.popular_links': 'O explora nuestras categorías destacadas:'
   },
   en: {
     'announcement.free_shipping': 'FREE SHIPPING ON ORDERS OVER',
@@ -99,19 +108,19 @@ export const translations = {
     'cart.checkout': 'Proceed to Checkout',
     'cart.promo_placeholder': 'Discount code',
     'cart.apply': 'Apply',
-    'cart.promo_success': 'Discount applied successfully!',
-    'cart.remove_promo': 'Remove coupon',
-    'cart.price_each': 'each',
+    'cart.promo_success': 'Discount code applied!',
+    'cart.remove_promo': 'Remove code',
+    'cart.price_each': 'ea.',
     'cart.unit_price': 'Price',
     
     'product.add_to_cart': 'Add to Cart',
     'product.out_of_stock': 'Out of Stock',
-    'product.fast_shipping': 'Fast Home Shipping',
+    'product.fast_shipping': 'Fast Home Delivery',
     'product.fast_shipping_desc': 'Receive your order in 2 to 5 business days with full tracking.',
-    'product.premium_quality': 'Premium Quality Sportswear',
-    'product.premium_quality_desc': 'High-end fabrics designed to withstand intense workouts.',
+    'product.premium_quality': 'Premium Athletic Quality',
+    'product.premium_quality_desc': 'High-end fabrics built to endure intense workouts.',
     'product.safe_checkout': '100% Safe Checkout',
-    'product.safe_checkout_desc': 'Encrypted transactions with Stripe. Credit cards & Apple Pay.',
+    'product.safe_checkout_desc': 'Encrypted Stripe transactions supporting credit cards and Apple Pay.',
     'product.color': 'Color',
     'product.size': 'Size',
     'product.quantity': 'Quantity',
@@ -128,7 +137,16 @@ export const translations = {
     'account.welcome': 'Hello, {name}',
     'account.logout': 'Sign Out',
     'account.orders': 'My Orders',
-    'account.no_orders': 'You have not placed any orders yet.'
+    'account.no_orders': 'You have not placed any orders yet.',
+    
+    '404.title': 'PAGE NOT FOUND',
+    '404.badge': '404 ERROR',
+    '404.subtitle': 'Looks like you lost your training route!',
+    '404.description': 'The page you are looking for does not exist, was moved or is no longer available. Keep pushing: get back on track right now.',
+    '404.back_home': 'Back to Home',
+    '404.view_catalog': 'Explore Collections',
+    '404.contact': 'Contact Support',
+    '404.popular_links': 'Or explore our featured categories:'
   }
 } as const;
 
