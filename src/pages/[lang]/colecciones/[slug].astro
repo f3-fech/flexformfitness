@@ -99,11 +99,14 @@ const isEn = lang === 'en';
 // Fetch sub-collections and products
 let products: Product[] = [];
 let subCollections: ProductCollection[] = [];
+let parentCollection: ProductCollection | null = null;
+
 try {
+  const snap = await db.collection('collections').get();
+  const allCols = !snap.empty ? snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ProductCollection) : [];
+
   if (collection.slug === 'hombre' || collection.slug === 'mujer') {
-    const snap = await db.collection('collections').get();
-    const allCols = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ProductCollection);
-    
+    parentCollection = collection;
     const isHombre = collection.slug === 'hombre';
     const targetCategoryName = isHombre ? 'Hombre' : 'Mujer';
     
@@ -126,6 +129,15 @@ try {
       (subCol.productIds || []).forEach((id) => allProductIds.add(id));
     });
     collection.productIds = Array.from(allProductIds);
+  } else {
+    const isHombre = collection.parentCategory === 'Hombre' || collection.slug.includes('hombre') || collection.title.toLowerCase().includes('hombre') || collection.title.toLowerCase().includes('men');
+    const isMujer = !isHombre && (collection.parentCategory === 'Mujer' || collection.slug.includes('mujer') || collection.title.toLowerCase().includes('mujer') || collection.title.toLowerCase().includes('women'));
+
+    if (isHombre) {
+      parentCollection = allCols.find((c) => c.slug === 'hombre') || null;
+    } else if (isMujer) {
+      parentCollection = allCols.find((c) => c.slug === 'mujer') || null;
+    }
   }
 
   if (collection.productIds && collection.productIds.length > 0) {
@@ -247,7 +259,16 @@ const canonicalUrl = `${siteUrl}/${lang}/colecciones/${collection.slug}`;
 
 const collectionTitle = isEn ? (collection.title_en || collection.title) : collection.title;
 const collectionDescription = isEn ? (collection.description_en || collection.description) : collection.description;
-const collectionDetailedDescription = isEn ? (collection.detailedDescription_en || collection.detailedDescription) : collection.detailedDescription;
+
+// Prioritize parent collection (Hombre / Mujer) detailed description for sub-collections to prevent SEO keyword cannibalization
+const targetDetailedDesc = (parentCollection && parentCollection.detailedDescription)
+  ? parentCollection.detailedDescription
+  : collection.detailedDescription;
+const targetDetailedDescEn = (parentCollection && parentCollection.detailedDescription_en)
+  ? parentCollection.detailedDescription_en
+  : collection.detailedDescription_en;
+
+const collectionDetailedDescription = isEn ? (targetDetailedDescEn || targetDetailedDesc) : targetDetailedDesc;
 
 const seoTitle = isEn ? (collection.seo_en?.title || collection.seo?.title || `${collectionTitle} | FLEX FORM FITNESS`) : (collection.seo?.title || `${collectionTitle} | FLEX FORM FITNESS`);
 const seoDescription = isEn ? (collection.seo_en?.description || collection.seo?.description || collectionDescription) : (collection.seo?.description || collectionDescription);
