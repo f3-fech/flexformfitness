@@ -7,7 +7,7 @@ export const prerender = false; // Real-time live XML feed
 export const GET: APIRoute = async () => {
   try {
     const productsSnap = await db.collection('products').get();
-    const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+    const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">\n`;

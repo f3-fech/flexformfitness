@@ -209,7 +209,7 @@ const firstSlidePreloadUrl = shouldPreloadFirstSlideImage ? firstSlide.desktopUr
 
 const user = Astro.locals.user;
 
-const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com').replace(/\/$/, '');
 const canonicalUrl = `${siteUrl}/${lang}`;
 
 // Construct OnlineStore structured data JSON-LD for store profile rich snippets
@@ -239,6 +239,7 @@ const storeJsonLd = {
     <SEO
       title={isEn ? "Flex Form Fitness | Gymwear & Fitness Clothing" : "Flex Form Fitness | Ropa Fitness, Ropa Gym y Culturismo"}
       description={isEn ? "Discover Flex Form Fitness premium gymwear and fitness clothing. Specialized clothing bodybuilding and activewear engineered for peak performance." : "Descubre Flex Form Fitness, la marca líder en ropa fitness, ropa gym y ropa culturismo de alto rendimiento con tecnología sin costuras."}
+      canonicalUrl={canonicalUrl}
       jsonLd={storeJsonLd}
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

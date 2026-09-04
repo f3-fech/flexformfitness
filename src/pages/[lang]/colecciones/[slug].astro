@@ -254,7 +254,7 @@ const getUniqueColors = (product: Product): SwatchColor[] => {
   return Array.from(colorMap.values());
 };
 
-const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
 const canonicalUrl = `${siteUrl}/${lang}/colecciones/${collection.slug}`;
 
 const collectionTitle = isEn ? (collection.title_en || collection.title) : collection.title;

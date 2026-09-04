@@ -33,7 +33,7 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
       return new Response(JSON.stringify({ error: 'Cart is empty or invalid.' }), { status: 400 });
     }
 
-    const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+    const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     const sanitizedItems: any[] = [];
 

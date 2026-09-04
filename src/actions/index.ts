@@ -1848,7 +1848,7 @@ export const server = {
         }
 
         const emailSettings = await getEmailSettings();
-        const siteUrl = process.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+        const siteUrl = process.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
 
         // Format items as HTML
         const itemsList = Object.values(items);

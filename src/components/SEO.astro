@@ -15,7 +15,7 @@ const {
   title,
   description,
   image = '/images/default-share.jpg',
-  canonicalUrl = Astro.url.href,
+  canonicalUrl: propCanonicalUrl,
   ogType = 'website',
   jsonLd,
   noindex = false,
@@ -27,28 +27,37 @@ const fullTitle = `${title} | ${siteName}`;
 const settings = await getGeneralSettings();
 const faviconUrl = settings.faviconUrl || '/favicon.png';
 
-// Generate localized alternate links for search engine indexing (hreflang)
-const pathname = Astro.url.pathname;
-const origin = Astro.url.origin;
-const segments = pathname.split('/');
-const isEs = segments[1] === 'es';
-const isEn = segments[1] === 'en';
+const rawSiteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
+const siteUrl = rawSiteUrl.replace(/\/$/, '');
 
-let esPath = pathname;
-let enPath = pathname;
+// Clean pathname (remove trailing slash except root)
+const pathname = Astro.url.pathname;
+const cleanPath = pathname === '/' ? '' : pathname.replace(/\/$/, '');
+
+// Compute canonicalUrl if not explicitly provided
+const canonicalUrl = propCanonicalUrl || `${siteUrl}${cleanPath || '/es'}`;
+
+// Generate localized alternate links for search engine indexing (hreflang)
+const segments = cleanPath.split('/').filter(Boolean);
+const firstSegment = segments[0];
+const isEs = firstSegment === 'es';
+const isEn = firstSegment === 'en';
+
+let esPath = cleanPath;
+let enPath = cleanPath;
 
 if (isEs) {
-  enPath = pathname.replace(/^\/es/, '/en');
+  enPath = cleanPath.replace(/^\/es/, '/en');
 } else if (isEn) {
-  esPath = pathname.replace(/^\/en/, '/es');
+  esPath = cleanPath.replace(/^\/en/, '/es');
 } else {
   // If at root or page without prefix
-  esPath = `/es${pathname === '/' ? '' : pathname}`;
-  enPath = `/en${pathname === '/' ? '' : pathname}`;
+  esPath = `/es${cleanPath}`;
+  enPath = `/en${cleanPath}`;
 }
 
-const esUrl = `${origin}${esPath}`;
-const enUrl = `${origin}${enPath}`;
+const esUrl = `${siteUrl}${esPath}`;
+const enUrl = `${siteUrl}${enPath}`;
 ---
 
 <!-- Primary Meta Tags -->

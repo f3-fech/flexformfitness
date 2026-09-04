@@ -5,7 +5,7 @@ import type { Product, ProductCollection } from '../types';
 export const prerender = false;
 
 export const GET: APIRoute = async () => {
-  const rawSiteUrl = process.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+  const rawSiteUrl = process.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
   const siteUrl = rawSiteUrl.replace(/\/$/, '');
 
   // 1. Static informational and shop pages

@@ -64,7 +64,7 @@ const getObjectPosition = (url: string | undefined): string => {
   return 'center';
 };
 
-const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
 const canonicalUrl = `${siteUrl}/${lang}/productos/${product.slug}`;
 
 const productTitle = isEn ? (product.title_en || product.title) : product.title;

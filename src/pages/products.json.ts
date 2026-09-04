@@ -7,7 +7,7 @@ export const prerender = false; // Disable SSG for real-time live data
 export const GET: APIRoute = async () => {
   try {
     const productsSnap = await db.collection('products').get();
-    const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.vercel.app';
+    const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
     
     const googleMerchantFeed: Record<string, any>[] = [];
 
