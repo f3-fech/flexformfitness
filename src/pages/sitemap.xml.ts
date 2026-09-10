@@ -13,6 +13,7 @@ export const GET: APIRoute = async () => {
     { path: '', priority: '1.0', changefreq: 'daily' },
     { path: 'carrito', priority: '0.6', changefreq: 'weekly' },
     { path: 'contacto', priority: '0.7', changefreq: 'monthly' },
+    { path: 'devoluciones', priority: '0.5', changefreq: 'monthly' },
     { path: 'privacidad', priority: '0.3', changefreq: 'yearly' },
     { path: 'condiciones', priority: '0.3', changefreq: 'yearly' },
     { path: 'cookies', priority: '0.3', changefreq: 'yearly' },

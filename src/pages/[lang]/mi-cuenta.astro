@@ -442,7 +442,7 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
           <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
           <ul class="text-xs flex flex-col gap-2">
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Shipping & Deliveries" : "Envíos y Entregas"}</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
+            <li><a href={`/${lang}/devoluciones`} class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
             <li><a href="#" class="hover:text-white transition-colors">{isEn ? "Size Guide" : "Guía de Tallas"}</a></li>
           </ul>
         </div>

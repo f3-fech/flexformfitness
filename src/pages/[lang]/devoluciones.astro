@@ -1,0 +1,181 @@
+---
+import SEO from '../../components/SEO.astro';
+import { getGeneralSettings } from '../../lib/settings';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'es' } },
+    { params: { lang: 'en' } }
+  ];
+}
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
+const settings = await getGeneralSettings();
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <SEO
+      title={isEn ? "Returns and Refunds Policy | FLEX FORM FITNESS" : "Política de Devoluciones y Reembolsos | FLEX FORM FITNESS"}
+      description={isEn ? "Information about returns, refunds, exchange policy and right of withdrawal at FLEX FORM FITNESS." : "Información detallada sobre devoluciones, cambios, reembolsos y derecho de desistimiento en FLEX FORM FITNESS."}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 py-4 px-6">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <a href={`/${lang}`} class="flex items-center gap-2 group">
+          {settings.logoUrl ? (
+            <img src={settings.logoUrl} alt="FLEX FORM FITNESS" class="h-6 sm:h-8 md:h-10 w-auto object-contain" />
+          ) : (
+            <div class="flex flex-col">
+              <span class="text-base sm:text-2xl md:text-3xl font-black italic tracking-tighter text-slate-950 uppercase leading-none">
+                FLEX <span class="text-rose-600">FORM</span>
+              </span>
+              <span class="text-[7.5px] sm:text-[9px] md:text-[10px] font-extrabold tracking-[0.18em] sm:tracking-[0.25em] text-slate-400 uppercase leading-none mt-0.5 group-hover:text-rose-600 transition-colors">
+                FITNESS
+              </span>
+            </div>
+          )}
+        </a>
+        <a href={`/${lang}`} class="text-sm font-bold uppercase tracking-wider text-slate-600 hover:text-rose-600 transition-colors">
+          {isEn ? "Back to Shop" : "Volver a la Tienda"}
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-12 lg:py-16 flex-grow w-full">
+      <div class="mb-10">
+        <span class="text-xs font-black uppercase tracking-widest text-rose-600">
+          {isEn ? "Customer Support" : "Atención al Cliente"}
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight mt-2">
+          {isEn ? "Returns & Refunds Policy" : "Política de Devoluciones y Reembolsos"}
+        </h1>
+        <p class="text-sm text-slate-500 mt-2">
+          {isEn ? "Last updated: July 2026" : "Última actualización: Julio 2026"}
+        </p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 sm:p-10 shadow-sm border border-slate-100 space-y-8 text-sm leading-relaxed text-slate-700">
+        {isEn ? (
+          // ENGLISH VERSION
+          <>
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">1. Right of Withdrawal (14 Calendar Days)</h2>
+              <p>In accordance with Directive 2011/83/EU and Spanish Consumer Law (Royal Legislative Decree 1/2007), you have the right to withdraw from your purchase within <strong>14 calendar days</strong> from the day you (or a third party indicated by you) receive the goods, without giving any reason.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">2. Conditions for Returns</h2>
+              <p>To ensure eligibility for a full refund or exchange:</p>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li>Items must be unworn, unwashed, undamaged and in their original condition.</li>
+                <li>All original tags, labels, and hygiene liners (if applicable) must be intact and attached.</li>
+                <li>Items must be returned in their original packaging or adequate protective packaging.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">3. How to Request a Return or Exchange</h2>
+              <p>You can start a return process easily using one of the following methods:</p>
+              <ol class="list-decimal pl-5 space-y-2">
+                <li><strong>Via your Account:</strong> Log in to <a href={`/${lang}/mi-cuenta`} class="text-rose-600 underline font-semibold">My Account</a>, navigate to your order history and click <em>"Request Return"</em> on the relevant order.</li>
+                <li><strong>Via Contact Form / Email:</strong> Reach out to our customer support team through our <a href={`/${lang}/contacto`} class="text-rose-600 underline font-semibold">Contact Page</a> indicating your order number and items to return.</li>
+              </ol>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">4. Return Shipping Costs</h2>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li><strong>Voluntary Returns / Exchanges:</strong> The direct costs of returning the package are the responsibility of the customer.</li>
+                <li><strong>Defective, Damaged or Incorrect Items:</strong> If you received a damaged, flawed, or incorrect item, FlexForm Fitness covers 100% of the return and replacement costs.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">5. Refunds & Timeframes</h2>
+              <p>Once we receive and inspect the returned item(s) at our warehouse:</p>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li>We will send you a notification confirming approval or rejection of the refund.</li>
+                <li>If approved, the refund will be processed automatically using your original payment method (Stripe / Credit Card) within <strong>14 calendar days</strong> (usually within 3-5 business days).</li>
+                <li>Initial standard delivery charges will be refunded in accordance with applicable consumer protection laws.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Legal Warranty (3 Years)</h2>
+              <p>All items sold are covered by a <strong>3-year statutory warranty</strong> against manufacturing faults or non-conformity. In case of defective products, you have the right to free repair, replacement, or a complete refund.</p>
+            </section>
+          </>
+        ) : (
+          // SPANISH VERSION
+          <>
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">1. Derecho Legal de Desistimiento (14 Días Naturales)</h2>
+              <p>Conforme al Real Decreto Legislativo 1/2007, de 16 de noviembre, de la Ley General para la Defensa de los Consumidores y Usuarios, dispones de un plazo de <strong>14 días naturales</strong> a contar desde la recepción del pedido para desistir de la compra sin necesidad de justificación.</p>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">2. Condiciones para Aceptar la Devolución</h2>
+              <p>Para poder procesar la devolución o cambio de un producto, es imprescindible cumplir los siguientes requisitos:</p>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li>El producto debe estar nuevo, sin usar, sin manchas ni olores y en perfecto estado de conservación.</li>
+                <li>Debe conservar todas sus etiquetas originales intactas y colocadas en la prenda.</li>
+                <li>Debe enviarse en su embalaje original o en una caja protectora equivalente que garantice que no sufra daños durante el transporte.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">3. ¿Cómo Solicitar una Devolución o Cambio?</h2>
+              <p>El proceso es rápido y sencillo a través de cualquiera de estas dos vías:</p>
+              <ol class="list-decimal pl-5 space-y-2">
+                <li><strong>Desde tu Área de Cliente:</strong> Accede a <a href={`/${lang}/mi-cuenta`} class="text-rose-600 underline font-semibold">Mi Cuenta</a>, entra en el detalle del pedido correspondiente y haz clic en el botón <em>"Solicitar Devolución"</em>.</li>
+                <li><strong>Por Email / Formulario:</strong> Contáctanos a través de nuestra página de <a href={`/${lang}/contacto`} class="text-rose-600 underline font-semibold">Contacto</a> indicando tu número de pedido y las prendas a devolver. Te responderemos en menos de 24-48 horas hábiles con las instrucciones de envío.</li>
+              </ol>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">4. Gastos de Envío de la Devolución</h2>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li><strong>Devoluciones voluntarias / Cambios de talla:</strong> Los costes directos del transporte para devolver el producto corren por cuenta del cliente.</li>
+                <li><strong>Producto defectuoso o error en el envío:</strong> Si recibes un artículo con defecto de fábrica o distinto al solicitado, FlexForm Fitness asumirá el 100% de los costes de recogida y reenvío.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">5. Reembolsos y Plazos de Abono</h2>
+              <p>Una vez recibido el paquete en nuestras instalaciones y verificado el estado de las prendas:</p>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li>Te enviaremos un correo de confirmación de la aprobación del reembolso.</li>
+                <li>El abono se emitirá de forma automática a través del mismo método de pago utilizado en la compra (tarjeta vía Stripe) en un plazo máximo de <strong>14 días naturales</strong> (habitualmente reflejado en tu extracto bancario en 2-4 días hábiles).</li>
+                <li>Se reembolsará el importe íntegro del producto y los gastos de envío ordinarios iniciales abonados en el pedido.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Garantía Legal de 3 Años</h2>
+              <p>Todos nuestros productos cuentan con una <strong>garantía legal de 3 años</strong> conforme a la legislación española vigente frente a faltas de conformidad o defectos de fabricación, garantizando la reparación, sustitución o reembolso total sin coste alguno para el consumidor.</p>
+            </section>
+          </>
+        )}
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400">
+      <p>&copy; {new Date().getFullYear()} FlexForm Fitness. {isEn ? "All rights reserved." : "Todos los derechos reservados."} {isEn ? "in collaboration with" : "en colaboración con"} <a href="https://javiphoto.es" target="_blank" class="hover:text-slate-700 underline transition-colors">javiphoto.es</a></p>
+    </footer>
+  </body>
+</html>
