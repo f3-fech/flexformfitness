@@ -1,7 +1,7 @@
 import { db } from '../lib/firebase';
 import type { Product } from '../types';
 import type { APIRoute } from 'astro';
-import { getApparelAttributes } from '../lib/merchantUtils';
+import { getApparelAttributes, formatMerchantId } from '../lib/merchantUtils';
 import { getGeneralSettings } from '../lib/settings';
 
 export const prerender = false; // Disable SSG for real-time live data
@@ -34,9 +34,12 @@ export const GET: APIRoute = async () => {
       if (product.variants && product.variants.length > 0) {
         // Map individual variants as separate indexable items under a single group ID
         product.variants.forEach((variant) => {
+          const rawVariantSku = variant.sku || `${product.id}-${variant.name}`;
+          const merchantId = formatMerchantId(rawVariantSku);
           const attrs = getApparelAttributes(product, variant, false);
+
           googleMerchantFeed.push({
-            id: variant.sku || `${product.id}-${variant.name}`,
+            id: merchantId,
             title: `${product.title} - ${variant.name}`,
             description: baseDesc,
             link: `${siteUrl}/es/productos/${product.slug}?variant=${encodeURIComponent(variant.sku || variant.name || '')}`,
@@ -46,8 +49,8 @@ export const GET: APIRoute = async () => {
             price: `${(((variant.price ?? product.price) / 100)).toFixed(2)} EUR`,
             brand: 'FlexForm Fitness',
             condition: 'new',
-            item_group_id: product.id,
-            mpn: variant.sku || `${product.id}-${variant.name}`,
+            item_group_id: formatMerchantId(product.id),
+            mpn: merchantId,
             gender: attrs.gender,
             age_group: attrs.ageGroup,
             color: attrs.color,
@@ -60,8 +63,10 @@ export const GET: APIRoute = async () => {
       } else {
         // Map base product if no variants exist
         const attrs = getApparelAttributes(product, null, false);
+        const merchantId = formatMerchantId(product.id);
+
         googleMerchantFeed.push({
-          id: product.id,
+          id: merchantId,
           title: product.title,
           description: baseDesc,
           link: `${siteUrl}/es/productos/${product.slug}`,
@@ -71,7 +76,8 @@ export const GET: APIRoute = async () => {
           price: `${((product.price / 100)).toFixed(2)} EUR`,
           brand: 'FlexForm Fitness',
           condition: 'new',
-          mpn: product.id,
+          item_group_id: merchantId,
+          mpn: merchantId,
           gender: attrs.gender,
           age_group: attrs.ageGroup,
           color: attrs.color,

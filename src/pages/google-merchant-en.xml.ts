@@ -1,7 +1,7 @@
 import { db } from '../lib/firebase';
 import type { Product } from '../types';
 import type { APIRoute } from 'astro';
-import { getApparelAttributes } from '../lib/merchantUtils';
+import { getApparelAttributes, formatMerchantId } from '../lib/merchantUtils';
 import { getGeneralSettings } from '../lib/settings';
 
 export const prerender = false; // Real-time live XML feed
@@ -59,12 +59,13 @@ export const GET: APIRoute = async () => {
       if (product.variants && product.variants.length > 0) {
         product.variants.forEach((variant) => {
           const variantPrice = ((variant.price ?? product.price) / 100).toFixed(2);
-          const variantSku = variant.sku || `${product.id}-${variant.name}`;
+          const rawVariantSku = variant.sku || `${product.id}-${variant.name}`;
+          const merchantId = formatMerchantId(rawVariantSku);
           const variantLink = `${siteUrl}/en/productos/${product.slug}?variant=${encodeURIComponent(variant.sku || variant.name || '')}`;
           const attrs = getApparelAttributes(product, variant, true);
 
           xml += `    <item>\n`;
-          xml += `      <g:id>${escapeXml(variantSku)}</g:id>\n`;
+          xml += `      <g:id>${escapeXml(merchantId)}</g:id>\n`;
           xml += `      <g:title>${cdata(`${title} - ${variant.name}`)}</g:title>\n`;
           xml += `      <g:description>${cdata(cleanDesc || title)}</g:description>\n`;
           xml += `      <g:link>${escapeXml(variantLink)}</g:link>\n`;
@@ -83,8 +84,8 @@ export const GET: APIRoute = async () => {
           xml += `      <g:price>${variantPrice} EUR</g:price>\n`;
           xml += `      <g:brand>FlexForm Fitness</g:brand>\n`;
           xml += `      <g:condition>new</g:condition>\n`;
-          xml += `      <g:item_group_id>${escapeXml(product.id)}</g:item_group_id>\n`;
-          xml += `      <g:mpn>${escapeXml(variantSku)}</g:mpn>\n`;
+          xml += `      <g:item_group_id>${escapeXml(formatMerchantId(product.id))}</g:item_group_id>\n`;
+          xml += `      <g:mpn>${escapeXml(merchantId)}</g:mpn>\n`;
           xml += `      <g:gender>${escapeXml(attrs.gender)}</g:gender>\n`;
           xml += `      <g:age_group>${escapeXml(attrs.ageGroup)}</g:age_group>\n`;
           xml += `      <g:color>${escapeXml(attrs.color)}</g:color>\n`;
@@ -98,9 +99,10 @@ export const GET: APIRoute = async () => {
         const basePrice = (product.price / 100).toFixed(2);
         const productLink = `${siteUrl}/en/productos/${product.slug}`;
         const attrs = getApparelAttributes(product, null, true);
+        const merchantId = formatMerchantId(product.id);
 
         xml += `    <item>\n`;
-        xml += `      <g:id>${escapeXml(product.id)}</g:id>\n`;
+        xml += `      <g:id>${escapeXml(merchantId)}</g:id>\n`;
         xml += `      <g:title>${cdata(title)}</g:title>\n`;
         xml += `      <g:description>${cdata(cleanDesc || title)}</g:description>\n`;
         xml += `      <g:link>${escapeXml(productLink)}</g:link>\n`;
@@ -118,7 +120,7 @@ export const GET: APIRoute = async () => {
         xml += `      <g:price>${basePrice} EUR</g:price>\n`;
         xml += `      <g:brand>FlexForm Fitness</g:brand>\n`;
         xml += `      <g:condition>new</g:condition>\n`;
-        xml += `      <g:mpn>${escapeXml(product.id)}</g:mpn>\n`;
+        xml += `      <g:mpn>${escapeXml(merchantId)}</g:mpn>\n`;
         xml += `      <g:gender>${escapeXml(attrs.gender)}</g:gender>\n`;
         xml += `      <g:age_group>${escapeXml(attrs.ageGroup)}</g:age_group>\n`;
         xml += `      <g:color>${escapeXml(attrs.color)}</g:color>\n`;

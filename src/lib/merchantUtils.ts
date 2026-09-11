@@ -69,6 +69,26 @@ export function parseVariantName(variantName: string | undefined, fallbackTitle:
   return { color: formatColor(single), size: 'M' };
 }
 
+/**
+ * Ensures Google Merchant Center item ID does not exceed the strict 50-character limit.
+ */
+export function formatMerchantId(rawId: string | null | undefined): string {
+  if (!rawId) return 'item';
+  const clean = rawId.trim();
+  if (clean.length <= 50) return clean;
+
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
+  const prefix = clean.substring(0, 41).replace(/-$/, '');
+  const result = `${prefix}-${hashHex}`;
+  return result.length > 50 ? result.substring(0, 50) : result;
+}
+
 export function getApparelAttributes(
   product: Product,
   variant?: ProductVariant | null,
