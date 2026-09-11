@@ -3,7 +3,6 @@ import { db } from '../../lib/firebase';
 import type { Product } from '../../types';
 import SEO from '../../components/SEO.astro';
 import Navbar from '../../components/Navbar.astro';
-import { mockProducts } from '../../lib/mockData';
 import { getGeneralSettings } from '../../lib/settings';
 
 export const prerender = true;
@@ -179,12 +178,8 @@ try {
     });
   }
 } catch (error) {
-  console.warn('Error fetching homepage collections from Firestore. Using fallback.', error);
-  homepageCollections = [{
-    id: 'mock',
-    title: isEn ? "Best Sellers" : "Más Vendidos",
-    products: mockProducts
-  }];
+  console.warn('Error fetching homepage collections from Firestore.', error);
+  homepageCollections = [];
 }
 const settings = await getGeneralSettings();
 
@@ -708,10 +703,10 @@ const storeJsonLd = {
 
     <!-- Semantic Pre-Footer SEO Content Block (2-Column Desktop Split Layout) -->
     <section class="w-full bg-white py-16 md:py-24 px-6 md:px-12 border-t border-slate-100">
-      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
         
         <!-- Left Side: Overline Tag + H2 Title -->
-        <div class="lg:col-span-5 flex flex-col items-start text-left gap-3 lg:sticky lg:top-28">
+        <div class="lg:col-span-5 flex flex-col items-start text-left gap-3 justify-center">
           <span class="text-[9px] md:text-2xs font-extrabold tracking-[0.25em] text-red-500 uppercase">
             {isEn ? "WHY CHOOSE US" : "NUESTROS PILARES"}
           </span>

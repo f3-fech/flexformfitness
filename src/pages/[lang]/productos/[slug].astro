@@ -4,20 +4,16 @@ import type { Product } from '../../../types';
 import SEO from '../../../components/SEO.astro';
 import Navbar from '../../../components/Navbar.astro';
 import { ProductSelector } from '../../../components/ProductSelector';
+import { getApparelAttributes } from '../../../lib/merchantUtils';
 
 export const prerender = true;
-
-import { mockProducts } from '../../../lib/mockData';
 
 export async function getStaticPaths() {
   try {
     const productsSnap = await db.collection('products').get();
     
     if (productsSnap.empty) {
-      return mockProducts.flatMap((product) => [
-        { params: { lang: 'es', slug: product.slug }, props: { product } },
-        { params: { lang: 'en', slug: product.slug }, props: { product } }
-      ]);
+      return [];
     }
 
     return productsSnap.docs.flatMap((doc) => {
@@ -34,11 +30,8 @@ export async function getStaticPaths() {
       ];
     });
   } catch (error) {
-    console.error('Error fetching static paths from Firestore. Using mock products fallback:', error);
-    return mockProducts.flatMap((product) => [
-      { params: { lang: 'es', slug: product.slug }, props: { product } },
-      { params: { lang: 'en', slug: product.slug }, props: { product } }
-    ]);
+    console.error('Error fetching static paths from Firestore for products:', error);
+    return [];
   }
 }
 
@@ -70,13 +63,116 @@ const canonicalUrl = `${siteUrl}/${lang}/productos/${product.slug}`;
 const productTitle = isEn ? (product.title_en || product.title) : product.title;
 const productDescription = isEn ? (product.description_en || product.description) : product.description;
 
-// Construct product schema JSON-LD for rich snippets (Google Shopping & Rich Results)
-const minPrice = product.variants && product.variants.length > 0 
-  ? Math.min(product.price, ...product.variants.map((v) => v.price)) 
-  : product.price;
-const maxPrice = product.variants && product.variants.length > 0 
-  ? Math.max(product.price, ...product.variants.map((v) => v.price)) 
-  : product.price;
+const defaultAttrs = getApparelAttributes(product, product.variants?.[0] || null, isEn);
+
+// Construct comprehensive Schema.org JSON-LD for Google Rich Results & Google Merchant Crawler
+const offersList = product.variants && product.variants.length > 0
+  ? product.variants.map((v) => {
+      const vAttrs = getApparelAttributes(product, v, isEn);
+      const vPrice = ((v.price ?? product.price) / 100).toFixed(2);
+      const vUrl = `${canonicalUrl}?variant=${encodeURIComponent(v.sku || v.name || '')}`;
+      return {
+        '@type': 'Offer',
+        'sku': v.sku || `${product.id}-${v.name}`,
+        'name': `${productTitle} - ${v.name}`,
+        'price': parseFloat(vPrice),
+        'priceCurrency': 'EUR',
+        'priceValidUntil': '2027-12-31',
+        'itemCondition': 'https://schema.org/NewCondition',
+        'availability': vAttrs.schemaAvailability,
+        'url': vUrl,
+        'seller': {
+          '@type': 'Organization',
+          'name': 'FlexForm Fitness',
+        },
+        'hasMerchantReturnPolicy': {
+          '@type': 'MerchantReturnPolicy',
+          'applicableCountry': 'ES',
+          'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
+          'merchantReturnDays': 14,
+          'returnMethod': 'https://schema.org/ReturnByMail',
+          'returnFees': 'https://schema.org/FreeReturn',
+        },
+        'shippingDetails': {
+          '@type': 'OfferShippingDetails',
+          'shippingRate': {
+            '@type': 'MonetaryAmount',
+            'value': '4.99',
+            'currency': 'EUR',
+          },
+          'shippingDestination': {
+            '@type': 'DefinedRegion',
+            'addressCountry': 'ES',
+          },
+          'deliveryTime': {
+            '@type': 'ShippingDeliveryTime',
+            'handlingTime': {
+              '@type': 'QuantitativeValue',
+              'minValue': 1,
+              'maxValue': 2,
+              'unitCode': 'd',
+            },
+            'transitTime': {
+              '@type': 'QuantitativeValue',
+              'minValue': 2,
+              'maxValue': 5,
+              'unitCode': 'd',
+            },
+          },
+        },
+      };
+    })
+  : [
+      {
+        '@type': 'Offer',
+        'sku': product.id,
+        'price': parseFloat((product.price / 100).toFixed(2)),
+        'priceCurrency': 'EUR',
+        'priceValidUntil': '2027-12-31',
+        'itemCondition': 'https://schema.org/NewCondition',
+        'availability': defaultAttrs.schemaAvailability,
+        'url': canonicalUrl,
+        'seller': {
+          '@type': 'Organization',
+          'name': 'FlexForm Fitness',
+        },
+        'hasMerchantReturnPolicy': {
+          '@type': 'MerchantReturnPolicy',
+          'applicableCountry': 'ES',
+          'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
+          'merchantReturnDays': 14,
+          'returnMethod': 'https://schema.org/ReturnByMail',
+          'returnFees': 'https://schema.org/FreeReturn',
+        },
+        'shippingDetails': {
+          '@type': 'OfferShippingDetails',
+          'shippingRate': {
+            '@type': 'MonetaryAmount',
+            'value': '4.99',
+            'currency': 'EUR',
+          },
+          'shippingDestination': {
+            '@type': 'DefinedRegion',
+            'addressCountry': 'ES',
+          },
+          'deliveryTime': {
+            '@type': 'ShippingDeliveryTime',
+            'handlingTime': {
+              '@type': 'QuantitativeValue',
+              'minValue': 1,
+              'maxValue': 2,
+              'unitCode': 'd',
+            },
+            'transitTime': {
+              '@type': 'QuantitativeValue',
+              'minValue': 2,
+              'maxValue': 5,
+              'unitCode': 'd',
+            },
+          },
+        },
+      },
+    ];
 
 const productJsonLd = {
   '@context': 'https://schema.org',
@@ -85,25 +181,22 @@ const productJsonLd = {
   'image': product.images,
   'description': productDescription,
   'sku': product.variants?.[0]?.sku || product.id,
+  'category': defaultAttrs.category,
+  'color': defaultAttrs.color,
+  'size': defaultAttrs.size,
+  'audience': {
+    '@type': 'PeopleAudience',
+    'suggestedGender': defaultAttrs.gender,
+    'suggestedAge': {
+      '@type': 'QuantitativeValue',
+      'minValue': 13,
+    },
+  },
   'brand': {
     '@type': 'Brand',
-    'name': 'FlexForm Fitness'
+    'name': 'FlexForm Fitness',
   },
-  'offers': {
-    '@type': 'AggregateOffer',
-    'priceCurrency': 'EUR',
-    'lowPrice': parseFloat((minPrice / 100).toFixed(2)),
-    'highPrice': parseFloat((maxPrice / 100).toFixed(2)),
-    'offerCount': product.variants?.length || 1,
-    'price': parseFloat((product.price / 100).toFixed(2)),
-    'itemCondition': 'https://schema.org/NewCondition',
-    'availability': product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-    'url': canonicalUrl,
-    'seller': {
-      '@type': 'Organization',
-      'name': 'FlexForm Fitness'
-    }
-  },
+  'offers': offersList.length === 1 ? offersList[0] : offersList,
 };
 ---
 

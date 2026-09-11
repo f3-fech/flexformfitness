@@ -1,6 +1,8 @@
 import { db } from '../lib/firebase';
 import type { Product } from '../types';
 import type { APIRoute } from 'astro';
+import { getApparelAttributes } from '../lib/merchantUtils';
+import { getGeneralSettings } from '../lib/settings';
 
 export const prerender = false; // Real-time live XML feed
 
@@ -21,9 +23,15 @@ function cdata(str: string | null | undefined): string {
 
 export const GET: APIRoute = async () => {
   try {
-    const productsSnap = await db.collection('products').get();
+    const [productsSnap, settings] = await Promise.all([
+      db.collection('products').get(),
+      getGeneralSettings(),
+    ]);
+
     const rawSiteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
     const siteUrl = rawSiteUrl.replace(/\/$/, '');
+    const shippingPriceEur = ((settings.shippingPrice ?? 499) / 100).toFixed(2);
+    const shippingMarkets = settings.markets && settings.markets.length > 0 ? settings.markets : ['ES', 'US'];
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">\n`;
@@ -39,15 +47,21 @@ export const GET: APIRoute = async () => {
       const title = product.title_en || product.title;
       const rawDesc = product.description_en || product.description || title;
       const cleanDesc = rawDesc.replace(/<[^>]*>?/gm, '').trim().substring(0, 5000);
-      const basePrice = (product.price / 100).toFixed(2);
-      const isAvailable = (product.stock ?? 0) > 0 ? 'in_stock' : 'out_of_stock';
+
+      const renderShippingNodes = () => {
+        return shippingMarkets
+          .map(
+            (country) => `      <g:shipping>\n        <g:country>${escapeXml(country)}</g:country>\n        <g:service>Standard Shipping</g:service>\n        <g:price>${shippingPriceEur} EUR</g:price>\n      </g:shipping>\n`
+          )
+          .join('');
+      };
 
       if (product.variants && product.variants.length > 0) {
         product.variants.forEach((variant) => {
           const variantPrice = ((variant.price ?? product.price) / 100).toFixed(2);
-          const variantAvailable = (variant.stock ?? 0) > 0 ? 'in_stock' : 'out_of_stock';
           const variantSku = variant.sku || `${product.id}-${variant.name}`;
           const variantLink = `${siteUrl}/en/productos/${product.slug}?variant=${encodeURIComponent(variant.sku || variant.name || '')}`;
+          const attrs = getApparelAttributes(product, variant, true);
 
           xml += `    <item>\n`;
           xml += `      <g:id>${escapeXml(variantSku)}</g:id>\n`;
@@ -65,16 +79,25 @@ export const GET: APIRoute = async () => {
               }
             });
           }
-          xml += `      <g:availability>${variantAvailable}</g:availability>\n`;
+          xml += `      <g:availability>${attrs.availability}</g:availability>\n`;
           xml += `      <g:price>${variantPrice} EUR</g:price>\n`;
           xml += `      <g:brand>FlexForm Fitness</g:brand>\n`;
           xml += `      <g:condition>new</g:condition>\n`;
           xml += `      <g:item_group_id>${escapeXml(product.id)}</g:item_group_id>\n`;
           xml += `      <g:mpn>${escapeXml(variantSku)}</g:mpn>\n`;
+          xml += `      <g:gender>${escapeXml(attrs.gender)}</g:gender>\n`;
+          xml += `      <g:age_group>${escapeXml(attrs.ageGroup)}</g:age_group>\n`;
+          xml += `      <g:color>${escapeXml(attrs.color)}</g:color>\n`;
+          xml += `      <g:size>${escapeXml(attrs.size)}</g:size>\n`;
+          xml += `      <g:google_product_category>Apparel &amp; Accessories &gt; Clothing</g:google_product_category>\n`;
+          xml += `      <g:product_type>${escapeXml(attrs.productType)}</g:product_type>\n`;
+          xml += renderShippingNodes();
           xml += `    </item>\n`;
         });
       } else {
+        const basePrice = (product.price / 100).toFixed(2);
         const productLink = `${siteUrl}/en/productos/${product.slug}`;
+        const attrs = getApparelAttributes(product, null, true);
 
         xml += `    <item>\n`;
         xml += `      <g:id>${escapeXml(product.id)}</g:id>\n`;
@@ -91,11 +114,18 @@ export const GET: APIRoute = async () => {
             }
           });
         }
-        xml += `      <g:availability>${isAvailable}</g:availability>\n`;
+        xml += `      <g:availability>${attrs.availability}</g:availability>\n`;
         xml += `      <g:price>${basePrice} EUR</g:price>\n`;
         xml += `      <g:brand>FlexForm Fitness</g:brand>\n`;
         xml += `      <g:condition>new</g:condition>\n`;
         xml += `      <g:mpn>${escapeXml(product.id)}</g:mpn>\n`;
+        xml += `      <g:gender>${escapeXml(attrs.gender)}</g:gender>\n`;
+        xml += `      <g:age_group>${escapeXml(attrs.ageGroup)}</g:age_group>\n`;
+        xml += `      <g:color>${escapeXml(attrs.color)}</g:color>\n`;
+        xml += `      <g:size>${escapeXml(attrs.size)}</g:size>\n`;
+        xml += `      <g:google_product_category>Apparel &amp; Accessories &gt; Clothing</g:google_product_category>\n`;
+        xml += `      <g:product_type>${escapeXml(attrs.productType)}</g:product_type>\n`;
+        xml += renderShippingNodes();
         xml += `    </item>\n`;
       }
     });

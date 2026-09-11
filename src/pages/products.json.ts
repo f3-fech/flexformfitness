@@ -1,51 +1,84 @@
 import { db } from '../lib/firebase';
 import type { Product } from '../types';
 import type { APIRoute } from 'astro';
+import { getApparelAttributes } from '../lib/merchantUtils';
+import { getGeneralSettings } from '../lib/settings';
 
 export const prerender = false; // Disable SSG for real-time live data
 
 export const GET: APIRoute = async () => {
   try {
-    const productsSnap = await db.collection('products').get();
-    const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
+    const [productsSnap, settings] = await Promise.all([
+      db.collection('products').get(),
+      getGeneralSettings(),
+    ]);
+    
+    const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com').replace(/\/$/, '');
+    const shippingPriceEur = ((settings.shippingPrice ?? 499) / 100).toFixed(2);
+    const shippingMarkets = settings.markets && settings.markets.length > 0 ? settings.markets : ['ES'];
     
     const googleMerchantFeed: Record<string, any>[] = [];
 
     productsSnap.docs.forEach((doc) => {
       const product = { id: doc.id, ...doc.data() } as Product;
+      if (!product.slug) return;
+
+      const baseDesc = (product.description || product.title || '').replace(/<[^>]*>?/gm, '').trim().substring(0, 5000);
+
+      const shippingArray = shippingMarkets.map((country) => ({
+        country,
+        service: 'Standard',
+        price: `${shippingPriceEur} EUR`,
+      }));
 
       if (product.variants && product.variants.length > 0) {
         // Map individual variants as separate indexable items under a single group ID
         product.variants.forEach((variant) => {
+          const attrs = getApparelAttributes(product, variant, false);
           googleMerchantFeed.push({
-            id: variant.sku,
+            id: variant.sku || `${product.id}-${variant.name}`,
             title: `${product.title} - ${variant.name}`,
-            description: product.description.substring(0, 5000), // Google max description length is 5000
-            link: `${siteUrl}/es/productos/${product.slug}?variant=${variant.sku}`,
-            image_link: product.images[0] || '',
-            additional_image_link: product.images.slice(1),
-            availability: variant.stock > 0 ? 'in_stock' : 'out_of_stock',
-            price: `${(variant.price / 100).toFixed(2)} EUR`,
+            description: baseDesc,
+            link: `${siteUrl}/es/productos/${product.slug}?variant=${encodeURIComponent(variant.sku || variant.name || '')}`,
+            image_link: variant.image || product.images[0] || '',
+            additional_image_link: product.images.slice(1, 10),
+            availability: attrs.availability,
+            price: `${(((variant.price ?? product.price) / 100)).toFixed(2)} EUR`,
             brand: 'FlexForm Fitness',
             condition: 'new',
             item_group_id: product.id,
-            mpn: variant.sku,
+            mpn: variant.sku || `${product.id}-${variant.name}`,
+            gender: attrs.gender,
+            age_group: attrs.ageGroup,
+            color: attrs.color,
+            size: attrs.size,
+            google_product_category: 'Apparel & Accessories > Clothing',
+            product_type: attrs.productType,
+            shipping: shippingArray,
           });
         });
       } else {
         // Map base product if no variants exist
+        const attrs = getApparelAttributes(product, null, false);
         googleMerchantFeed.push({
           id: product.id,
           title: product.title,
-          description: product.description.substring(0, 5000),
+          description: baseDesc,
           link: `${siteUrl}/es/productos/${product.slug}`,
           image_link: product.images[0] || '',
-          additional_image_link: product.images.slice(1),
-          availability: product.stock > 0 ? 'in_stock' : 'out_of_stock',
-          price: `${(product.price / 100).toFixed(2)} EUR`,
+          additional_image_link: product.images.slice(1, 10),
+          availability: attrs.availability,
+          price: `${((product.price / 100)).toFixed(2)} EUR`,
           brand: 'FlexForm Fitness',
           condition: 'new',
           mpn: product.id,
+          gender: attrs.gender,
+          age_group: attrs.ageGroup,
+          color: attrs.color,
+          size: attrs.size,
+          google_product_category: 'Apparel & Accessories > Clothing',
+          product_type: attrs.productType,
+          shipping: shippingArray,
         });
       }
     });
@@ -54,7 +87,6 @@ export const GET: APIRoute = async () => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        // Instruct Vercel CDN to cache this feed for 1 hour (3600s), revalidating after 30 mins (1800s)
         'Cache-Control': 'public, max-age=1800, s-maxage=3600, stale-while-revalidate=600',
       },
     });
