@@ -1,6 +1,6 @@
 import { actions } from 'astro:actions';
 import { showToast } from './utils';
-import { getDbCollections } from './state';
+import { getDbCollections, getStoreColors, setStoreColors } from './state';
 
 // Megamenu module global state
 let activeMegaMenuTarget: 'col' | 'hombre' | 'mujer' = 'col';
@@ -1174,3 +1174,160 @@ if (megamenuBridgeEl) {
     `;
   }
 }
+
+// --- STORE COLORS PALETTE MANAGER IN SETTINGS ---
+export function renderSettingsColorsList() {
+  const container = document.getElementById('settings-colors-list');
+  if (!container) return;
+
+  const colors = getStoreColors();
+  container.innerHTML = '';
+
+  colors.forEach((col, idx) => {
+    const card = document.createElement('div');
+    card.className = 'group p-3 rounded-xl border border-slate-200 bg-white flex flex-col gap-2 shadow-2xs hover:border-slate-300 transition-all';
+    card.innerHTML = `
+      <div class="color-setting-view flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 overflow-hidden flex-1 select-none">
+          <span class="w-5 h-5 rounded-full border border-slate-300 shrink-0 shadow-3xs" style="background-color: ${col.hex}"></span>
+          <div class="flex flex-col overflow-hidden">
+            <span class="text-xs font-bold text-slate-800 truncate capitalize">${col.name}</span>
+            <span class="text-[10px] font-mono text-slate-400 uppercase">${col.hex}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          <button type="button" class="edit-setting-color-btn p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer" title="Editar color">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+          </button>
+          <button type="button" class="del-setting-color-btn p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="Eliminar color">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="color-setting-edit hidden flex flex-col gap-2 pt-1">
+        <div class="flex gap-2 items-center">
+          <input type="color" class="edit-color-hex-input w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="${col.hex}" />
+          <input type="text" class="edit-color-name-input min-w-0 flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-600" value="${col.name}" />
+        </div>
+        <div class="flex justify-end gap-1.5">
+          <button type="button" class="cancel-edit-color-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-3xs font-bold uppercase transition-colors shrink-0 cursor-pointer">Cancelar</button>
+          <button type="button" class="save-edit-color-btn px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors shrink-0 cursor-pointer">Guardar</button>
+        </div>
+      </div>
+    `;
+
+    const viewMode = card.querySelector('.color-setting-view') as HTMLDivElement;
+    const editMode = card.querySelector('.color-setting-edit') as HTMLDivElement;
+    const editBtn = card.querySelector('.edit-setting-color-btn') as HTMLButtonElement;
+    const delBtn = card.querySelector('.del-setting-color-btn') as HTMLButtonElement;
+    const saveBtn = card.querySelector('.save-edit-color-btn') as HTMLButtonElement;
+    const cancelBtn = card.querySelector('.cancel-edit-color-btn') as HTMLButtonElement;
+
+    editBtn?.addEventListener('click', () => {
+      viewMode.classList.add('hidden');
+      editMode.classList.remove('hidden');
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      editMode.classList.add('hidden');
+      viewMode.classList.remove('hidden');
+    });
+
+    saveBtn?.addEventListener('click', async () => {
+      const nameInput = card.querySelector('.edit-color-name-input') as HTMLInputElement;
+      const hexInput = card.querySelector('.edit-color-hex-input') as HTMLInputElement;
+      const newName = nameInput.value.trim();
+      const newHex = hexInput.value;
+
+      if (!newName) {
+        showToast('El nombre no puede estar vacío', 'error');
+        return;
+      }
+
+      const updated = [...colors];
+      updated[idx] = { name: newName, hex: newHex };
+      setStoreColors(updated);
+      renderSettingsColorsList();
+
+      try {
+        await actions.updateStoreColors({ savedColors: updated });
+        showToast(`Color "${newName}" guardado`, 'success');
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    delBtn?.addEventListener('click', async () => {
+      const updated = colors.filter((_, i) => i !== idx);
+      setStoreColors(updated);
+      renderSettingsColorsList();
+
+      try {
+        await actions.updateStoreColors({ savedColors: updated });
+        showToast(`Color "${col.name}" eliminado`, 'success');
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    container.appendChild(card);
+  });
+}
+
+(window as any).renderSettingsColorsList = renderSettingsColorsList;
+
+const settingsAddColorBtn = document.getElementById('settings-add-color-btn') as HTMLButtonElement;
+const settingsNewColorName = document.getElementById('settings-new-color-name') as HTMLInputElement;
+const settingsNewColorHex = document.getElementById('settings-new-color-hex') as HTMLInputElement;
+const settingsSaveColorsBtn = document.getElementById('settings-save-colors-btn') as HTMLButtonElement;
+
+settingsAddColorBtn?.addEventListener('click', async () => {
+  const name = settingsNewColorName.value.trim();
+  const hex = settingsNewColorHex.value;
+  if (!name) {
+    showToast('Introduce un nombre para el color', 'error');
+    return;
+  }
+
+  const current = getStoreColors();
+  const existingIdx = current.findIndex((c) => c.name.toLowerCase() === name.toLowerCase());
+  let updated: Array<{ name: string; hex: string }>;
+  if (existingIdx >= 0) {
+    updated = [...current];
+    updated[existingIdx] = { name, hex };
+  } else {
+    updated = [...current, { name, hex }];
+  }
+
+  setStoreColors(updated);
+  renderSettingsColorsList();
+  settingsNewColorName.value = '';
+  showToast(`Color "${name}" añadido a la paleta`, 'success');
+
+  try {
+    await actions.updateStoreColors({ savedColors: updated });
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+settingsSaveColorsBtn?.addEventListener('click', async () => {
+  settingsSaveColorsBtn.disabled = true;
+  try {
+    await actions.updateStoreColors({ savedColors: getStoreColors() });
+    showToast('Paleta de colores guardada con éxito', 'success');
+  } catch (err: any) {
+    showToast(err.message || 'Error al guardar la paleta de colores', 'error');
+  } finally {
+    settingsSaveColorsBtn.disabled = false;
+  }
+});
+
+// Initial render
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', renderSettingsColorsList);
+} else {
+  renderSettingsColorsList();
+}
+

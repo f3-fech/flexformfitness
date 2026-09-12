@@ -24,12 +24,14 @@ const sectionSettings = document.getElementById('section-settings') as HTMLDivEl
 const subtabShippingBtn = document.getElementById('subtab-shipping-btn') as HTMLButtonElement;
 const subtabAdminsBtn = document.getElementById('subtab-admins-btn') as HTMLButtonElement;
 const subtabBrandingBtn = document.getElementById('subtab-branding-btn') as HTMLButtonElement;
+const subtabColorsBtn = document.getElementById('subtab-colors-btn') as HTMLButtonElement;
 const subtabMegamenuBtn = document.getElementById('subtab-megamenu-btn') as HTMLButtonElement;
 const subtabCouponsBtn = document.getElementById('subtab-coupons-btn') as HTMLButtonElement;
 
 const formSubShipping = document.getElementById('form-sub-shipping') as HTMLFormElement;
 const formSubAdmins = document.getElementById('form-sub-admins') as HTMLFormElement;
 const formSubBranding = document.getElementById('form-sub-branding') as HTMLFormElement;
+const formSubColors = document.getElementById('form-sub-colors') as HTMLDivElement;
 const formSubMegamenu = document.getElementById('form-sub-megamenu') as HTMLFormElement;
 const formSubCoupons = document.getElementById('form-sub-coupons') as HTMLDivElement;
 
@@ -99,12 +101,14 @@ function deactivateAllSubtabs() {
   if (subtabShippingBtn) subtabShippingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
   if (subtabAdminsBtn) subtabAdminsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
   if (subtabBrandingBtn) subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+  if (subtabColorsBtn) subtabColorsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
   if (subtabMegamenuBtn) subtabMegamenuBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
   if (subtabCouponsBtn) subtabCouponsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
 
   if (formSubShipping) formSubShipping.classList.add('hidden');
   if (formSubAdmins) formSubAdmins.classList.add('hidden');
   if (formSubBranding) formSubBranding.classList.add('hidden');
+  if (formSubColors) formSubColors.classList.add('hidden');
   if (formSubMegamenu) formSubMegamenu.classList.add('hidden');
   if (formSubCoupons) formSubCoupons.classList.add('hidden');
 }
@@ -122,6 +126,12 @@ export function activateSubtab(subtabName: string) {
   } else if (subtabName === 'branding' && subtabBrandingBtn && formSubBranding) {
     subtabBrandingBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
     formSubBranding.classList.remove('hidden');
+  } else if (subtabName === 'colors' && subtabColorsBtn && formSubColors) {
+    subtabColorsBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+    formSubColors.classList.remove('hidden');
+    if ((window as any).renderSettingsColorsList) {
+      (window as any).renderSettingsColorsList();
+    }
   } else if (subtabName === 'megamenu' && subtabMegamenuBtn && formSubMegamenu) {
     subtabMegamenuBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
     formSubMegamenu.classList.remove('hidden');
@@ -168,6 +178,7 @@ tabSettingsBtn?.addEventListener('click', () => activateTab('settings'));
 subtabShippingBtn?.addEventListener('click', () => activateSubtab('shipping'));
 subtabAdminsBtn?.addEventListener('click', () => activateSubtab('admins'));
 subtabBrandingBtn?.addEventListener('click', () => activateSubtab('branding'));
+subtabColorsBtn?.addEventListener('click', () => activateSubtab('colors'));
 subtabMegamenuBtn?.addEventListener('click', () => activateSubtab('megamenu'));
 subtabCouponsBtn?.addEventListener('click', () => activateSubtab('coupons'));
 

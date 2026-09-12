@@ -1,6 +1,6 @@
 import { actions } from 'astro:actions';
 import { getObjectPosition, getColorHex } from '../../lib/utils';
-import { state, getDbCollections } from './state';
+import { state, getDbCollections, getStoreColors, setStoreColors } from './state';
 import { toggleModal, showToast, blobToBase64, handleImageUpload } from './utils';
 
 // --- DOM Elements ---
@@ -1383,6 +1383,136 @@ function createSizeRowHTML(_branchId: string, sizeData: any = {}) {
   `;
 }
 
+function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
+  const grid = popoverEl.querySelector('.color-list-grid') as HTMLDivElement;
+  if (!grid) return;
+
+  const colorNameInput = card.querySelector('.color-name') as HTMLInputElement;
+  const colorHexInput = card.querySelector('.color-hex') as HTMLInputElement;
+  const badge = card.querySelector('.color-swatch-badge') as HTMLSpanElement;
+  const label = card.querySelector('.color-selected-label') as HTMLSpanElement;
+
+  const storeColors = getStoreColors();
+  grid.innerHTML = '';
+
+  storeColors.forEach((col, idx) => {
+    const item = document.createElement('div');
+    item.className = 'group flex flex-col p-1.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/70 transition-all text-left';
+    item.innerHTML = `
+      <!-- View Mode -->
+      <div class="color-item-view flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 overflow-hidden flex-1 select-none cursor-pointer select-color-btn">
+          <span class="w-4 h-4 rounded-full border border-slate-300 shrink-0 shadow-3xs" style="background-color: ${col.hex}"></span>
+          <span class="text-xs font-bold text-slate-800 truncate capitalize">${col.name}</span>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          <button type="button" class="edit-color-btn opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/60 transition-all cursor-pointer" title="Editar color">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+          </button>
+          <button type="button" class="delete-color-btn opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-all cursor-pointer" title="Eliminar de la paleta">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Edit Mode -->
+      <div class="color-item-edit hidden flex items-center gap-1.5 pt-1 w-full">
+        <input type="color" class="edit-hex-input w-7 h-7 rounded-lg border border-slate-200 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="${col.hex}" />
+        <input type="text" class="edit-name-input min-w-0 flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-600" value="${col.name}" />
+        <div class="flex items-center gap-1 shrink-0">
+          <button type="button" class="save-edit-btn px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors cursor-pointer" title="Guardar">
+            ✓
+          </button>
+          <button type="button" class="cancel-edit-btn px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-3xs font-extrabold uppercase transition-colors cursor-pointer" title="Cancelar">
+            ✕
+          </button>
+        </div>
+      </div>
+    `;
+
+    const viewMode = item.querySelector('.color-item-view') as HTMLDivElement;
+    const editMode = item.querySelector('.color-item-edit') as HTMLDivElement;
+    const selectArea = item.querySelector('.select-color-btn') as HTMLDivElement;
+    const editBtn = item.querySelector('.edit-color-btn') as HTMLButtonElement;
+    const delBtn = item.querySelector('.delete-color-btn') as HTMLButtonElement;
+    const saveEditBtn = item.querySelector('.save-edit-btn') as HTMLButtonElement;
+    const cancelEditBtn = item.querySelector('.cancel-edit-btn') as HTMLButtonElement;
+
+    selectArea.addEventListener('click', () => {
+      colorNameInput.value = col.name;
+      colorHexInput.value = col.hex;
+      if (badge) badge.style.backgroundColor = col.hex;
+      if (label) label.textContent = col.name;
+
+      updateSKUsForBranch(card);
+      popoverEl.classList.add('hidden');
+    });
+
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      viewMode.classList.add('hidden');
+      editMode.classList.remove('hidden');
+    });
+
+    cancelEditBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editMode.classList.add('hidden');
+      viewMode.classList.remove('hidden');
+    });
+
+    saveEditBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const editNameInput = item.querySelector('.edit-name-input') as HTMLInputElement;
+      const editHexInput = item.querySelector('.edit-hex-input') as HTMLInputElement;
+
+      const newName = editNameInput.value.trim();
+      const newHex = editHexInput.value;
+
+      if (!newName) {
+        showToast('El nombre del color no puede estar vacío', 'error');
+        return;
+      }
+
+      const updatedColors = [...storeColors];
+      updatedColors[idx] = { name: newName, hex: newHex };
+      setStoreColors(updatedColors);
+
+      if (colorNameInput.value.toLowerCase() === col.name.toLowerCase()) {
+        colorNameInput.value = newName;
+        colorHexInput.value = newHex;
+        if (badge) badge.style.backgroundColor = newHex;
+        if (label) label.textContent = newName;
+        updateSKUsForBranch(card);
+      }
+
+      renderColorPopoverContent(popoverEl, card);
+
+      try {
+        await actions.updateStoreColors({ savedColors: updatedColors });
+        showToast(`Color "${newName}" actualizado`, 'success');
+      } catch (err) {
+        console.error('Error al guardar edición de color:', err);
+      }
+    });
+
+    delBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const updatedColors = storeColors.filter((_, i) => i !== idx);
+      setStoreColors(updatedColors);
+      renderColorPopoverContent(popoverEl, card);
+
+      try {
+        await actions.updateStoreColors({ savedColors: updatedColors });
+        showToast(`Color "${col.name}" eliminado de la paleta`, 'success');
+      } catch (err) {
+        console.error('Error al actualizar colores guardados:', err);
+      }
+    });
+
+    grid.appendChild(item);
+  });
+}
+
 function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', sizes: any[] = []) {
   state.branchIndex++;
   const branchId = `branch-${state.branchIndex}`;
@@ -1390,13 +1520,43 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
   const card = document.createElement('div');
   card.className = 'color-branch border border-slate-200 bg-white p-4 rounded-2xl flex flex-col gap-3 relative shadow-2xs';
   card.id = branchId;
+
+  const resolvedHex = (colorHex && colorHex !== '#e11d48') ? colorHex : (getColorHex(colorName) || '#0f172a');
   
   card.innerHTML = `
     <div class="flex justify-between items-center gap-3 border-b border-slate-100 pb-2">
-      <div class="flex items-center gap-2 flex-1">
+      <div class="flex items-center gap-2 flex-1 relative">
         <span class="text-3xs font-bold text-slate-400 uppercase tracking-wider shrink-0">Color/Estilo:</span>
-        <input type="text" value="${colorName}" placeholder="Ej: negro, rosa..." class="color-name bg-slate-50 text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-rose-600 font-bold flex-1" required />
-        <input type="color" value="${colorHex}" class="color-hex w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0 shrink-0 bg-transparent" title="Selecciona color exacto" />
+        
+        <button type="button" class="color-palette-trigger flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2 transition-all cursor-pointer text-left shrink-0 shadow-3xs">
+          <span class="color-swatch-badge w-4 h-4 rounded-full border border-slate-300 shadow-2xs shrink-0" style="background-color: ${resolvedHex}"></span>
+          <span class="color-selected-label text-xs font-bold text-slate-800 capitalize">${colorName || 'Seleccionar color'}</span>
+          <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        </button>
+
+        <input type="hidden" value="${colorName}" class="color-name" required />
+        <input type="hidden" value="${resolvedHex}" class="color-hex" />
+
+        <!-- Color Palette Popover Dropdown -->
+        <div class="color-popover hidden absolute top-full left-0 mt-2 w-84 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3.5 flex flex-col gap-3 animate-fade-in">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+            <span class="text-3xs font-black text-slate-500 uppercase tracking-wider">Paleta de la Tienda</span>
+          </div>
+
+          <div class="color-list-grid max-h-52 overflow-y-auto flex flex-col gap-1.5 pr-2">
+          </div>
+
+          <div class="border-t border-slate-100 pt-3 flex flex-col gap-2">
+            <span class="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">+ Crear Nuevo Color</span>
+            <div class="flex items-center gap-2">
+              <input type="color" class="new-color-hex w-9 h-9 rounded-xl border border-slate-200 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="#db2777" title="Elige color" />
+              <input type="text" class="new-color-name flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-rose-600" placeholder="Nombre p.ej. Rosa Palo" />
+            </div>
+            <button type="button" class="add-new-color-btn w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-3xs font-extrabold uppercase tracking-wider transition-all shrink-0 cursor-pointer shadow-3xs active:scale-95 text-center">
+              + Añadir a la Paleta
+            </button>
+          </div>
+        </div>
       </div>
       <button type="button" class="remove-branch-btn text-rose-500 hover:text-rose-650 text-3xs font-extrabold uppercase tracking-wider">Eliminar Color</button>
     </div>
@@ -1454,12 +1614,88 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
   
   const colorNameInput = card.querySelector('.color-name') as HTMLInputElement;
   const colorHexInput = card.querySelector('.color-hex') as HTMLInputElement;
+  const badge = card.querySelector('.color-swatch-badge') as HTMLSpanElement;
+  const label = card.querySelector('.color-selected-label') as HTMLSpanElement;
+
+  const popover = card.querySelector('.color-popover') as HTMLDivElement;
+  const trigger = card.querySelector('.color-palette-trigger') as HTMLButtonElement;
+  const newColorNameInput = card.querySelector('.new-color-name') as HTMLInputElement;
+  const newColorHexInput = card.querySelector('.new-color-hex') as HTMLInputElement;
+  const addNewColorBtn = card.querySelector('.add-new-color-btn') as HTMLButtonElement;
+
+  // Toggle popover
+  trigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = popover.classList.contains('hidden');
+    document.querySelectorAll('.color-popover').forEach((p) => p.classList.add('hidden'));
+    if (isHidden) {
+      renderColorPopoverContent(popover, card);
+      popover.classList.remove('hidden');
+    }
+  });
+
+  // Close popover when clicking outside
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (popover && !popover.contains(target) && trigger && !trigger.contains(target)) {
+      popover.classList.add('hidden');
+    }
+  });
+
+  // Add new color to palette handler
+  addNewColorBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const name = newColorNameInput.value.trim();
+    const hex = newColorHexInput.value;
+
+    if (!name) {
+      showToast('Introduce un nombre para el color', 'error');
+      return;
+    }
+
+    const currentColors = getStoreColors();
+    const existingIdx = currentColors.findIndex((c) => c.name.toLowerCase() === name.toLowerCase());
+    let updatedColors: Array<{ name: string; hex: string }>;
+    if (existingIdx >= 0) {
+      updatedColors = [...currentColors];
+      updatedColors[existingIdx] = { name, hex };
+    } else {
+      updatedColors = [...currentColors, { name, hex }];
+    }
+
+    setStoreColors(updatedColors);
+
+    colorNameInput.value = name;
+    colorHexInput.value = hex;
+    if (badge) badge.style.backgroundColor = hex;
+    if (label) label.textContent = name;
+
+    updateSKUsForBranch(card);
+    popover.classList.add('hidden');
+    newColorNameInput.value = '';
+
+    showToast(`Color "${name}" añadido a la paleta de la tienda`, 'success');
+
+    try {
+      await actions.updateStoreColors({ savedColors: updatedColors });
+    } catch (err) {
+      console.error('Error al guardar el nuevo color en Firestore:', err);
+    }
+  });
+
   colorNameInput.addEventListener('input', () => {
-    const guessedHex = getColorHex(colorNameInput.value);
+    const val = colorNameInput.value.trim();
+    if (label) label.textContent = val || 'Seleccionar color';
+    const guessedHex = getColorHex(val);
     if (guessedHex && guessedHex !== '#64748b') {
       colorHexInput.value = guessedHex;
+      if (badge) badge.style.backgroundColor = guessedHex;
     }
     updateSKUsForBranch(card);
+  });
+
+  colorHexInput.addEventListener('input', () => {
+    if (badge) badge.style.backgroundColor = colorHexInput.value;
   });
   imgInput.addEventListener('input', () => {
     const url = imgInput.value.trim();

@@ -1272,7 +1272,7 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
 
     <!-- MODALS SECTION -->
     <CollectionModal />
-    <ProductModal collections={collections} />
+    <ProductModal collections={collections} savedColors={settings.savedColors || []} />
     <OrderModals />
 
     <script>

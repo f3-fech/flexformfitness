@@ -836,6 +836,10 @@ export const server = {
           linkUrl: z.string().optional(),
         }),
       }).optional(),
+      savedColors: z.array(z.object({
+        name: z.string().min(1),
+        hex: z.string().min(1),
+      })).optional(),
     }),
     handler: async (input, context) => {
       await checkAdminAuth(context);
@@ -854,6 +858,33 @@ export const server = {
         throw new ActionError({
           code: 'BAD_REQUEST',
           message: error.message || 'Failed to update general settings.',
+        });
+      }
+    },
+  }),
+
+  updateStoreColors: defineAction({
+    accept: 'json',
+    input: z.object({
+      savedColors: z.array(z.object({
+        name: z.string().min(1),
+        hex: z.string().min(1),
+      })),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        await db.collection('settings').doc('general').set({
+          savedColors: input.savedColors,
+          updatedAt: new Date(),
+        }, { merge: true });
+        clearSettingsCache();
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error in updateStoreColors action:', error);
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: error.message || 'Error updating store color palette.',
         });
       }
     },

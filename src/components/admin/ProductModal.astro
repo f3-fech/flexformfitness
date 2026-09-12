@@ -1,11 +1,13 @@
 ---
 import type { ProductCollection } from '../../types';
+import type { StoreColor } from '../../lib/settings';
 
 interface Props {
   collections: ProductCollection[];
+  savedColors?: StoreColor[];
 }
 
-const { collections } = Astro.props;
+const { collections, savedColors = [] } = Astro.props;
 ---
 
 <!-- MODAL: PRODUCT FORM (CREATE / EDIT) -->
@@ -290,5 +292,6 @@ const { collections } = Astro.props;
   </div>
 </div>
 
-<!-- Pass server collections to client side -->
+<!-- Pass server collections & saved colors to client side -->
 <div id="collections-data-provider" data-collections={JSON.stringify(collections)} class="hidden"></div>
+<div id="saved-colors-data-provider" data-colors={JSON.stringify(savedColors)} class="hidden"></div>
