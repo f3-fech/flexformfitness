@@ -76,6 +76,7 @@ const collectionSchema = z.object({
   productIds: z.array(z.string()),
   showOnIndex: z.boolean().optional(),
   indexOrder: z.number().int().nonnegative().optional().nullable(),
+  isSynergy: z.boolean().optional(),
   seo: seoSchema,
   seo_en: seoSchema.optional(),
   parentCategory: z.string().optional().nullable(),
@@ -93,6 +94,7 @@ const updateCollectionSchema = z.object({
   productIds: z.array(z.string()).optional(),
   showOnIndex: z.boolean().optional(),
   indexOrder: z.number().int().nonnegative().optional().nullable(),
+  isSynergy: z.boolean().optional(),
   seo: seoSchema.optional(),
   seo_en: seoSchema.optional(),
   parentCategory: z.string().optional().nullable(),
@@ -1313,6 +1315,82 @@ export const server = {
     },
   }),
 
+  getVideoUploadUrl: defineAction({
+    accept: 'json',
+    input: z.object({
+      fileName: z.string(),
+      contentType: z.string().default('video/mp4'),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const { fileName, contentType } = input;
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        const file = bucket.file(`videos/${fileName}`);
+
+        const [uploadUrl] = await file.getSignedUrl({
+          version: 'v4',
+          action: 'write',
+          expires: Date.now() + 15 * 60 * 1000,
+          contentType: contentType,
+        });
+
+        return { success: true, uploadUrl };
+      } catch (error: any) {
+        console.error('Error in getVideoUploadUrl action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al generar la URL de subida del video.',
+        });
+      }
+    },
+  }),
+
+  finalizeVideoUpload: defineAction({
+    accept: 'json',
+    input: z.object({
+      fileName: z.string(),
+      contentType: z.string().default('video/mp4'),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+
+      try {
+        const { fileName, contentType } = input;
+        const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
+        const bucket = admin.storage().bucket(bucketName);
+        const file = bucket.file(`videos/${fileName}`);
+
+        const downloadToken = randomUUID();
+
+        await file.setMetadata({
+          contentType: contentType,
+          metadata: {
+            firebaseStorageDownloadTokens: downloadToken,
+          },
+        });
+
+        try {
+          await file.makePublic();
+        } catch (aclError) {
+          // Ignore uniformity issue
+        }
+
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${downloadToken}`;
+
+        return { success: true, url: downloadUrl };
+      } catch (error: any) {
+        console.error('Error in finalizeVideoUpload action:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al finalizar la subida del video.',
+        });
+      }
+    },
+  }),
+
   uploadVideo: defineAction({
     accept: 'json',
     input: z.object({
@@ -2314,6 +2392,60 @@ export const server = {
         throw new ActionError({
           code: 'INTERNAL_SERVER_ERROR',
           message: error.message || 'Error al enviar el mensaje de contacto.',
+        });
+      }
+    },
+  }),
+  submitSynergyApplication: defineAction({
+    accept: 'json',
+    input: z.object({
+      gymName: z.string().min(2, 'El nombre del gimnasio es obligatorio'),
+      contactName: z.string().min(2, 'El nombre del contacto es obligatorio'),
+      email: z.string().email('El correo electrónico no es válido'),
+      phone: z.string().optional().default(''),
+      city: z.string().min(2, 'La ciudad o ubicación es obligatoria'),
+      instagram: z.string().optional().default(''),
+      message: z.string().min(10, 'El mensaje debe tener al menos 10 caracteres'),
+    }),
+    handler: async (input, context) => {
+      const ip = context.clientAddress || '127.0.0.1';
+      const rateLimit = await checkRateLimit('email', ip);
+      if (!rateLimit.success) {
+        throw new ActionError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Demasiadas solicitudes. Por favor, intenta de nuevo más tarde.',
+        });
+      }
+
+      try {
+        await db.collection('synergy_applications').add({
+          gymName: input.gymName,
+          contactName: input.contactName,
+          email: input.email,
+          phone: input.phone,
+          city: input.city,
+          instagram: input.instagram,
+          message: input.message,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          status: 'pending',
+        });
+
+        // Also add to contacts so admin gets notified
+        await db.collection('contacts').add({
+          name: `${input.contactName} (${input.gymName})`,
+          email: input.email,
+          message: `[F3 SYNERGIES APPLICATION]\nGimnasio: ${input.gymName}\nCiudad: ${input.city}\nTeléfono: ${input.phone}\nInstagram: ${input.instagram}\n\nPropuesta:\n${input.message}`,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          status: 'unread',
+          type: 'synergy_application',
+        });
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error submitting synergy application:', error);
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al enviar la solicitud de sinergia.',
         });
       }
     },

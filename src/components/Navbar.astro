@@ -217,22 +217,22 @@ const cleanTitle = (title: string): string => {
 
 <!-- Header / Navbar (Full Width) -->
 <header class="w-full bg-white border-b border-slate-100 sticky top-0 z-50 relative">
-  <div class="w-full flex justify-between items-center py-5 px-4 min-[1200px]:px-8">
-    <div class="flex items-center gap-1.5 sm:gap-3 min-[1200px]:w-1/4 shrink-0">
+  <div class="w-full flex justify-between items-center py-5 px-4 min-[1500px]:px-8">
+    <div class="flex items-center gap-1.5 sm:gap-3 min-[1500px]:w-1/4 shrink-0">
       <!-- Hamburger Toggle Button -->
-      <button type="button" id="mobile-menu-btn" class="min-[1200px]:hidden text-slate-800 focus:outline-none p-1 shrink-0" aria-label="Abrir Menú">
+      <button type="button" id="mobile-menu-btn" class="min-[1500px]:hidden text-slate-800 focus:outline-none p-1 shrink-0" aria-label="Abrir Menú">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
       </button>
 
       <!-- Mobile Search Icon (Magnifying Glass next to Hamburger) -->
-      <button type="button" id="mobile-search-btn" class="min-[1200px]:hidden text-slate-700 hover:text-rose-650 transition-colors p-1 shrink-0 cursor-pointer focus:outline-none" aria-label={t('nav.search')}>
+      <button type="button" id="mobile-search-btn" class="min-[1500px]:hidden text-slate-700 hover:text-rose-650 transition-colors p-1 shrink-0 cursor-pointer focus:outline-none" aria-label={t('nav.search')}>
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
       </button>
       
       <!-- Logo (Centered absolutely on mobile, normal in flex flow on desktop) -->
-      <a href={`/${lang}`} class="absolute left-1/2 -translate-x-1/2 min-[1200px]:static min-[1200px]:translate-x-0 flex items-center gap-1 group z-10">
+      <a href={`/${lang}`} class="absolute left-1/2 -translate-x-1/2 min-[1500px]:static min-[1500px]:translate-x-0 flex items-center gap-1 group z-10">
         {settings.logoUrl ? (
           <img src={settings.logoUrl} alt="FLEX FORM FITNESS" class="h-6 sm:h-8 md:h-10 w-auto object-contain" />
         ) : (
@@ -249,7 +249,7 @@ const cleanTitle = (title: string): string => {
     </div>
 
     <!-- Main Navigation Links -->
-    <nav class="hidden min-[1200px]:flex items-center justify-center gap-8 min-[1200px]:w-2/4">
+    <nav class="hidden min-[1500px]:flex items-center justify-center gap-8 min-[1500px]:w-2/4">
       <a href={`/${lang}`} class="text-[13px] font-bold tracking-widest text-slate-955 hover:text-red-600 uppercase transition-colors">
         {t('nav.home')}
       </a>
@@ -470,16 +470,21 @@ const cleanTitle = (title: string): string => {
         </div>
       </div>
 
+      <a href={`/${lang}/synergies`} class="text-[13px] font-black tracking-widest text-slate-900 hover:text-rose-600 uppercase transition-colors flex items-center gap-1.5 group">
+        <span>{t('nav.synergies')}</span>
+        <span class="text-[9px] bg-rose-600 text-white font-extrabold px-1.5 py-0.5 rounded tracking-wider">SOON</span>
+      </a>
+
       <a href={`/${lang}/contacto`} class="text-[13px] font-bold tracking-widest text-slate-600 hover:text-red-600 uppercase transition-colors">
         {t('nav.contact')}
       </a>
     </nav>
 
     <!-- Right Side Icons -->
-    <div class="flex items-center justify-end gap-2 sm:gap-4 min-[1200px]:gap-6 min-[1200px]:w-1/4 shrink-0">
+    <div class="flex items-center justify-end gap-2 sm:gap-4 min-[1500px]:gap-6 min-[1500px]:w-1/4 shrink-0">
       
       <!-- Interactive Language Selector (Desktop only) -->
-      <div class="relative group/lang py-1 hidden min-[1200px]:block">
+      <div class="relative group/lang py-1 hidden min-[1500px]:block">
         <button type="button" class="flex items-center gap-2 text-2xs md:text-[13px] font-extrabold text-slate-700 hover:text-slate-950 focus:outline-none uppercase tracking-wider cursor-pointer">
           <span class="text-base leading-none">{isEn ? "🇺🇸" : "🇪🇸"}</span>
           <span class="hidden sm:inline">{isEn ? "EN" : "ES"}</span>
@@ -498,7 +503,7 @@ const cleanTitle = (title: string): string => {
       </div>
 
       <!-- Search Icon (Desktop only) -->
-      <button type="button" id="desktop-search-btn" class="hidden min-[1200px]:block text-slate-700 hover:text-rose-655 transition-colors p-1 cursor-pointer focus:outline-none" aria-label={t('nav.search')}>
+      <button type="button" id="desktop-search-btn" class="hidden min-[1500px]:block text-slate-700 hover:text-rose-655 transition-colors p-1 cursor-pointer focus:outline-none" aria-label={t('nav.search')}>
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
       </button>
 
@@ -531,7 +536,7 @@ const cleanTitle = (title: string): string => {
 </header>
 
 <!-- Mobile Navigation Drawer -->
-<div id="mobile-drawer" class="fixed inset-0 bg-slate-900/60 z-50 transition-all duration-300 opacity-0 pointer-events-none min-[1200px]:hidden backdrop-blur-xs">
+<div id="mobile-drawer" class="fixed inset-0 bg-slate-900/60 z-50 transition-all duration-300 opacity-0 pointer-events-none min-[1500px]:hidden backdrop-blur-xs">
   <div class="w-4/5 max-w-sm h-[100dvh] bg-white flex flex-col justify-between shadow-2xl relative translate-x-[-100%] transition-transform duration-300" id="mobile-drawer-pane">
     
     <!-- Drawer Header -->
@@ -752,6 +757,16 @@ const cleanTitle = (title: string): string => {
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="border-b border-slate-100/80 pb-4 pt-1">
+        <a href={`/${lang}/synergies`} class="text-xs font-black tracking-widest text-slate-900 hover:text-rose-600 uppercase flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+            {t('nav.synergies')}
+          </span>
+          <span class="text-[9px] bg-rose-600 text-white font-extrabold px-1.5 py-0.5 rounded tracking-wider">SOON</span>
+        </a>
       </div>
 
       <div class="border-b border-slate-100/80 pb-4 pt-1">

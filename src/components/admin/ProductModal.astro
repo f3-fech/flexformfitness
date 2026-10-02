@@ -1,217 +1,352 @@
 ---
-import type { ProductCollection } from '../../types';
+import type { Product, ProductCollection } from '../../types';
 import type { StoreColor } from '../../lib/settings';
 
 interface Props {
+  products?: Product[];
   collections: ProductCollection[];
   savedColors?: StoreColor[];
 }
 
-const { collections, savedColors = [] } = Astro.props;
+const { products = [], collections, savedColors = [] } = Astro.props;
 ---
 
 <!-- MODAL: PRODUCT FORM (CREATE / EDIT) -->
 <div id="product-modal" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm hidden">
   <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-[95vw] h-[95vh] sm:h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
-    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+    <!-- Header Fijo Arriba -->
+    <div class="p-5 sm:p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
       <h3 id="modal-title" class="text-lg font-black italic tracking-wide text-slate-900 uppercase">Nuevo Producto</h3>
-      <button type="button" id="close-product-modal" class="text-slate-400 hover:text-slate-700 text-lg font-bold">×</button>
+      <button type="button" id="close-product-modal" class="text-slate-400 hover:text-slate-700 text-lg font-bold cursor-pointer">×</button>
     </div>
     
-    <form id="product-form" class="p-6 overflow-y-auto flex-grow flex flex-col gap-6 text-xs">
+    <!-- Formulario completo -->
+    <form id="product-form" class="flex flex-col flex-grow overflow-hidden text-xs">
       <!-- Hidden mode/id fields -->
       <input type="hidden" name="id" id="form-product-id" />
 
-      <!-- Language Editor Selector Dropdown -->
-      <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl mb-1 shadow-3xs">
-        <div class="flex flex-col">
-          <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Idioma de Edición / Editing Language</span>
-          <span class="text-[10px] text-slate-500 font-medium">Usa este desplegable para guardar la versión traducida al Inglés</span>
+      <!-- Cuerpo con Scroll Interno independiente -->
+      <div class="p-5 sm:p-6 overflow-y-auto flex-grow flex flex-col gap-6">
+        <!-- Language Editor Selector Dropdown -->
+        <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl mb-1 shadow-3xs">
+          <div class="flex flex-col">
+            <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-widest">Idioma de Edición / Editing Language</span>
+            <span class="text-[10px] text-slate-500 font-medium">Usa este desplegable para guardar la versión traducida al Inglés</span>
+          </div>
+          <select id="form-product-lang" class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:border-rose-600 cursor-pointer shadow-3xs">
+            <option value="es">🇪🇸 Español (Predeterminado)</option>
+            <option value="en">🇺🇸 English (Traducción)</option>
+          </select>
         </div>
-        <select id="form-product-lang" class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:border-rose-600 cursor-pointer shadow-3xs">
-          <option value="es">🇪🇸 Español (Predeterminado)</option>
-          <option value="en">🇺🇸 English (Traducción)</option>
-        </select>
-      </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <!-- Left Column: General Info -->
-        <div class="lg:col-span-5 flex flex-col gap-4">
-          <h4 class="text-xs font-bold text-slate-900 border-b border-slate-100 pb-2 mb-1 uppercase tracking-wider">Información General</h4>
-          
-          <div class="grid grid-cols-2 gap-4">
-            <div class="col-span-2 sm:col-span-1">
-              <label for="form-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Nombre del Producto</label>
-              <input type="text" name="title" id="form-title" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-semibold" />
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <!-- Left Column: General Info -->
+          <div class="lg:col-span-5 flex flex-col gap-4">
+            <h4 class="text-xs font-bold text-slate-900 border-b border-slate-100 pb-2 mb-1 uppercase tracking-wider">Información General</h4>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="col-span-2 sm:col-span-1">
+                <label for="form-title" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Nombre del Producto</label>
+                <input type="text" name="title" id="form-title" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-semibold" />
+              </div>
+              <div class="col-span-2 sm:col-span-1">
+                <label for="form-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Slug (para URL)</label>
+                <input type="text" name="slug" id="form-slug" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" />
+              </div>
             </div>
-            <div class="col-span-2 sm:col-span-1">
-              <label for="form-slug" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Slug (para URL)</label>
-              <input type="text" name="slug" id="form-slug" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" />
-            </div>
-          </div>
 
-          <div>
-            <label for="form-description" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción</label>
-            <textarea name="description" id="form-description" rows="5" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-semibold"></textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="form-price" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Precio base (USD, Ej: 29.99)</label>
-              <input type="number" step="0.01" name="price" id="form-price" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" />
+              <label for="form-description" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción</label>
+              <textarea name="description" id="form-description" rows="5" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-semibold"></textarea>
             </div>
-            <div>
-              <label for="form-stock" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Stock General (Auto-calculado)</label>
-              <input type="number" name="stock" id="form-stock" readonly class="w-full px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed focus:outline-none font-mono" />
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="form-price" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Precio base (USD, Ej: 29.99)</label>
+                <input type="number" step="0.01" name="price" id="form-price" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-mono" />
+              </div>
+              <div>
+                <label for="form-stock" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Stock General (Auto-calculado)</label>
+                <input type="number" name="stock" id="form-stock" readonly class="w-full px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed focus:outline-none font-mono" />
+              </div>
+            </div>
+
+            <!-- SECTION: GENDER SELECTION (MANDATORY) -->
+            <div class="border-t border-slate-200 pt-4 flex flex-col gap-3">
+              <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                Género Destinatario <span class="text-rose-600 font-black">*</span>
+              </h4>
+              <div class="grid grid-cols-3 gap-2.5">
+                <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
+                  <input type="radio" name="product-gender-assoc" value="hombre" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
+                  <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Hombre</span>
+                </label>
+                
+                <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
+                  <input type="radio" name="product-gender-assoc" value="mujer" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
+                  <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Mujer</span>
+                </label>
+
+                <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
+                  <input type="radio" name="product-gender-assoc" value="unisex" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
+                  <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Unisex</span>
+                </label>
+              </div>
+              <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Indica de manera obligatoria a qué género va dirigido el producto.</p>
+            </div>
+
+            <!-- SECTION: COLLECTIONS CHECKBOXES -->
+            <div class="border-t border-slate-200 pt-4 flex flex-col gap-3">
+              <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                Otras Colecciones
+              </h4>
+              <div id="product-collections-container" class="flex flex-col gap-2 max-h-[280px] overflow-y-auto pr-1 bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-3xs">
+                <!-- Dynamically populated collection checkboxes from JS -->
+              </div>
+              <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Selecciona las colecciones en las que deseas incluir este producto.</p>
             </div>
           </div>
 
-          <!-- SECTION: GENDER SELECTION (MANDATORY) -->
-          <div class="border-t border-slate-200 pt-4 flex flex-col gap-3">
-            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-              Género Destinatario <span class="text-rose-600 font-black">*</span>
-            </h4>
-            <div class="grid grid-cols-3 gap-2.5">
-              <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
-                <input type="radio" name="product-gender-assoc" value="hombre" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
-                <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Hombre</span>
-              </label>
+          <!-- Right Column: Multimedia and Variants -->
+          <div class="lg:col-span-7 flex flex-col gap-5 border-t lg:border-t-0 lg:border-l border-slate-200 pt-6 lg:pt-0 lg:pl-6">
+            
+            <!-- SECTION: MULTIMEDIA (SHOPIFY STYLE + DRAG & DROP & PROGRESS) -->
+            <div class="flex flex-col gap-3 border-b border-slate-150 pb-4">
+              <div class="flex justify-between items-center">
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+                  </svg>
+                  Multimedia
+                </h4>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    id="media-upload-pc-btn"
+                    class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-3xs uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    Subir de PC
+                  </button>
+                  <input type="file" id="product-media-file-input" accept="image/*" multiple class="hidden" />
+
+                  <button
+                    type="button"
+                    id="add-media-btn"
+                    class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/80 font-bold rounded-xl text-3xs uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1 shadow-3xs cursor-pointer"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                    </svg>
+                    Abrir Galería
+                  </button>
+                </div>
+              </div>
+
+              <!-- Upload & Compression Progress Bar -->
+              <div id="product-media-upload-progress" class="hidden flex flex-col gap-2 p-3 bg-rose-50/70 border border-rose-200/80 rounded-2xl animate-fade-in shadow-xs">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-rose-800 font-bold text-[11px]">
+                    <div class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-rose-300 border-t-rose-600"></div>
+                    <span id="product-media-progress-status">Comprimiendo y convirtiendo imagen a WebP...</span>
+                  </div>
+                  <span id="product-media-progress-percent" class="font-mono font-black text-rose-600 text-xs">0%</span>
+                </div>
+                <div class="w-full bg-rose-100 rounded-full h-2 overflow-hidden">
+                  <div id="product-media-progress-bar" class="bg-gradient-to-r from-rose-500 to-rose-600 h-full rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                </div>
+              </div>
               
-              <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
-                <input type="radio" name="product-gender-assoc" value="mujer" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
-                <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Mujer</span>
-              </label>
-
-              <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
-                <input type="radio" name="product-gender-assoc" value="unisex" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
-                <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Unisex</span>
-              </label>
-            </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Indica de manera obligatoria a qué género va dirigido el producto.</p>
-          </div>
-
-          <!-- SECTION: COLLECTIONS CHECKBOXES -->
-          <div class="border-t border-slate-200 pt-4 flex flex-col gap-3">
-            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-              Otras Colecciones
-            </h4>
-            <div id="product-collections-container" class="flex flex-col gap-2 max-h-[280px] overflow-y-auto pr-1 bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-3xs">
-              <!-- Dynamically populated collection checkboxes from JS -->
-            </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Selecciona las colecciones en las que deseas incluir este producto.</p>
-          </div>
-        </div>
-
-        <!-- Right Column: Multimedia and Variants -->
-        <div class="lg:col-span-7 flex flex-col gap-5 border-t lg:border-t-0 lg:border-l border-slate-200 pt-6 lg:pt-0 lg:pl-6">
-          
-          <!-- SECTION: MULTIMEDIA (SHOPIFY STYLE) -->
-          <div class="flex flex-col gap-3 border-b border-slate-150 pb-4">
-            <div class="flex justify-between items-center">
-              <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
-                </svg>
-                Multimedia
-              </h4>
-              <button
-                type="button"
-                id="add-media-btn"
-                class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 font-bold rounded-xl text-3xs uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1"
+              <!-- Drag & Drop Container -->
+              <div
+                id="media-container"
+                class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 min-h-[120px] p-3.5 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl transition-all duration-200 relative group cursor-pointer"
               >
-                Añadir Imagen
-              </button>
+                <!-- Dynamic media cards rendered here -->
+              </div>
+              
+              <div class="flex items-center justify-between text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                <span>Arrastra archivos para subir o reordena las existentes (1ª es Portada).</span>
+                <span class="text-rose-600/80 lowercase italic font-medium">Doble clic en imagen para recortar 2:3</span>
+              </div>
             </div>
-            
-            <div id="media-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 min-h-[110px] p-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-              <!-- Dynamic media cards rendered here -->
-            </div>
-            <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block -mt-1">Arrastra las imágenes para reordenar. La primera es la principal (Portada).</span>
-          </div>
 
-          <!-- SECTION: VARIANTS -->
-          <div class="flex flex-col gap-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-1">
-              <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a1.5 1.5 0 002.122 0l4.318-4.318a1.5 1.5 0 000-2.122L11.16 3.659A2.25 2.25 0 009.568 3z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
-                </svg>
-                Variantes de Producto
-              </h4>
-              <button
-                type="button"
-                id="add-color-branch"
-                class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 font-bold rounded-xl text-3xs uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                Añadir Color
-              </button>
-            </div>
-            
-            <div id="variant-tree-container" class="flex flex-col gap-5 max-h-[45vh] overflow-y-auto pr-1">
-              <!-- Color branches generated dynamically -->
+            <!-- SECTION: VARIANTS -->
+            <div class="flex flex-col gap-4">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-1">
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a1.5 1.5 0 002.122 0l4.318-4.318a1.5 1.5 0 000-2.122L11.16 3.659A2.25 2.25 0 009.568 3z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+                  </svg>
+                  Variantes de Producto
+                </h4>
+                <button
+                  type="button"
+                  id="add-color-branch"
+                  class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 font-bold rounded-xl text-3xs uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                  Añadir Color
+                </button>
+              </div>
+              
+              <div id="variant-tree-container" class="flex flex-col gap-5 max-h-[45vh] overflow-y-auto pr-1">
+                <!-- Color branches generated dynamically -->
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="pt-4 border-t border-slate-200 flex justify-end gap-3 shrink-0">
-        <button type="button" id="cancel-product-modal" class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold uppercase transition-colors">Cancelar</button>
-        <button type="submit" id="save-product-btn" class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs">Guardar Producto</button>
+      <!-- Footer FIJO ABAJO SIEMPRE -->
+      <div class="p-4 sm:p-5 border-t border-slate-200 flex justify-end gap-3 shrink-0 bg-slate-50 shadow-sm z-10">
+        <button type="button" id="cancel-product-modal" class="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold uppercase transition-colors shadow-3xs cursor-pointer active:scale-95">Cancelar</button>
+        <button type="submit" id="save-product-btn" class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs cursor-pointer active:scale-95">Guardar Producto</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- MODAL: IMAGE GALLERY (SHOPIFY STYLE) -->
-<div id="gallery-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
-  <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
-    <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-      <h3 class="text-md font-black italic tracking-wide text-slate-900 uppercase flex items-center gap-2">
-        <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
-        </svg>
-        Galería de Imágenes
-      </h3>
-      <div class="flex items-center gap-3">
-        <button type="button" id="gallery-upload-new-btn" class="px-3.5 py-1.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-3xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-2xs flex items-center gap-1">
+<!-- MODAL: IMAGE GALLERY (AMPLIADO + SIDEBAR DE CARPETAS A LA IZQUIERDA + FAST SEARCH & DROPZONE) -->
+<div id="gallery-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+  <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-[96vw] h-[92vh] sm:h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+    <!-- Header Fijo Superior -->
+    <div class="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shadow-3xs">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm sm:text-base font-black italic tracking-wide text-slate-900 uppercase flex items-center gap-2">
+            Galería de Imágenes
+            <span id="gallery-total-count" class="text-[10px] not-italic font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-mono">0</span>
+          </h3>
+          <p class="text-[10px] text-slate-400 font-medium hidden sm:block">Centro de medios organizado automáticamente por producto y almacenamiento.</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          id="gallery-upload-new-btn"
+          class="px-3.5 py-1.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-3xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-2xs flex items-center gap-1.5 cursor-pointer"
+        >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-          Subir Nueva
+          <span>Subir Fotos</span>
         </button>
-        <input type="file" id="gallery-file-input" accept="image/*" class="hidden" />
-        <button type="button" id="close-gallery-modal" class="text-slate-400 hover:text-slate-700 text-lg font-bold">×</button>
+        <input type="file" id="gallery-file-input" accept="image/*" multiple class="hidden" />
+        <button type="button" id="close-gallery-modal" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1 leading-none cursor-pointer">×</button>
       </div>
     </div>
 
-    <div class="p-6 overflow-y-auto flex-grow bg-slate-50/50">
-      <div id="gallery-loading" class="flex flex-col items-center justify-center py-20 gap-3 text-slate-500">
-        <div class="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-rose-600"></div>
-        <span class="text-3xs font-bold uppercase tracking-widest text-slate-400 animate-pulse">Cargando galería...</span>
-      </div>
+    <!-- Main Content: Sidebar Izquierdo (Carpetas) + Rejilla Principal Derecha -->
+    <div class="flex flex-grow overflow-hidden">
+      <!-- Sidebar Izquierdo: Lista vertical de Carpetas -->
+      <aside class="w-60 sm:w-72 md:w-80 border-r border-slate-200 bg-slate-50/80 flex flex-col shrink-0 overflow-hidden">
+        <div class="p-3 border-b border-slate-200/80 flex items-center justify-between bg-slate-100/60">
+          <span class="text-3xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
+            </svg>
+            Carpetas de Producto
+          </span>
+          <span class="text-[9px] text-slate-400 font-bold uppercase font-mono">Filtro</span>
+        </div>
+        
+        <div id="gallery-folders-container" class="flex-grow overflow-y-auto p-2.5 flex flex-col gap-1.5 scrollbar-thin">
+          <!-- Rendered dynamically as vertical cards -->
+        </div>
+      </aside>
 
-      <div id="gallery-empty" class="hidden flex flex-col items-center justify-center py-20 gap-2 text-slate-400">
-        <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 8.75h18a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
-        </svg>
-        <span class="text-3xs font-bold uppercase tracking-widest text-slate-400">No hay imágenes en la galería.</span>
-      </div>
+      <!-- Panel Principal Derecho: Búsqueda, Progreso y Rejilla -->
+      <section class="flex-grow flex flex-col overflow-hidden bg-white">
+        <!-- Barra de búsqueda y título de carpeta activa -->
+        <div class="p-3 border-b border-slate-150 flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between shrink-0 bg-white">
+          <div class="flex items-center gap-2">
+            <span id="gallery-current-folder-title" class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 truncate max-w-md">
+              📁 Todas las fotos
+            </span>
+          </div>
 
-      <div id="gallery-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3.5">
-        <!-- Render images dynamically -->
-      </div>
+          <!-- Search Input -->
+          <div class="relative w-full sm:w-72">
+            <input
+              type="text"
+              id="gallery-search-input"
+              placeholder="Buscar foto o producto..."
+              class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-rose-600 font-medium shadow-3xs transition-colors"
+            />
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Gallery Upload Progress (When uploading directly in modal) -->
+        <div id="gallery-upload-progress" class="hidden px-5 pt-3 pb-0 shrink-0">
+          <div class="flex flex-col gap-1.5 p-3 bg-rose-50 border border-rose-200 rounded-2xl shadow-xs">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 text-rose-800 font-bold text-3xs">
+                <div class="animate-spin rounded-full h-3 w-3 border-2 border-rose-300 border-t-rose-600"></div>
+                <span id="gallery-progress-status">Comprimiendo y subiendo imágenes...</span>
+              </div>
+              <span id="gallery-progress-percent" class="font-mono font-black text-rose-600 text-3xs">0%</span>
+            </div>
+            <div class="w-full bg-rose-100 rounded-full h-1.5 overflow-hidden">
+              <div id="gallery-progress-bar" class="bg-gradient-to-r from-rose-500 to-rose-600 h-full rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Images Grid with Dropzone support -->
+        <div id="gallery-dropzone-area" class="p-4 sm:p-5 overflow-y-auto flex-grow bg-slate-50/50 relative min-h-[300px]">
+          <div id="gallery-loading" class="flex flex-col items-center justify-center py-20 gap-3 text-slate-500">
+            <div class="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-rose-600"></div>
+            <span class="text-3xs font-bold uppercase tracking-widest text-slate-400 animate-pulse">Cargando galería...</span>
+          </div>
+
+          <div id="gallery-empty" class="hidden flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+            <div class="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300 shadow-3xs">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 8.75h18a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
+              </svg>
+            </div>
+            <div class="text-center">
+              <span class="text-xs font-bold text-slate-600 block">No hay imágenes en esta carpeta</span>
+              <span class="text-[10px] text-slate-400">Arrastra fotos aquí o pulsa en "Subir Fotos"</span>
+            </div>
+          </div>
+
+          <div id="gallery-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            <!-- Render images dynamically -->
+          </div>
+        </div>
+      </section>
     </div>
 
-    <div class="p-5 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
-      <button type="button" id="delete-gallery-img-btn" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl text-xs font-bold uppercase transition-colors active:scale-95 mr-auto hidden">
-        Eliminar Imagen
-      </button>
-      <button type="button" id="cancel-gallery-modal" class="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold uppercase transition-colors active:scale-95">
-        Cancelar
-      </button>
-      <button type="button" id="insert-gallery-btn" class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs active:scale-95" disabled>
-        Insertar Imagen
-      </button>
+    <!-- Footer Fijo Inferior -->
+    <div class="p-4 sm:p-5 border-t border-slate-200 flex justify-between items-center gap-3 bg-slate-50 shrink-0">
+      <div class="flex items-center gap-2">
+        <button type="button" id="delete-gallery-img-btn" class="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl text-xs font-bold uppercase transition-colors active:scale-95 hidden flex items-center gap-1.5 border border-red-200/60 cursor-pointer">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+          <span>Eliminar Imagen</span>
+        </button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" id="cancel-gallery-modal" class="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold uppercase transition-colors active:scale-95 shadow-3xs cursor-pointer">
+          Cancelar
+        </button>
+        <button type="button" id="insert-gallery-btn" class="px-5 py-2.5 bg-rose-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase transition-colors shadow-2xs active:scale-95 flex items-center gap-1.5 cursor-pointer" disabled>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          <span>Insertar Imagen</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -292,6 +427,89 @@ const { collections, savedColors = [] } = Astro.props;
   </div>
 </div>
 
-<!-- Pass server collections & saved colors to client side -->
+<!-- MODAL: CONFIRMAR ELIMINACIÓN DE IMAGEN DEL PRODUCTO / BASE DE DATOS -->
+<div id="remove-media-modal" class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+  <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in flex flex-col">
+    <!-- Header -->
+    <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+          </svg>
+        </div>
+        <h4 class="text-xs font-black uppercase tracking-wider text-slate-800">¿Cómo deseas gestionar esta foto?</h4>
+      </div>
+      <button type="button" id="close-remove-media-modal" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 leading-none cursor-pointer">×</button>
+    </div>
+
+    <!-- Body -->
+    <div class="p-5 flex flex-col gap-4">
+      <div class="flex items-center gap-3.5 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+        <div class="w-16 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0 shadow-3xs">
+          <img id="remove-media-preview-img" src="" alt="Vista previa" class="w-full h-full object-cover" />
+        </div>
+        <div class="flex flex-col gap-1 min-w-0">
+          <p class="text-xs font-bold text-slate-800">Selecciona una opción</p>
+          <p class="text-[11px] text-slate-500 leading-relaxed">Puedes quitarla únicamente de la lista de fotos de este producto o borrarla de forma definitiva del servidor y la galería.</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col gap-2.5">
+        <!-- Option 1: Remove from product only -->
+        <button
+          type="button"
+          id="btn-remove-from-product-only"
+          class="w-full text-left p-3.5 rounded-2xl border border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50 transition-all flex items-start gap-3 cursor-pointer group active:scale-[0.99]"
+        >
+          <div class="w-8 h-8 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs font-extrabold text-slate-800 group-hover:text-slate-950">Quitar solo del producto</span>
+            <span class="text-[10px] text-slate-500">La imagen desaparecerá de este producto, pero seguirá guardada en la galería y en Firebase Storage.</span>
+          </div>
+        </button>
+
+        <!-- Option 2: Delete permanently from DB/Storage -->
+        <button
+          type="button"
+          id="btn-delete-from-db-storage"
+          class="w-full text-left p-3.5 rounded-2xl border border-rose-200 hover:border-rose-400 bg-rose-50/50 hover:bg-rose-50 transition-all flex items-start gap-3 cursor-pointer group active:scale-[0.99]"
+        >
+          <div class="w-8 h-8 rounded-xl bg-rose-100 group-hover:bg-rose-200 text-rose-700 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+            </svg>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs font-extrabold text-rose-700 group-hover:text-rose-800 flex items-center gap-1.5">
+              Eliminar de la Galería y Base de Datos
+              <span class="text-[9px] font-bold bg-rose-200 text-rose-800 px-1.5 py-0.2 rounded uppercase">Definitivo</span>
+            </span>
+            <span class="text-[10px] text-rose-600/80">Se eliminará permanentemente de Firebase Storage, de este producto y de la galería de medios.</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+      <button
+        type="button"
+        id="cancel-remove-media-btn"
+        class="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-650 hover:text-slate-900 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer"
+      >
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Pass server data to client side -->
+<div id="products-data-provider" data-products={JSON.stringify(products.map((p) => ({ id: p.id, slug: p.slug, title: p.title, images: p.images || [], variants: (p.variants || []).map((v: any) => ({ name: v.name, image: v.image })) })))} class="hidden"></div>
 <div id="collections-data-provider" data-collections={JSON.stringify(collections)} class="hidden"></div>
 <div id="saved-colors-data-provider" data-colors={JSON.stringify(savedColors)} class="hidden"></div>

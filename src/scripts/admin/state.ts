@@ -62,7 +62,17 @@ export const state = {
     activeInput: null as HTMLInputElement | null,
     activePreview: null as HTMLDivElement | null,
     selectedUrl: '',
-    images: [] as Array<{ name: string; url: string }>,
+    images: [] as Array<{
+      name: string;
+      url: string;
+      timeCreated?: string;
+      productId?: string | null;
+      productSlug?: string | null;
+      productTitle?: string | null;
+    }>,
+    selectedFolder: 'all',
+    searchQuery: '',
+    currentProductContext: { id: null as string | null, slug: null as string | null, title: null as string | null },
   },
   videoGallery: {
     activeInput: null as HTMLInputElement | null,
@@ -72,6 +82,27 @@ export const state = {
   },
   branchIndex: 0,
 };
+
+let cachedProducts: any[] | null = null;
+export function getDbProducts() {
+  if (cachedProducts === null) {
+    const productsDataEl = document.getElementById('products-data-provider');
+    try {
+      cachedProducts = JSON.parse(productsDataEl?.getAttribute('data-products') || '[]');
+    } catch {
+      cachedProducts = [];
+    }
+  }
+  return cachedProducts || [];
+}
+
+export function setDbProducts(prods: any[]) {
+  cachedProducts = prods;
+  const productsDataEl = document.getElementById('products-data-provider');
+  if (productsDataEl) {
+    productsDataEl.setAttribute('data-products', JSON.stringify(prods));
+  }
+}
 
 let cachedCollections: any[] | null = null;
 export function getDbCollections() {

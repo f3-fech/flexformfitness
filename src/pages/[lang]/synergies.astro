@@ -1,0 +1,805 @@
+---
+import { db } from '../../lib/firebase';
+import type { Product, ProductCollection } from '../../types';
+import SEO from '../../components/SEO.astro';
+import Navbar from '../../components/Navbar.astro';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'es' } },
+    { params: { lang: 'en' } }
+  ];
+}
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
+// Helper for image position
+const getObjectPosition = (url: string | undefined): string => {
+  if (!url) return 'center';
+  const match = url.match(/#pos=([a-zA-Z0-9%_-]+)/);
+  if (match && match[1]) {
+    return match[1].replace('_', ' ');
+  }
+  return 'center';
+};
+
+// Helper for color hex
+const getColorHex = (colorName: string): string => {
+  const name = colorName.toLowerCase().trim();
+  const colorMap: Record<string, string> = {
+    'negro': '#0f172a',
+    'black': '#0f172a',
+    'gris': '#94a3b8',
+    'grey': '#94a3b8',
+    'blanco': '#ffffff',
+    'white': '#ffffff',
+    'rojo': '#dc2626',
+    'red': '#dc2626',
+    'militar': '#4d5d43',
+    'oliva': '#556b2f',
+  };
+  return colorMap[name] || '#cbd5e1';
+};
+
+// Fetch synergy collections from Firestore
+let synergyCollections: ProductCollection[] = [];
+let dbProducts: Product[] = [];
+
+try {
+  const colSnap = await db.collection('collections').where('isSynergy', '==', true).get();
+  if (!colSnap.empty) {
+    synergyCollections = colSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ProductCollection);
+    const productIds = Array.from(new Set(synergyCollections.flatMap((c) => c.productIds || [])));
+    if (productIds.length > 0) {
+      const prodDocs = await Promise.all(
+        productIds.slice(0, 8).map((id) => db.collection('products').doc(id).get())
+      );
+      dbProducts = prodDocs.filter((d) => d.exists).map((d) => ({ id: d.id, ...d.data() }) as Product);
+    }
+  }
+} catch (error) {
+  console.error('Error fetching synergy products:', error);
+}
+
+// Fallback showcase sample products if none are created in Firestore yet
+const sampleProducts: Product[] = [
+  {
+    id: 'synergy-sample-1',
+    title: 'Camiseta Oversize Heavyweight Survivor × F3',
+    title_en: 'Heavyweight Oversize Tee Survivor × F3',
+    slug: 'camiseta-oversize-survivor-f3',
+    description: 'Camiseta de corte culturista oversize con 260 GSM y gráficos fusionados Survivor Body Gym × F3.',
+    price: 3800,
+    stock: 12,
+    images: [
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-TEE-BLK', name: 'Negro / L', price: 3800, stock: 6, colorHex: '#0f172a' },
+      { sku: 'SURV-TEE-WHT', name: 'Blanco / L', price: 3800, stock: 6, colorHex: '#ffffff' }
+    ],
+    seo: { title: 'Camiseta Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-sample-2',
+    title: 'Stringer Tank Culturismo Survivor × F3',
+    title_en: 'Bodybuilding Stringer Tank Survivor × F3',
+    slug: 'stringer-tank-survivor-f3',
+    description: 'Tirante abierto tradicional con corte en espalda nadadora y algodón peinado elástico.',
+    price: 3200,
+    stock: 8,
+    images: [
+      'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-STR-BLK', name: 'Negro / M', price: 3200, stock: 4, colorHex: '#0f172a' },
+      { sku: 'SURV-STR-RED', name: 'Rojo / M', price: 3200, stock: 4, colorHex: '#dc2626' }
+    ],
+    seo: { title: 'Stringer Tank Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-sample-3',
+    title: 'Pantalón Corto Mesh Training Survivor × F3',
+    title_en: 'Mesh Training Shorts Survivor × F3',
+    slug: 'pantalon-mesh-training-survivor-f3',
+    description: 'Shorts de doble capa con rejilla transpirable y bolsillo lateral para móvil.',
+    price: 4200,
+    stock: 9,
+    images: [
+      'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-SHT-BLK', name: 'Negro / L', price: 4200, stock: 5, colorHex: '#0f172a' },
+      { sku: 'SURV-SHT-GRY', name: 'Gris / L', price: 4200, stock: 4, colorHex: '#94a3b8' }
+    ],
+    seo: { title: 'Pantalón Mesh Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-sample-4',
+    title: 'Sudadera Heavy French Terry Survivor × F3',
+    title_en: 'Heavy French Terry Hoodie Survivor × F3',
+    slug: 'sudadera-hoodie-survivor-f3',
+    description: 'Sudadera con capucha sin cordones de 450 GSM con serigrafía de alta densidad en espalda.',
+    price: 6500,
+    stock: 5,
+    images: [
+      'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-HOD-BLK', name: 'Negro / L', price: 6500, stock: 3, colorHex: '#0f172a' },
+      { sku: 'SURV-HOD-WHT', name: 'Blanco / L', price: 6500, stock: 2, colorHex: '#ffffff' }
+    ],
+    seo: { title: 'Sudadera Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];
+
+const displayProducts = dbProducts.length > 0 ? dbProducts : sampleProducts;
+
+const t = {
+  es: {
+    seoTitle: "F3 Synergies Project | Alianzas con Gimnasios | FLEX FORM FITNESS",
+    seoDesc: "Alianzas estratégicas entre F3 Flex Form Fitness y gimnasios independientes con identidad propia. Colecciones cápsula exclusivas y F3 Corner Shops.",
+    heroPre: "STRATEGIC GYM COLLABORATIONS",
+    heroTitle: "F3 SYNERGIES PROJECT",
+    heroDesc: "Cuando dos identidades se unen, nace algo que ninguna podría construir por separado. Unimos a F3 con aquellos gimnasios que han forjado una comunidad y una identidad propia en la cultura del fitness y el culturismo.",
+    viewAllSynergies: "Ver Todas las Prendas de Sinergias",
+    applyPartner: "Proponer una Alianza",
+
+    // Quote
+    quote: "«El gimnasio aporta su esencia. F3 aporta su universo. La colección nace de la unión de ambos.»",
+
+    // Section Products
+    productsBadge: "CÁPSULA EN DESTACADO",
+    productsTitle: "Survivor Body Gym × F3",
+    productsSubtitle: "Gandesa · Cataluña | Cápsula oficial de 6 prendas técnicas exclusivas.",
+    viewAllBtn: "Ver Colección Completa de Sinergias",
+
+    // Concept pillars
+    howItWorks: "¿Cómo funciona F3 Synergies?",
+    p1Title: "Más que Merchandising",
+    p1Desc: "El merchandising reproduce; la sinergia crea. Desarrollamos prendas con patrones específicos, gramajes de alto rendimiento y diseños únicos para cada gimnasio.",
+    p2Title: "F3 Corner Shops",
+    p2Desc: "Espacios de retail físico integrados dentro del gimnasio para que los atletas puedan ver, probar y adquirir las prendas directamente.",
+    p3Title: "Colecciones que Evolucionan",
+    p3Desc: "No nos limitamos a una única tirada: lanzamos nuevas cápsulas y temporadas de forma periódica con la comunidad del gimnasio.",
+
+    // The story
+    storyTitle: "El Origen de F3 Synergies",
+    storyText1: "La idea comenzó en el Joe Weider's Olympia Amateur Spain 2026 en Alicante, cuando el propietario de un gimnasio francés nos propuso desarrollar prendas que fusionaran la fuerza de su club con la calidad textil de F3.",
+    storyText2: "Poco después, la idea se materializó con Survivor Body Gym en Gandesa (Cataluña), junto a Juan Antonio Cortegana Mulero ('Juanito') y Esteban, creando una primera cápsula de 6 diseños exclusivos que superó todas las expectativas.",
+
+    // Form
+    formTitle: "¿Quieres una sinergia para tu gimnasio?",
+    formSubtitle: "Rellena el formulario y el equipo de F3 se pondrá en contacto contigo para valorar una colaboración exclusiva.",
+    gymLabel: "Nombre del Gimnasio",
+    gymPlaceholder: "Ej: Survivor Body Gym",
+    cityLabel: "Ciudad / Localidad",
+    cityPlaceholder: "Ej: Gandesa (Tarragona)",
+    contactLabel: "Persona de Contacto",
+    contactPlaceholder: "Ej: Juan Antonio Cortegana",
+    emailLabel: "Correo Electrónico",
+    emailPlaceholder: "contacto@tugimnasio.com",
+    phoneLabel: "Teléfono / WhatsApp",
+    phonePlaceholder: "+34 600 000 000",
+    instagramLabel: "Instagram del Gimnasio",
+    instagramPlaceholder: "@survivorbodygym",
+    messageLabel: "Mensaje / Cuéntanos sobre tu comunidad",
+    messagePlaceholder: "Explícanos la identidad de tu gimnasio y qué tipo de prendas o Corner Shop te gustaría desarrollar...",
+    submitBtn: "Enviar Propuesta de Sinergia",
+    sendingBtn: "Enviando...",
+    successTitle: "¡Propuesta Recibida!",
+    successDesc: "Hemos recibido los datos de tu gimnasio. Nos pondremos en contacto contigo lo antes posible para valorar la alianza.",
+
+    closingTagline: "Tu identidad. Nuestra experiencia. Una colección que nace de ambas.",
+    closingBrand: "F3 FLEX FORM FITNESS — Built to evolve."
+  },
+  en: {
+    seoTitle: "F3 Synergies Project | Gym Alliances | FLEX FORM FITNESS",
+    seoDesc: "Strategic collaborations between F3 Flex Form Fitness and independent bodybuilding gyms. Exclusive capsules and F3 Corner Shops.",
+    heroPre: "STRATEGIC GYM COLLABORATIONS",
+    heroTitle: "F3 SYNERGIES PROJECT",
+    heroDesc: "When two distinct identities unite, something arises that neither could build alone. F3 bridges with gyms that have forged an authentic community and identity in bodybuilding and fitness.",
+    viewAllSynergies: "View All Synergy Gear",
+    applyPartner: "Propose an Alliance",
+
+    quote: "«The gym brings its essence. F3 brings its universe. The collection is born from both.»",
+
+    productsBadge: "FEATURED CAPSULE",
+    productsTitle: "Survivor Body Gym × F3",
+    productsSubtitle: "Gandesa · Catalonia | Official capsule featuring 6 exclusive performance designs.",
+    viewAllBtn: "View Full Synergies Collection",
+
+    howItWorks: "How does F3 Synergies work?",
+    p1Title: "Beyond Merchandising",
+    p1Desc: "Merchandising reproduces; synergy creates. We engineer garments with custom cuts, heavy fabrics, and dedicated concepts for each partner gym.",
+    p2Title: "F3 Corner Shops",
+    p2Desc: "In-situ retail spaces integrated right inside the gym so athletes can feel fabrics, try sizes, and purchase directly.",
+    p3Title: "Evolving Collections",
+    p3Desc: "Not a one-off run: we release periodic capsule drops and seasonal updates together with the partner community.",
+
+    storyTitle: "The Genesis of F3 Synergies",
+    storyText1: "The concept originated at the Joe Weider's Olympia Amateur Spain 2026 in Alicante, after discussions with a French gym owner looking for an authentic apparel collaboration.",
+    storyText2: "Shortly after, we joined forces with Survivor Body Gym in Gandesa (Catalonia), with Juan Antonio Cortegana Mulero ('Juanito') and Esteban, launching an initial 6-design capsule that exceeded all expectations.",
+
+    formTitle: "Want a synergy for your gym?",
+    formSubtitle: "Fill out the form and the F3 leadership team will get in touch to evaluate an exclusive collaboration.",
+    gymLabel: "Gym Name",
+    gymPlaceholder: "e.g. Survivor Body Gym",
+    cityLabel: "City / Location",
+    cityPlaceholder: "e.g. Gandesa, Spain",
+    contactLabel: "Contact Person",
+    contactPlaceholder: "e.g. Juan Antonio Cortegana",
+    emailLabel: "Email Address",
+    emailPlaceholder: "contact@yourgym.com",
+    phoneLabel: "Phone / WhatsApp",
+    phonePlaceholder: "+34 600 000 000",
+    instagramLabel: "Gym Instagram",
+    instagramPlaceholder: "@survivorbodygym",
+    messageLabel: "Tell us about your athletes & community",
+    messagePlaceholder: "Describe your gym's philosophy and what apparel capsule or Corner Shop you'd like to develop...",
+    submitBtn: "Submit Synergy Proposal",
+    sendingBtn: "Sending...",
+    successTitle: "Proposal Received!",
+    successDesc: "We have received your gym's details. Our team will review the proposal and reach out shortly.",
+
+    closingTagline: "Your identity. Our expertise. A collection born from both.",
+    closingBrand: "F3 FLEX FORM FITNESS — Built to evolve."
+  }
+};
+
+const texts = isEn ? t.en : t.es;
+const isComingSoon = true;
+---
+
+<!doctype html>
+<html lang={lang} class="scroll-smooth bg-white">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <SEO 
+      title={texts.seoTitle} 
+      description={texts.seoDesc} 
+    />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-white text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-rose-600 selection:text-white">
+    <!-- Navbar (Siempre visible y funcional arriba) -->
+    <Navbar />
+
+    <main class="flex-grow flex flex-col min-h-[calc(100vh-80px)] relative">
+      <!-- FULL-VIEWPORT COMING SOON SCREEN (Cubre toda la página debajo del Navbar) -->
+      <section class="flex-grow flex flex-col items-center justify-center bg-slate-950 text-white px-4 sm:px-8 py-20 relative overflow-hidden select-none">
+        <!-- Background glow & grid accents -->
+        <div class="absolute inset-0 opacity-25 pointer-events-none bg-[radial-gradient(#e11d48_1px,transparent_1px)] [background-size:24px_24px]"></div>
+        <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-rose-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Content Box -->
+        <div class="max-w-xl mx-auto text-center flex flex-col items-center relative z-10">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-600/10 border border-rose-500/30 text-rose-400 text-3xs font-extrabold uppercase tracking-widest mb-6 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <span>{isEn ? "Under Development · Launching Soon" : "En Desarrollo · Lanzamiento Próximo"}</span>
+          </div>
+
+          <h1 class="text-4xl sm:text-6xl md:text-7xl font-black italic tracking-tighter uppercase leading-none mb-4">
+            F3 <span class="text-rose-600">SYNERGIES</span>
+          </h1>
+
+          <p class="text-xs sm:text-sm font-mono font-black tracking-[0.35em] text-rose-500 uppercase mb-6">
+            — COMING SOON —
+          </p>
+
+          <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed mb-8">
+            {isEn
+              ? "We are finalizing exclusive apparel partnerships with top gyms and athletic communities. The official portal will be available very soon."
+              : "Estamos ultimando las alianzas exclusivas y colecciones cápsula junto a gimnasios y atletas. El portal oficial de sinergias estará disponible muy pronto."}
+          </p>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
+            <a 
+              href={`/${lang}#catalogo`} 
+              class="w-full sm:w-auto px-8 py-3.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-widest transition-all rounded-xl shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2"
+            >
+              <span>{isEn ? "Visit Store" : "Visitar Tienda"}</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+            </a>
+
+            <a 
+              href={`/${lang}/contacto`} 
+              class="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 text-xs font-bold uppercase tracking-widest transition-colors rounded-xl flex items-center justify-center gap-2"
+            >
+              <span>{isEn ? "Contact Support" : "Contacto / Alianzas"}</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- HIDDEN ORIGINAL CONTENT -->
+      <div class="hidden">
+      <!-- HERO SECTION (CLEAN WHITE) -->
+      <section class="w-full bg-white border-b border-slate-100 py-16 sm:py-24 px-4 sm:px-8">
+        <div class="max-w-5xl mx-auto text-center flex flex-col items-center">
+          
+          <span class="text-xs font-black tracking-[0.25em] text-rose-600 uppercase mb-4">
+            {texts.heroPre}
+          </span>
+
+          <h1 class="text-3xl sm:text-5xl md:text-6xl font-black italic tracking-tight uppercase text-slate-950 leading-tight mb-6">
+            F3 <span class="text-rose-600">SYNERGIES</span> PROJECT
+          </h1>
+
+          <p class="text-sm sm:text-base md:text-lg text-slate-600 font-normal max-w-2xl mx-auto leading-relaxed mb-8">
+            {texts.heroDesc}
+          </p>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
+            <a 
+              href={`/${lang}/synergies/coleccion`} 
+              class="w-full sm:w-auto px-8 py-3.5 bg-slate-950 hover:bg-rose-600 text-white text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+            >
+              <span>{texts.viewAllSynergies}</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+            </a>
+            
+            <a 
+              href="#alianza-formulario" 
+              class="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+            >
+              <span>{texts.applyPartner}</span>
+            </a>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- MANIFESTO QUOTE (CLEAN WHITE) -->
+      <section class="w-full bg-white border-b border-slate-100 py-14 px-4 sm:px-8 text-center">
+        <div class="max-w-4xl mx-auto border-t-2 border-rose-600 pt-10">
+          <span class="text-3xs font-extrabold text-rose-600 tracking-widest uppercase block mb-3">
+            CONCEPTO CENTRAL
+          </span>
+          <p class="text-xl sm:text-2xl md:text-3xl font-black italic uppercase tracking-tight text-slate-900 leading-snug max-w-3xl mx-auto">
+            {texts.quote}
+          </p>
+        </div>
+      </section>
+
+      <!-- PRODUCTS SHOWCASE (CLEAN PRODUCT GRID) -->
+      <section class="w-full bg-white border-b border-slate-100 py-16 px-4 md:px-8">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-4 border-b border-slate-100">
+            <div>
+              <span class="text-3xs font-extrabold text-rose-600 tracking-widest uppercase block mb-1">
+                {texts.productsBadge}
+              </span>
+              <h2 class="text-xl sm:text-2xl md:text-3xl font-black italic uppercase tracking-tight text-slate-900">
+                {texts.productsTitle}
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5">
+                {texts.productsSubtitle}
+              </p>
+            </div>
+
+            <a 
+              href={`/${lang}/synergies/coleccion`} 
+              class="text-xs font-bold uppercase tracking-wider text-rose-600 hover:text-rose-700 flex items-center gap-1.5 self-start sm:self-auto shrink-0 transition-colors"
+            >
+              <span>{texts.viewAllBtn}</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+            </a>
+          </div>
+
+          <!-- 4-Column Clean Product Grid (Matching Store Style Exactly) -->
+          <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-6 sm:gap-x-4 sm:gap-y-8 md:gap-x-6">
+            {displayProducts.map((product) => (
+              <div class="product-card group flex flex-col justify-start w-full">
+                <!-- Product Image Slider -->
+                <div class="relative aspect-[2/3] w-full bg-white border border-slate-100 overflow-hidden" style="aspect-ratio: 2/3;">
+                  <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none" style="scrollbar-width: none;">
+                    {product.images.map((imgUrl, imgIdx) => (
+                      <a
+                        href={`/${lang}/productos/${product.slug}`}
+                        class="block w-full h-full shrink-0 snap-start relative overflow-hidden"
+                        style="aspect-ratio: 2/3;"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`${isEn ? (product.title_en || product.title) : product.title} - ${imgIdx + 1}`}
+                          class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                          style={`object-position: ${getObjectPosition(imgUrl)}`}
+                          loading="lazy"
+                        />
+                      </a>
+                    ))}
+                  </div>
+
+                  <!-- Synergy Tag Badge -->
+                  <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-slate-950 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 select-none">
+                    SURVIVOR × F3
+                  </span>
+
+                  <!-- Price Badge -->
+                  <span class="absolute bottom-2 right-2 px-2 py-0.5 bg-slate-950/85 text-white text-[10px] sm:text-xs font-extrabold font-mono select-none">
+                    {(product.price / 100).toFixed(2)} €
+                  </span>
+                </div>
+
+                <!-- Product Details -->
+                <div class="mt-2 pt-2 border-t border-slate-100 flex flex-col items-center gap-1 w-full text-center">
+                  <a 
+                    href={`/${lang}/productos/${product.slug}`} 
+                    class="text-xs sm:text-sm font-medium text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] flex items-center justify-center leading-tight"
+                  >
+                    {isEn ? (product.title_en || product.title) : product.title}
+                  </a>
+
+                  {/* Color swatches */}
+                  {product.variants && product.variants.length > 0 && (
+                    <div class="flex items-center gap-1.5 justify-center min-h-[18px] mt-0.5">
+                      {product.variants.map((v) => {
+                        const colName = v.name.split('/')[0].trim();
+                        return (
+                          <span 
+                            class="w-3.5 h-3.5 border border-slate-200" 
+                            style={{ backgroundColor: v.colorHex || getColorHex(colName) }} 
+                            title={colName}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <!-- Big Clean Button To View All Synergies -->
+          <div class="mt-12 text-center">
+            <a 
+              href={`/${lang}/synergies/coleccion`} 
+              class="inline-flex items-center gap-3 px-10 py-4 bg-slate-950 hover:bg-rose-600 text-white text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
+            >
+              <span>{texts.viewAllBtn}</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 PILLARS / HOW IT WORKS (CLEAN WHITE) -->
+      <section class="w-full bg-white border-b border-slate-100 py-16 px-4 md:px-8">
+        <div class="max-w-6xl mx-auto">
+          
+          <div class="text-center mb-12">
+            <span class="text-xs font-bold tracking-widest text-rose-600 uppercase block mb-1">
+              ESTRATEGIA & CONCEPTO
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-black italic uppercase tracking-tight text-slate-900">
+              {texts.howItWorks}
+            </h2>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="bg-white p-6 sm:p-8 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+              <span class="text-xs font-black text-rose-600 block mb-2 font-mono">01</span>
+              <h3 class="text-base font-black uppercase text-slate-900 mb-2">{texts.p1Title}</h3>
+              <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">{texts.p1Desc}</p>
+            </div>
+
+            <div class="bg-white p-6 sm:p-8 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+              <span class="text-xs font-black text-rose-600 block mb-2 font-mono">02</span>
+              <h3 class="text-base font-black uppercase text-slate-900 mb-2">{texts.p2Title}</h3>
+              <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">{texts.p2Desc}</p>
+            </div>
+
+            <div class="bg-white p-6 sm:p-8 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+              <span class="text-xs font-black text-rose-600 block mb-2 font-mono">03</span>
+              <h3 class="text-base font-black uppercase text-slate-900 mb-2">{texts.p3Title}</h3>
+              <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">{texts.p3Desc}</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- THE STORY / GENESIS (CLEAN WHITE) -->
+      <section class="w-full bg-white border-b border-slate-100 py-16 px-4 md:px-8">
+        <div class="max-w-5xl mx-auto">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+            <div class="md:col-span-5 flex flex-col gap-2">
+              <span class="text-xs font-bold tracking-widest text-rose-600 uppercase">HISTORIA REAL</span>
+              <h2 class="text-2xl sm:text-3xl font-black italic uppercase tracking-tight text-slate-900 leading-tight">
+                {texts.storyTitle}
+              </h2>
+            </div>
+            <div class="md:col-span-7 flex flex-col gap-4 text-xs sm:text-sm text-slate-600 leading-relaxed border-l-0 md:border-l border-slate-200 md:pl-8">
+              <p>{texts.storyText1}</p>
+              <p>{texts.storyText2}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- APPLICATION FORM (CLEAN WHITE) -->
+      <section id="alianza-formulario" class="w-full bg-white border-b border-slate-100 py-16 px-4 md:px-8">
+        <div class="max-w-2xl mx-auto">
+          
+          <div class="text-center mb-8">
+            <span class="text-xs font-bold tracking-widest text-rose-600 uppercase block mb-1">
+              RED DE GIMNASIOS
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-black italic uppercase tracking-tight text-slate-900 mb-2">
+              {texts.formTitle}
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-500">
+              {texts.formSubtitle}
+            </p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-xs">
+            <!-- Success Message Box -->
+            <div id="synergy-success-box" class="hidden text-center py-8">
+              <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
+              </div>
+              <h3 class="text-lg font-bold uppercase text-slate-900 mb-1">{texts.successTitle}</h3>
+              <p class="text-xs text-slate-600 leading-relaxed">{texts.successDesc}</p>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="synergy-error-box" class="hidden mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+              <span id="synergy-error-text"></span>
+            </div>
+
+            <!-- Clean Form -->
+            <form id="synergy-form" class="flex flex-col gap-4 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    {texts.gymLabel} *
+                  </label>
+                  <input 
+                    type="text" 
+                    name="gymName" 
+                    required 
+                    placeholder={texts.gymPlaceholder} 
+                    class="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-slate-900 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    {texts.cityLabel} *
+                  </label>
+                  <input 
+                    type="text" 
+                    name="city" 
+                    required 
+                    placeholder={texts.cityPlaceholder} 
+                    class="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-slate-900 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    {texts.contactLabel} *
+                  </label>
+                  <input 
+                    type="text" 
+                    name="contactName" 
+                    required 
+                    placeholder={texts.contactPlaceholder} 
+                    class="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-slate-900 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    {texts.emailLabel} *
+                  </label>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    required 
+                    placeholder={texts.emailPlaceholder} 
+                    class="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-slate-900 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    {texts.phoneLabel}
+                  </label>
+                  <input 
+                    type="tel" 
+                    name="phone" 
+                    placeholder={texts.phonePlaceholder} 
+                    class="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-slate-900 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    {texts.instagramLabel}
+                  </label>
+                  <input 
+                    type="text" 
+                    name="instagram" 
+                    placeholder={texts.instagramPlaceholder} 
+                    class="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-slate-900 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  {texts.messageLabel} *
+                </label>
+                <textarea 
+                  name="message" 
+                  rows="3" 
+                  required 
+                  placeholder={texts.messagePlaceholder} 
+                  class="w-full bg-white border border-slate-200 rounded-lg p-3 text-slate-900 focus:outline-none focus:border-slate-900 transition-colors"
+                ></textarea>
+              </div>
+
+              <button 
+                type="submit" 
+                id="synergy-submit-btn" 
+                class="w-full py-3.5 mt-2 bg-slate-950 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-widest rounded-lg transition-colors cursor-pointer"
+              >
+                <span>{texts.submitBtn}</span>
+              </button>
+            </form>
+          </div>
+
+          <div class="mt-8 text-center text-xs text-slate-400 font-medium">
+            <p>{texts.closingTagline}</p>
+          </div>
+
+        </div>
+      </section>
+      </div>
+
+    </main>
+
+    <!-- Standard Store Footer -->
+    <footer class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850">
+      <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div class="flex flex-col gap-4 col-span-2 md:col-span-1">
+          <a href={`/${lang}`} class="flex flex-col">
+            <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
+              FLEX <span class="text-rose-600">FORM</span>
+            </span>
+            <span class="text-[8px] font-extrabold tracking-[0.25em] text-slate-500 uppercase leading-none mt-0.5">
+              FITNESS
+            </span>
+          </a>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            {isEn ? "High-performance sportswear and strategic gym alliances." : "Ropa deportiva de alto rendimiento y alianzas estratégicas para gimnasios."}
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "COLLECTIONS" : "COLECCIONES"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}/colecciones/hombre`} class="hover:text-white transition-colors">{isEn ? "Men" : "Hombre"}</a></li>
+            <li><a href={`/${lang}/colecciones/mujer`} class="hover:text-white transition-colors">{isEn ? "Women" : "Mujer"}</a></li>
+            <li><a href={`/${lang}/synergies/coleccion`} class="text-rose-400 font-bold hover:text-rose-300 transition-colors">F3 Synergies</a></li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col gap-3 col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}/contacto`} class="hover:text-white transition-colors font-semibold text-rose-500">{isEn ? "Contact Support" : "Contacto / Soporte"}</a></li>
+            <li><a href={`/${lang}/devoluciones`} class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col gap-3 col-span-2 md:col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">F3 SYNERGIES</h4>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            {isEn ? "Strategic partnerships with independent bodybuilding and fitness gyms." : "Alianzas estratégicas con gimnasios independientes de culturismo y fitness."}
+          </p>
+        </div>
+      </div>
+
+      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] md:text-2xs text-slate-500">
+        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+        <div class="flex flex-wrap justify-center gap-x-4 gap-y-1.5 md:gap-x-6">
+          <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones</a>
+          <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Privacidad</a>
+          <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Form Submit Script -->
+    <script>
+      import { actions, isInputError } from 'astro:actions';
+
+      const form = document.getElementById('synergy-form') as HTMLFormElement;
+      const submitBtn = document.getElementById('synergy-submit-btn') as HTMLButtonElement;
+      const errorBox = document.getElementById('synergy-error-box') as HTMLDivElement;
+      const errorText = document.getElementById('synergy-error-text') as HTMLSpanElement;
+      const successBox = document.getElementById('synergy-success-box') as HTMLDivElement;
+
+      if (form && submitBtn) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          errorBox.classList.add('hidden');
+          submitBtn.disabled = true;
+          
+          const isEn = window.location.pathname.startsWith('/en');
+          const originalText = submitBtn.innerHTML;
+          submitBtn.innerHTML = `<span>${isEn ? 'Sending...' : 'Enviando...'}</span>`;
+
+          const formData = new FormData(form);
+          const gymName = (formData.get('gymName') as string || '').trim();
+          const contactName = (formData.get('contactName') as string || '').trim();
+          const email = (formData.get('email') as string || '').trim();
+          const phone = (formData.get('phone') as string || '').trim();
+          const city = (formData.get('city') as string || '').trim();
+          const instagram = (formData.get('instagram') as string || '').trim();
+          const message = (formData.get('message') as string || '').trim();
+
+          try {
+            const { data, error } = await actions.submitSynergyApplication({
+              gymName,
+              contactName,
+              email,
+              phone,
+              city,
+              instagram,
+              message,
+            });
+
+            if (error) {
+              if (isInputError(error)) {
+                const fields = error.fields as Record<string, string[] | undefined>;
+                const keys = Object.keys(fields);
+                if (keys.length > 0 && fields[keys[0]]?.[0]) {
+                  throw new Error(fields[keys[0]]![0]);
+                }
+              }
+              throw new Error(error.message || (isEn ? 'Failed to submit.' : 'Error al enviar la solicitud.'));
+            }
+
+            if (data?.success) {
+              form.style.display = 'none';
+              successBox.classList.remove('hidden');
+            } else {
+              throw new Error(isEn ? 'Failed to submit.' : 'Error al enviar la solicitud.');
+            }
+          } catch (err: any) {
+            console.error('Synergy form error:', err);
+            errorText.textContent = err.message || (isEn ? 'An unexpected error occurred.' : 'Ha ocurrido un error inesperado.');
+            errorBox.classList.remove('hidden');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

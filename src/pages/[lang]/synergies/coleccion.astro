@@ -1,0 +1,537 @@
+---
+import { db } from '../../../lib/firebase';
+import type { Product, ProductCollection } from '../../../types';
+import SEO from '../../../components/SEO.astro';
+import Navbar from '../../../components/Navbar.astro';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  return [
+    { params: { lang: 'es' } },
+    { params: { lang: 'en' } }
+  ];
+}
+
+const { lang } = Astro.params;
+const isEn = lang === 'en';
+
+const getObjectPosition = (url: string | undefined): string => {
+  if (!url) return 'center';
+  const match = url.match(/#pos=([a-zA-Z0-9%_-]+)/);
+  if (match && match[1]) {
+    return match[1].replace('_', ' ');
+  }
+  return 'center';
+};
+
+const getColorHex = (colorName: string): string => {
+  const name = colorName.toLowerCase().trim();
+  const colorMap: Record<string, string> = {
+    'negro': '#0f172a',
+    'black': '#0f172a',
+    'gris': '#94a3b8',
+    'grey': '#94a3b8',
+    'blanco': '#ffffff',
+    'white': '#ffffff',
+    'rojo': '#dc2626',
+    'red': '#dc2626',
+    'militar': '#4d5d43',
+    'oliva': '#556b2f',
+  };
+  return colorMap[name] || '#cbd5e1';
+};
+
+// Fetch real products from synergy collections
+let synergyCollections: ProductCollection[] = [];
+let dbProducts: Product[] = [];
+
+try {
+  const snap = await db.collection('collections').where('isSynergy', '==', true).get();
+  if (!snap.empty) {
+    synergyCollections = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ProductCollection);
+    const productIds = Array.from(new Set(synergyCollections.flatMap((c) => c.productIds || [])));
+    if (productIds.length > 0) {
+      const prodDocs = await Promise.all(
+        productIds.map((id) => db.collection('products').doc(id).get())
+      );
+      dbProducts = prodDocs.filter((d) => d.exists).map((d) => ({ id: d.id, ...d.data() }) as Product);
+    }
+  }
+} catch (e) {
+  console.error('Error loading synergy products for collection page:', e);
+}
+
+// Complete 8-product sample capsule representing Survivor Body Gym x F3
+const sampleProducts: Product[] = [
+  {
+    id: 'synergy-col-1',
+    title: 'Camiseta Oversize Heavyweight Survivor × F3',
+    title_en: 'Heavyweight Oversize Tee Survivor × F3',
+    slug: 'camiseta-oversize-survivor-f3',
+    description: 'Camiseta de corte culturista oversize con 260 GSM y gráficos fusionados Survivor Body Gym × F3.',
+    price: 3800,
+    stock: 12,
+    images: [
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-TEE-BLK', name: 'Negro / L', price: 3800, stock: 6, colorHex: '#0f172a' },
+      { sku: 'SURV-TEE-WHT', name: 'Blanco / L', price: 3800, stock: 6, colorHex: '#ffffff' }
+    ],
+    seo: { title: 'Camiseta Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-col-2',
+    title: 'Stringer Tank Culturismo Survivor × F3',
+    title_en: 'Bodybuilding Stringer Tank Survivor × F3',
+    slug: 'stringer-tank-survivor-f3',
+    description: 'Tirante abierto tradicional con corte en espalda nadadora y algodón peinado elástico.',
+    price: 3200,
+    stock: 8,
+    images: [
+      'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-STR-BLK', name: 'Negro / M', price: 3200, stock: 4, colorHex: '#0f172a' },
+      { sku: 'SURV-STR-RED', name: 'Rojo / M', price: 3200, stock: 4, colorHex: '#dc2626' }
+    ],
+    seo: { title: 'Stringer Tank Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-col-3',
+    title: 'Pantalón Corto Mesh Training Survivor × F3',
+    title_en: 'Mesh Training Shorts Survivor × F3',
+    slug: 'pantalon-mesh-training-survivor-f3',
+    description: 'Shorts de doble capa con rejilla transpirable y bolsillo lateral para móvil.',
+    price: 4200,
+    stock: 9,
+    images: [
+      'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-SHT-BLK', name: 'Negro / L', price: 4200, stock: 5, colorHex: '#0f172a' },
+      { sku: 'SURV-SHT-GRY', name: 'Gris / L', price: 4200, stock: 4, colorHex: '#94a3b8' }
+    ],
+    seo: { title: 'Pantalón Mesh Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-col-4',
+    title: 'Sudadera Heavy French Terry Survivor × F3',
+    title_en: 'Heavy French Terry Hoodie Survivor × F3',
+    slug: 'sudadera-hoodie-survivor-f3',
+    description: 'Sudadera con capucha sin cordones de 450 GSM con serigrafía de alta densidad en espalda.',
+    price: 6500,
+    stock: 5,
+    images: [
+      'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-HOD-BLK', name: 'Negro / L', price: 6500, stock: 3, colorHex: '#0f172a' },
+      { sku: 'SURV-HOD-WHT', name: 'Blanco / L', price: 6500, stock: 2, colorHex: '#ffffff' }
+    ],
+    seo: { title: 'Sudadera Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-col-5',
+    title: 'Pantalón Jogger Cargo Heavyweight Survivor × F3',
+    title_en: 'Heavyweight Cargo Jogger Survivor × F3',
+    slug: 'pantalon-jogger-cargo-survivor-f3',
+    description: 'Pantalón jogger con bolsillos cargo laterales y puños ajustables con cremallera.',
+    price: 5800,
+    stock: 7,
+    images: [
+      'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-JOG-BLK', name: 'Negro / L', price: 5800, stock: 4, colorHex: '#0f172a' },
+      { sku: 'SURV-JOG-MIL', name: 'Verde Militar / L', price: 5800, stock: 3, colorHex: '#4d5d43' }
+    ],
+    seo: { title: 'Jogger Cargo Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-col-6',
+    title: 'Camiseta Pump Cover Boxy Fit Survivor × F3',
+    title_en: 'Boxy Fit Pump Cover Tee Survivor × F3',
+    slug: 'camiseta-pump-cover-survivor-f3',
+    description: 'Corte boxy con hombros caídos y cuello cerrado de canalé grueso resistente a lavados.',
+    price: 3900,
+    stock: 14,
+    images: [
+      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-PUMP-BLK', name: 'Negro / XL', price: 3900, stock: 8, colorHex: '#0f172a' },
+      { sku: 'SURV-PUMP-GRY', name: 'Gris / XL', price: 3900, stock: 6, colorHex: '#94a3b8' }
+    ],
+    seo: { title: 'Camiseta Pump Cover Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-col-7',
+    title: 'Tank Top Raglan Culturista Survivor × F3',
+    title_en: 'Raglan Bodybuilding Tank Survivor × F3',
+    slug: 'tank-top-raglan-survivor-f3',
+    description: 'Camiseta de tirantes con corte raglán ergonómico para destacar hombros y dorsal.',
+    price: 3400,
+    stock: 10,
+    images: [
+      'https://images.unsplash.com/photo-1507398941214-572c25f4b1dc?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-RAG-BLK', name: 'Negro / L', price: 3400, stock: 5, colorHex: '#0f172a' },
+      { sku: 'SURV-RAG-WHT', name: 'Blanco / L', price: 3400, stock: 5, colorHex: '#ffffff' }
+    ],
+    seo: { title: 'Tank Top Raglan Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: 'synergy-col-8',
+    title: 'Gorra Trucker Performance Survivor × F3',
+    title_en: 'Performance Trucker Cap Survivor × F3',
+    slug: 'gorra-trucker-survivor-f3',
+    description: 'Gorra trucker de 5 paneles con parche engomado Survivor × F3 y panel trasero transpirable.',
+    price: 2900,
+    stock: 16,
+    images: [
+      'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=800&auto=format&fit=crop&q=80'
+    ],
+    variants: [
+      { sku: 'SURV-CAP-BLK', name: 'Talla Única', price: 2900, stock: 16, colorHex: '#0f172a' }
+    ],
+    seo: { title: 'Gorra Trucker Survivor x F3', description: 'Cápsula Survivor Body Gym' },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];
+
+const allProducts = dbProducts.length > 0 ? dbProducts : sampleProducts;
+
+const t = {
+  es: {
+    seoTitle: "Colección F3 Synergies | Camisetas, Pantalones y Cápsulas | FLEX FORM FITNESS",
+    seoDesc: "Descubre todas las prendas desarrolladas en colaboración con gimnasios de culturismo y fitness. Survivor Body Gym x F3 y futuras alianzas.",
+    backToProject: "Volver al Proyecto Synergies",
+    headerTitle: "Colecciones F3 Synergies",
+    headerDesc: "Prendas oficiales, cápsulas de edición limitada y ropa técnica desarrollada conjuntamente con nuestra red de gimnasios asociados.",
+    filterAll: "Todos",
+    filterTees: "Camisetas & Tops",
+    filterPants: "Pantalones & Shorts",
+    filterHoodies: "Sudaderas",
+    itemCount: "artículos disponibles",
+  },
+  en: {
+    seoTitle: "F3 Synergies Collection | Tees, Pants & Capsules | FLEX FORM FITNESS",
+    seoDesc: "Explore all athletic apparel developed in collaboration with bodybuilding and fitness gyms. Survivor Body Gym x F3 and future partnerships.",
+    backToProject: "Back to Synergies Project",
+    headerTitle: "F3 Synergies Collections",
+    headerDesc: "Official co-created gear, limited edition capsules, and technical sportswear crafted alongside our partner gyms.",
+    filterAll: "All",
+    filterTees: "Tees & Tops",
+    filterPants: "Pants & Shorts",
+    filterHoodies: "Hoodies",
+    itemCount: "items available",
+  }
+};
+
+const texts = isEn ? t.en : t.es;
+const isComingSoon = true;
+---
+
+<!doctype html>
+<html lang={lang} class="scroll-smooth bg-white">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <SEO 
+      title={texts.seoTitle} 
+      description={texts.seoDesc} 
+    />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-white text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-rose-600 selection:text-white">
+    <!-- Navbar (Siempre visible y funcional arriba) -->
+    <Navbar />
+
+    <main class="flex-grow flex flex-col min-h-[calc(100vh-80px)] relative">
+      <!-- FULL-VIEWPORT COMING SOON SCREEN (Cubre toda la página debajo del Navbar) -->
+      <section class="flex-grow flex flex-col items-center justify-center bg-slate-950 text-white px-4 sm:px-8 py-20 relative overflow-hidden select-none">
+        <div class="absolute inset-0 opacity-25 pointer-events-none bg-[radial-gradient(#e11d48_1px,transparent_1px)] [background-size:24px_24px]"></div>
+        <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-rose-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="max-w-xl mx-auto text-center flex flex-col items-center relative z-10">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-600/10 border border-rose-500/30 text-rose-400 text-3xs font-extrabold uppercase tracking-widest mb-6 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <span>{isEn ? "Pre-Release · Launching Soon" : "Lanzamiento Próximo · En Desarrollo"}</span>
+          </div>
+
+          <h1 class="text-3xl sm:text-5xl md:text-6xl font-black italic tracking-tighter uppercase leading-none mb-4">
+            COLECCIONES <span class="text-rose-600">SYNERGIES</span>
+          </h1>
+
+          <p class="text-xs sm:text-sm font-mono font-black tracking-[0.35em] text-rose-500 uppercase mb-6">
+            — COMING SOON —
+          </p>
+
+          <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed mb-8">
+            {isEn
+              ? "Apparel capsules and official collaborative drops with our partner gyms will be available soon."
+              : "Las prendas y cápsulas oficiales desarrolladas con los gimnasios asociados estarán disponibles muy pronto."}
+          </p>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
+            <a 
+              href={`/${lang}#catalogo`} 
+              class="w-full sm:w-auto px-8 py-3.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-widest transition-all rounded-xl shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2"
+            >
+              <span>{isEn ? "Explore Main Catalog" : "Explorar Catálogo Principal"}</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+            </a>
+
+            <a 
+              href={`/${lang}/synergies`} 
+              class="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 text-xs font-bold uppercase tracking-widest transition-colors rounded-xl flex items-center justify-center gap-2"
+            >
+              <span>{isEn ? "About Synergies" : "Sobre F3 Synergies"}</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- HIDDEN ORIGINAL CONTENT -->
+      <div class="hidden">
+
+      <!-- Clean White Header -->
+      <section class="w-full bg-white border-b border-slate-100 py-10 sm:py-14 px-4 sm:px-8">
+        <div class="max-w-7xl mx-auto">
+          
+          <a 
+            href={`/${lang}/synergies`} 
+            class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-rose-600 transition-colors mb-4"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path></svg>
+            <span>{texts.backToProject}</span>
+          </a>
+
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <span class="text-3xs font-extrabold text-rose-600 tracking-widest uppercase block mb-1">
+                STRATEGIC GYM CAPSULES
+              </span>
+              <h1 class="text-2xl sm:text-4xl md:text-5xl font-black italic uppercase tracking-tight text-slate-950">
+                {texts.headerTitle}
+              </h1>
+              <p class="text-xs sm:text-sm text-slate-500 max-w-2xl mt-1">
+                {texts.headerDesc}
+              </p>
+            </div>
+
+            <div class="text-xs font-bold text-slate-400 self-start md:self-end">
+              {allProducts.length} {texts.itemCount}
+            </div>
+          </div>
+
+          <!-- Filter Tabs -->
+          <div class="flex flex-wrap gap-4 sm:gap-6 mt-8 pt-4 border-t border-slate-100 text-xs font-extrabold tracking-widest uppercase">
+            <button type="button" class="synergy-filter-btn border-b-2 border-rose-600 text-rose-600 pb-2 px-1 focus:outline-none transition-colors cursor-pointer" data-category="all">
+              {texts.filterAll}
+            </button>
+            <button type="button" class="synergy-filter-btn border-b-2 border-transparent text-slate-400 hover:text-slate-900 pb-2 px-1 focus:outline-none transition-colors cursor-pointer" data-category="camisetas">
+              {texts.filterTees}
+            </button>
+            <button type="button" class="synergy-filter-btn border-b-2 border-transparent text-slate-400 hover:text-slate-900 pb-2 px-1 focus:outline-none transition-colors cursor-pointer" data-category="pantalones">
+              {texts.filterPants}
+            </button>
+            <button type="button" class="synergy-filter-btn border-b-2 border-transparent text-slate-400 hover:text-slate-900 pb-2 px-1 focus:outline-none transition-colors cursor-pointer" data-category="sudaderas">
+              {texts.filterHoodies}
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Products Grid -->
+      <section class="w-full py-12 px-4 md:px-8 max-w-7xl mx-auto">
+        <div id="synergy-product-grid" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-6 sm:gap-x-4 sm:gap-y-8 md:gap-x-6 md:gap-y-10">
+          {allProducts.map((product) => {
+            const titleLower = product.title.toLowerCase();
+            let catType = 'otros';
+            if (titleLower.includes('camiseta') || titleLower.includes('tee') || titleLower.includes('stringer') || titleLower.includes('tank')) catType = 'camisetas';
+            else if (titleLower.includes('pantalón') || titleLower.includes('pantalon') || titleLower.includes('short') || titleLower.includes('jogger')) catType = 'pantalones';
+            else if (titleLower.includes('sudadera') || titleLower.includes('hoodie')) catType = 'sudaderas';
+
+            return (
+              <div 
+                class="synergy-item group flex flex-col justify-start w-full" 
+                data-type={catType}
+              >
+                <!-- Product Image Slider -->
+                <div class="relative aspect-[2/3] w-full bg-white border border-slate-100 overflow-hidden" style="aspect-ratio: 2/3;">
+                  <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none" style="scrollbar-width: none;">
+                    {product.images.map((imgUrl, imgIdx) => (
+                      <a
+                        href={`/${lang}/productos/${product.slug}`}
+                        class="block w-full h-full shrink-0 snap-start relative overflow-hidden"
+                        style="aspect-ratio: 2/3;"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`${isEn ? (product.title_en || product.title) : product.title} - ${imgIdx + 1}`}
+                          class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                          style={`object-position: ${getObjectPosition(imgUrl)}`}
+                          loading="lazy"
+                        />
+                      </a>
+                    ))}
+                  </div>
+
+                  <!-- Badge -->
+                  <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-slate-950 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 select-none">
+                    SURVIVOR × F3
+                  </span>
+
+                  <!-- Price -->
+                  <span class="absolute bottom-2 right-2 px-2 py-0.5 bg-slate-950/85 text-white text-[10px] sm:text-xs font-extrabold font-mono select-none">
+                    {(product.price / 100).toFixed(2)} €
+                  </span>
+                </div>
+
+                <!-- Product Details -->
+                <div class="mt-2 pt-2 border-t border-slate-100 flex flex-col items-center gap-1 w-full text-center">
+                  <a 
+                    href={`/${lang}/productos/${product.slug}`} 
+                    class="text-xs sm:text-sm font-medium text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] flex items-center justify-center leading-tight"
+                  >
+                    {isEn ? (product.title_en || product.title) : product.title}
+                  </a>
+
+                  {product.variants && product.variants.length > 0 && (
+                    <div class="flex items-center gap-1.5 justify-center min-h-[18px] mt-0.5">
+                      {product.variants.map((v) => {
+                        const colName = v.name.split('/')[0].trim();
+                        return (
+                          <span 
+                            class="w-3.5 h-3.5 border border-slate-200" 
+                            style={{ backgroundColor: v.colorHex || getColorHex(colName) }} 
+                            title={colName}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      </div>
+
+    </main>
+
+    <!-- Standard Store Footer -->
+    <footer class="w-full bg-slate-900 text-slate-400 py-16 px-4 md:px-8 border-t border-slate-850">
+      <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div class="flex flex-col gap-4 col-span-2 md:col-span-1">
+          <a href={`/${lang}`} class="flex flex-col">
+            <span class="text-xl md:text-2xl font-black italic tracking-tighter text-white uppercase leading-none">
+              FLEX <span class="text-rose-600">FORM</span>
+            </span>
+            <span class="text-[8px] font-extrabold tracking-[0.25em] text-slate-500 uppercase leading-none mt-0.5">
+              FITNESS
+            </span>
+          </a>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            {isEn ? "High-performance sportswear and strategic gym alliances." : "Ropa deportiva de alto rendimiento y alianzas estratégicas para gimnasios."}
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "COLLECTIONS" : "COLECCIONES"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}/colecciones/hombre`} class="hover:text-white transition-colors">{isEn ? "Men" : "Hombre"}</a></li>
+            <li><a href={`/${lang}/colecciones/mujer`} class="hover:text-white transition-colors">{isEn ? "Women" : "Mujer"}</a></li>
+            <li><a href={`/${lang}/synergies`} class="text-rose-400 font-bold hover:text-rose-300 transition-colors">F3 Synergies</a></li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col gap-3 col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">{isEn ? "SUPPORT" : "SOPORTE"}</h4>
+          <ul class="text-xs flex flex-col gap-2">
+            <li><a href={`/${lang}/contacto`} class="hover:text-white transition-colors font-semibold text-rose-500">{isEn ? "Contact Support" : "Contacto / Soporte"}</a></li>
+            <li><a href={`/${lang}/devoluciones`} class="hover:text-white transition-colors">{isEn ? "Returns" : "Devoluciones"}</a></li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col gap-3 col-span-2 md:col-span-1">
+          <h4 class="text-xs font-bold text-white tracking-widest uppercase">F3 SYNERGIES</h4>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            {isEn ? "Strategic partnerships with independent bodybuilding and fitness gyms." : "Alianzas estratégicas con gimnasios independientes de culturismo y fitness."}
+          </p>
+        </div>
+      </div>
+
+      <div class="w-full pt-8 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] md:text-2xs text-slate-500">
+        <p class="text-center md:text-left">&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."}</p>
+        <div class="flex flex-wrap justify-center gap-x-4 gap-y-1.5 md:gap-x-6">
+          <a href={`/${lang}/condiciones`} class="hover:text-white transition-colors">Condiciones</a>
+          <a href={`/${lang}/privacidad`} class="hover:text-white transition-colors">Privacidad</a>
+          <a href={`/${lang}/cookies`} class="hover:text-white transition-colors">Cookies</a>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Filter JS -->
+    <script>
+      const filterBtns = document.querySelectorAll('.synergy-filter-btn');
+      const items = document.querySelectorAll('.synergy-item');
+
+      filterBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const cat = btn.getAttribute('data-category') || 'all';
+
+          // Update active button state
+          filterBtns.forEach((b) => {
+            b.classList.remove('border-rose-600', 'text-rose-600');
+            b.classList.add('border-transparent', 'text-slate-400');
+          });
+          btn.classList.add('border-rose-600', 'text-rose-600');
+          btn.classList.remove('border-transparent', 'text-slate-400');
+
+          // Filter items
+          items.forEach((item) => {
+            const itemType = item.getAttribute('data-type');
+            if (cat === 'all' || itemType === cat) {
+              (item as HTMLElement).style.display = 'flex';
+            } else {
+              (item as HTMLElement).style.display = 'none';
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

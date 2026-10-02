@@ -538,6 +538,11 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                           
                           <span class="mt-2.5 text-[11px] font-bold text-slate-800 group-hover:text-amber-600 transition-colors line-clamp-1 max-w-[110px] leading-tight flex items-center gap-1 justify-center">
                             {col.title}
+                            {col.isSynergy && (
+                              <span class="px-1 py-0.2 rounded bg-slate-900 text-white text-[7px] font-black shadow-3xs" title="Colección F3 Synergies">
+                                SYN
+                              </span>
+                            )}
                             {col.showOnIndex && (
                               <span class="px-1 py-0.2 rounded bg-rose-600 text-white text-[7px] font-black shadow-3xs" title={`Portada #${col.indexOrder || 0}`}>
                                 #{col.indexOrder || 0}
@@ -1272,7 +1277,7 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
 
     <!-- MODALS SECTION -->
     <CollectionModal />
-    <ProductModal collections={collections} savedColors={settings.savedColors || []} />
+    <ProductModal products={products} collections={collections} savedColors={settings.savedColors || []} />
     <OrderModals />
 
     <script>

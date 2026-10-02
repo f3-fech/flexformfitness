@@ -1,6 +1,6 @@
 import { actions } from 'astro:actions';
 import { getObjectPosition, getColorHex } from '../../lib/utils';
-import { state, getDbCollections, getStoreColors, setStoreColors } from './state';
+import { state, getDbCollections, getDbProducts, getStoreColors, setStoreColors } from './state';
 import { toggleModal, showToast, blobToBase64, handleImageUpload } from './utils';
 
 // --- DOM Elements ---
@@ -29,6 +29,15 @@ const slugInput = document.getElementById('form-slug') as HTMLInputElement;
 const variantTreeContainer = document.getElementById('variant-tree-container') as HTMLDivElement;
 const addColorBranchBtn = document.getElementById('add-color-branch') as HTMLButtonElement;
 
+// Product Multimedia & Drag and Drop Elements
+const mediaContainer = document.getElementById('media-container') as HTMLDivElement;
+const mediaUploadPcBtn = document.getElementById('media-upload-pc-btn') as HTMLButtonElement;
+const productMediaFileInput = document.getElementById('product-media-file-input') as HTMLInputElement;
+const productMediaUploadProgress = document.getElementById('product-media-upload-progress') as HTMLDivElement;
+const productMediaProgressStatus = document.getElementById('product-media-progress-status') as HTMLSpanElement;
+const productMediaProgressPercent = document.getElementById('product-media-progress-percent') as HTMLSpanElement;
+const productMediaProgressBar = document.getElementById('product-media-progress-bar') as HTMLDivElement;
+
 // Gallery Modal Elements
 const galleryModal = document.getElementById('gallery-modal') as HTMLDivElement;
 const closeGalleryModal = document.getElementById('close-gallery-modal') as HTMLButtonElement;
@@ -40,6 +49,15 @@ const galleryEmpty = document.getElementById('gallery-empty') as HTMLDivElement;
 const galleryUploadNewBtn = document.getElementById('gallery-upload-new-btn') as HTMLButtonElement;
 const galleryFileInput = document.getElementById('gallery-file-input') as HTMLInputElement;
 const deleteGalleryImgBtn = document.getElementById('delete-gallery-img-btn') as HTMLButtonElement;
+const gallerySearchInput = document.getElementById('gallery-search-input') as HTMLInputElement;
+const galleryFoldersContainer = document.getElementById('gallery-folders-container') as HTMLDivElement;
+const galleryTotalCount = document.getElementById('gallery-total-count') as HTMLSpanElement;
+const galleryUploadProgress = document.getElementById('gallery-upload-progress') as HTMLDivElement;
+const galleryProgressStatus = document.getElementById('gallery-progress-status') as HTMLSpanElement;
+const galleryProgressPercent = document.getElementById('gallery-progress-percent') as HTMLSpanElement;
+const galleryProgressBar = document.getElementById('gallery-progress-bar') as HTMLDivElement;
+const galleryDropzoneArea = document.getElementById('gallery-dropzone-area') as HTMLDivElement;
+const galleryCurrentFolderTitle = document.getElementById('gallery-current-folder-title') as HTMLSpanElement;
 
 // Collections Elements
 const collectionModal = document.getElementById('collection-modal') as HTMLDivElement;
@@ -556,6 +574,9 @@ openNewProductModal?.addEventListener('click', () => {
   modalTitle.textContent = "Nuevo Producto";
   (document.getElementById('form-product-id') as HTMLInputElement).value = "";
   
+  state.gallery.currentProductContext = { id: null, slug: null, title: null };
+  state.gallery.selectedFolder = 'all';
+
   state.product.images = [];
   renderProductMedia();
 
@@ -773,22 +794,92 @@ titleInput?.addEventListener('input', () => {
 
 slugInput?.addEventListener('input', updateAllSKUs);
 
-// --- 7. Drag-and-drop Product Multimedia Grid ---
-export function renderProductMedia() {
-  const mediaContainer = document.getElementById('media-container') as HTMLDivElement;
-  if (!mediaContainer) return;
+// --- 7. Drag-and-drop Product Multimedia Grid & Compression Upload ---
+let isUploadingMedia = false;
 
+export async function handleUploadProductFiles(files: FileList | File[]) {
+  const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (fileArray.length === 0) {
+    showToast("Por favor selecciona archivos de imagen válidos (JPG, PNG, WebP, etc.).", "error");
+    return;
+  }
+
+  if (isUploadingMedia) return;
+  isUploadingMedia = true;
+
+  const total = fileArray.length;
+  const currentSlug = (slugInput?.value || (document.getElementById('form-title') as HTMLInputElement)?.value || state.gallery.currentProductContext.slug || 'product')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]/g, '_')
+    .slice(0, 35) || 'product';
+
+  if (productMediaUploadProgress) {
+    productMediaUploadProgress.classList.remove('hidden');
+    if (productMediaProgressBar) productMediaProgressBar.style.width = '0%';
+    if (productMediaProgressPercent) productMediaProgressPercent.textContent = '0%';
+    if (productMediaProgressStatus) productMediaProgressStatus.textContent = `Preparando ${total} imagen(es)...`;
+  }
+
+  try {
+    for (let i = 0; i < total; i++) {
+      const file = fileArray[i];
+      const basePercent = Math.round((i / total) * 100);
+      const nextStepPercent = Math.round(((i + 1) / total) * 100);
+
+      const url = await handleImageUpload(file, currentSlug, (statusText, subPercent) => {
+        const itemPercent = basePercent + Math.round((subPercent / 100) * (nextStepPercent - basePercent));
+        if (productMediaProgressBar) productMediaProgressBar.style.width = `${itemPercent}%`;
+        if (productMediaProgressPercent) productMediaProgressPercent.textContent = `${itemPercent}%`;
+        if (productMediaProgressStatus) {
+          productMediaProgressStatus.textContent = `[${i + 1}/${total}] ${statusText}`;
+        }
+      });
+
+      state.product.images.push(url);
+      renderProductMedia();
+    }
+
+    if (productMediaProgressBar) productMediaProgressBar.style.width = '100%';
+    if (productMediaProgressPercent) productMediaProgressPercent.textContent = '100%';
+    if (productMediaProgressStatus) productMediaProgressStatus.textContent = '✓ ¡Imágenes optimizadas y subidas con éxito!';
+    showToast(`${total} imagen(es) procesada(s) y añadida(s) al producto.`);
+  } catch (err: any) {
+    console.error("Error al subir imágenes:", err);
+    showToast(`Error al subir imagen: ${err.message || 'Error desconocido'}`, "error");
+  } finally {
+    isUploadingMedia = false;
+    setTimeout(() => {
+      if (productMediaUploadProgress) {
+        productMediaUploadProgress.classList.add('hidden');
+        if (productMediaProgressBar) productMediaProgressBar.style.width = '0%';
+      }
+    }, 1500);
+  }
+}
+
+export function renderProductMedia() {
+  if (!mediaContainer) return;
   mediaContainer.innerHTML = "";
 
   if (state.product.images.length === 0) {
     mediaContainer.innerHTML = `
-      <div class="col-span-full flex flex-col items-center justify-center py-6 text-slate-400 gap-1 select-none">
-        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
-        </svg>
-        <span class="text-[9px] font-extrabold uppercase tracking-widest text-slate-450">Sin imágenes</span>
+      <div id="media-empty-dropzone" class="col-span-full flex flex-col items-center justify-center py-6 text-slate-400 gap-2 select-none hover:text-slate-600 transition-colors">
+        <div class="w-11 h-11 rounded-2xl bg-white border border-slate-200 shadow-3xs flex items-center justify-center text-rose-500 group-hover:scale-105 transition-transform">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+          </svg>
+        </div>
+        <div class="text-center">
+          <span class="text-xs font-bold text-slate-700 block">Arrastra tus fotos aquí para optimizar</span>
+          <span class="text-[10px] text-slate-400">Conversión y compresión automática a WebP ultrarrápida</span>
+        </div>
       </div>
     `;
+
+    document.getElementById('media-empty-dropzone')?.addEventListener('click', () => {
+      productMediaFileInput?.click();
+    });
     return;
   }
 
@@ -814,8 +905,7 @@ export function renderProductMedia() {
 
     card.querySelector('.remove-media-item-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      state.product.images.splice(idx, 1);
-      renderProductMedia();
+      openRemoveMediaModal(url, idx);
     });
 
     card.addEventListener('dragstart', (e) => {
@@ -839,6 +929,13 @@ export function renderProductMedia() {
     card.addEventListener('drop', (e) => {
       e.preventDefault();
       card.classList.remove('border-rose-500', 'bg-rose-50/10');
+      
+      // If external files dropped on a specific card
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        handleUploadProductFiles(e.dataTransfer.files);
+        return;
+      }
+
       const sourceIdx = parseInt(e.dataTransfer?.getData('text/plain') || '-1');
       const targetIdx = idx;
 
@@ -854,14 +951,73 @@ export function renderProductMedia() {
   });
 }
 
+// Media Container File Dropzone Events
+if (mediaContainer) {
+  ['dragenter', 'dragover'].forEach(eventName => {
+    mediaContainer.addEventListener(eventName, (e) => {
+      const dragEv = e as DragEvent;
+      if (dragEv.dataTransfer?.types.includes('Files')) {
+        dragEv.preventDefault();
+        dragEv.stopPropagation();
+        mediaContainer.classList.add('border-rose-500', 'bg-rose-50/40', 'ring-4', 'ring-rose-500/15', 'scale-[1.005]');
+      }
+    });
+  });
+
+  ['dragleave', 'dragend'].forEach(eventName => {
+    mediaContainer.addEventListener(eventName, (e) => {
+      const mouseEv = e as MouseEvent;
+      const rect = mediaContainer.getBoundingClientRect();
+      const isOut = mouseEv.clientX < rect.left || mouseEv.clientX > rect.right || mouseEv.clientY < rect.top || mouseEv.clientY > rect.bottom;
+      if (isOut) {
+        mediaContainer.classList.remove('border-rose-500', 'bg-rose-50/40', 'ring-4', 'ring-rose-500/15', 'scale-[1.005]');
+      }
+    });
+  });
+
+  mediaContainer.addEventListener('drop', (e) => {
+    const dragEv = e as DragEvent;
+    mediaContainer.classList.remove('border-rose-500', 'bg-rose-50/40', 'ring-4', 'ring-rose-500/15', 'scale-[1.005]');
+    if (dragEv.dataTransfer?.files && dragEv.dataTransfer.files.length > 0) {
+      dragEv.preventDefault();
+      dragEv.stopPropagation();
+      handleUploadProductFiles(dragEv.dataTransfer.files);
+    }
+  });
+}
+
+// PC File Upload Button listener
+mediaUploadPcBtn?.addEventListener('click', () => {
+  productMediaFileInput?.click();
+});
+
+productMediaFileInput?.addEventListener('change', () => {
+  if (productMediaFileInput.files && productMediaFileInput.files.length > 0) {
+    handleUploadProductFiles(productMediaFileInput.files);
+    productMediaFileInput.value = "";
+  }
+});
+
 // Open gallery to select image for main catalog media
 document.getElementById('add-media-btn')?.addEventListener('click', () => {
   state.gallery.activeInput = null;
   state.gallery.activePreview = null;
+  const currentSlug = slugInput?.value?.trim() || null;
+  const currentTitle = titleInput?.value?.trim() || null;
+  const currentId = (document.getElementById('form-product-id') as HTMLInputElement)?.value || null;
+  
+  state.gallery.currentProductContext = {
+    id: currentId,
+    slug: currentSlug,
+    title: currentTitle,
+  };
+  if (currentSlug) {
+    state.gallery.selectedFolder = currentSlug;
+  }
   toggleGalleryModal(true);
 });
 
-// --- 8. Shopify-style Image Gallery Logic ---
+// --- 8. Smart Image Gallery Logic with Automatic Product Folders & Real-Time Search ---
 export function toggleGalleryModal(show: boolean) {
   if (show) {
     toggleModal(galleryModal, true);
@@ -874,7 +1030,185 @@ export function toggleGalleryModal(show: boolean) {
   }
 }
 
+function renderGalleryFolders() {
+  if (!galleryFoldersContainer) return;
+  galleryFoldersContainer.innerHTML = "";
+
+  const dbProducts = getDbProducts();
+  const allImages = state.gallery.images;
+  const totalCount = allImages.length;
+
+  // Folder Counts mapping
+  const counts: Record<string, number> = { all: totalCount, unassigned: 0 };
+  const currentContext = state.gallery.currentProductContext;
+
+  dbProducts.forEach((p: any) => {
+    counts[p.slug] = 0;
+  });
+
+  allImages.forEach(img => {
+    if (img.productSlug && counts[img.productSlug] !== undefined) {
+      counts[img.productSlug]++;
+    } else if (img.productSlug) {
+      counts[img.productSlug] = (counts[img.productSlug] || 0) + 1;
+    } else {
+      counts.unassigned++;
+    }
+  });
+
+  // Vertical Sidebar Item Helper
+  const createFolderItem = (id: string, icon: string, label: string, count: number, isCurrentBadge = false) => {
+    const isSelected = state.gallery.selectedFolder === id;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `w-full text-left px-3 py-2 rounded-xl text-xs transition-all duration-150 flex items-center justify-between gap-2 shadow-3xs cursor-pointer select-none ${
+      isSelected
+        ? 'bg-rose-600 text-white font-bold shadow-2xs'
+        : isCurrentBadge
+        ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold'
+        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/70 hover:border-slate-300 font-semibold'
+    }`;
+    btn.innerHTML = `
+      <div class="flex items-center gap-2 truncate min-w-0">
+        <span class="text-sm shrink-0 select-none">${icon}</span>
+        <span class="truncate">${label}</span>
+      </div>
+      <span class="px-2 py-0.5 rounded-full text-[10px] font-mono shrink-0 ${isSelected ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200/60'}">${count}</span>
+    `;
+    btn.addEventListener('click', () => {
+      state.gallery.selectedFolder = id;
+      renderGalleryFolders();
+      renderFilteredGallery();
+    });
+    return btn;
+  };
+
+  // 1. "Todas"
+  galleryFoldersContainer.appendChild(createFolderItem('all', '📁', 'Todas las fotos', totalCount));
+
+  // 2. "Este Producto" if editing/creating a product
+  if (currentContext.slug) {
+    const label = `Este Producto (${currentContext.title || currentContext.slug})`;
+    galleryFoldersContainer.appendChild(createFolderItem(currentContext.slug, '⭐', label, counts[currentContext.slug] || 0, true));
+  }
+
+  // Section Header: "POR PRODUCTO"
+  const sectionDivider = document.createElement('div');
+  sectionDivider.className = 'px-2 pt-2.5 pb-0.5 text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono select-none flex items-center justify-between';
+  sectionDivider.innerHTML = `
+    <span>Productos</span>
+    <span class="text-[8px] bg-slate-200/70 text-slate-500 px-1.5 py-0.2 rounded-full">${dbProducts.length}</span>
+  `;
+  galleryFoldersContainer.appendChild(sectionDivider);
+
+  // 3. Folders for each product
+  dbProducts.forEach((p: any) => {
+    if (currentContext.slug && p.slug === currentContext.slug) return; // already added above as 'Este Producto'
+    const count = counts[p.slug] || 0;
+    galleryFoldersContainer.appendChild(createFolderItem(p.slug, '📂', p.title, count));
+  });
+
+  // 4. "Generales / Sin Asignar"
+  const generalDivider = document.createElement('div');
+  generalDivider.className = 'px-2 pt-2 pb-0.5 text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono select-none';
+  generalDivider.textContent = 'Otros';
+  galleryFoldersContainer.appendChild(generalDivider);
+
+  galleryFoldersContainer.appendChild(createFolderItem('unassigned', '📦', 'Generales / Sin producto', counts.unassigned));
+
+  // Sync title above images grid
+  if (galleryCurrentFolderTitle) {
+    if (state.gallery.selectedFolder === 'all') {
+      galleryCurrentFolderTitle.innerHTML = `📁 Todas las fotos <span class="text-slate-400 font-mono text-[11px] font-normal">(${totalCount})</span>`;
+    } else if (state.gallery.selectedFolder === 'unassigned') {
+      galleryCurrentFolderTitle.innerHTML = `📦 Fotos Generales <span class="text-slate-400 font-mono text-[11px] font-normal">(${counts.unassigned})</span>`;
+    } else {
+      const activeProd = dbProducts.find((p: any) => p.slug === state.gallery.selectedFolder);
+      const title = activeProd ? activeProd.title : state.gallery.selectedFolder;
+      const count = counts[state.gallery.selectedFolder] || 0;
+      galleryCurrentFolderTitle.innerHTML = `📂 Carpeta: <span class="text-rose-600 font-black">${title}</span> <span class="text-slate-400 font-mono text-[11px] font-normal">(${count})</span>`;
+    }
+  }
+}
+
+function renderFilteredGallery() {
+  if (!galleryGrid) return;
+  galleryGrid.innerHTML = "";
+
+  const query = (state.gallery.searchQuery || "").toLowerCase().trim();
+  const folder = state.gallery.selectedFolder;
+
+  const filtered = state.gallery.images.filter(img => {
+    // 1. Folder filter
+    if (folder !== 'all') {
+      if (folder === 'unassigned') {
+        if (img.productSlug) return false;
+      } else if (img.productSlug !== folder) {
+        return false;
+      }
+    }
+
+    // 2. Search query filter
+    if (query) {
+      const matchName = img.name.toLowerCase().includes(query);
+      const matchProduct = (img.productTitle || "").toLowerCase().includes(query);
+      if (!matchName && !matchProduct) return false;
+    }
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    galleryEmpty?.classList.remove('hidden');
+    return;
+  }
+
+  galleryEmpty?.classList.add('hidden');
+
+  filtered.forEach((img) => {
+    const card = document.createElement('div');
+    const isSelected = state.gallery.selectedUrl === img.url;
+    card.className = `group relative aspect-[2/3] bg-white border rounded-xl overflow-hidden cursor-pointer hover:border-rose-500 hover:shadow-md transition-all duration-200 ${
+      isSelected ? 'selected-gallery-card border-rose-600 ring-2 ring-rose-600' : 'border-slate-200'
+    }`;
+
+    const cleanName = img.name.split('/').pop() || img.name;
+    const badgeHtml = img.productTitle
+      ? `<span class="absolute top-1.5 left-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-3xs max-w-[85%] truncate select-none">${img.productTitle}</span>`
+      : `<span class="absolute top-1.5 left-1.5 bg-slate-500/80 backdrop-blur-xs text-white text-[7px] font-bold px-1 py-0.5 rounded shadow-3xs select-none">General</span>`;
+
+    card.innerHTML = `
+      <img src="${img.url}" class="w-full h-full object-cover select-none" alt="${cleanName}" loading="lazy" />
+      ${badgeHtml}
+      <div class="absolute inset-0 bg-rose-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-xs p-1 px-2 text-[8px] text-white truncate font-mono select-none">${cleanName}</div>
+    `;
+
+    card.addEventListener('click', () => {
+      galleryGrid.querySelectorAll('.selected-gallery-card').forEach((el) => {
+        el.classList.remove('selected-gallery-card', 'border-rose-600', 'ring-2', 'ring-rose-600');
+        el.classList.add('border-slate-200');
+      });
+
+      card.classList.add('selected-gallery-card', 'border-rose-600', 'ring-2', 'ring-rose-600');
+      card.classList.remove('border-slate-200');
+
+      state.gallery.selectedUrl = img.url;
+      insertGalleryBtn.disabled = false;
+      deleteGalleryImgBtn?.classList.remove('hidden');
+    });
+
+    card.addEventListener('dblclick', () => {
+      state.gallery.selectedUrl = img.url;
+      insertGalleryBtn?.click();
+    });
+
+    galleryGrid.appendChild(card);
+  });
+}
+
 async function loadGalleryImages() {
+  if (!galleryGrid) return;
   galleryGrid.innerHTML = "";
   galleryLoading.classList.remove('hidden');
   galleryEmpty.classList.add('hidden');
@@ -883,41 +1217,46 @@ async function loadGalleryImages() {
     const { data, error } = await actions.listUploadedImages();
     if (error || !data?.success) {
       console.error("Error loading gallery:", error);
-      alert("Error al cargar la galería de imágenes.");
+      showToast("Error al cargar la galería de imágenes.", "error");
       return;
     }
 
-    state.gallery.images = (data.images || []).filter((img) => !img.name.startsWith('crop_'));
+    const dbProducts = getDbProducts();
+    const rawImages = (data.images || []).filter((img: any) => !img.name.startsWith('crop_'));
 
-    if (state.gallery.images.length === 0) {
-      galleryEmpty.classList.remove('hidden');
-    } else {
-      state.gallery.images.forEach((img) => {
-        const card = document.createElement('div');
-        card.className = "group relative aspect-[2/3] bg-white border border-slate-200 rounded-xl overflow-hidden cursor-pointer hover:border-rose-500 hover:shadow-sm transition-all duration-200";
-        card.innerHTML = `
-          <img src="${img.url}" class="w-full h-full object-cover select-none" alt="${img.name}" />
-          <div class="absolute inset-0 bg-rose-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 p-1 px-2 text-[8px] text-white truncate font-mono select-none">${img.name}</div>
-        `;
-        
-        card.addEventListener('click', () => {
-          galleryGrid.querySelectorAll('.selected-gallery-card').forEach((el) => {
-            el.classList.remove('selected-gallery-card', 'border-rose-600', 'ring-2', 'ring-rose-600');
-            el.classList.add('border-slate-200');
-          });
+    // Intelligent Association: Map each image to its product
+    state.gallery.images = rawImages.map((img: any) => {
+      const fileName = img.name.toLowerCase();
+      let matchedProduct = dbProducts.find((p: any) => {
+        // Match by exact URL in product media
+        const inMain = (p.images || []).includes(img.url);
+        const inVariants = (p.variants || []).some((v: any) => v.image === img.url);
+        if (inMain || inVariants) return true;
 
-          card.classList.add('selected-gallery-card', 'border-rose-600', 'ring-2', 'ring-rose-600');
-          card.classList.remove('border-slate-200');
-
-          state.gallery.selectedUrl = img.url;
-          insertGalleryBtn.disabled = false;
-          deleteGalleryImgBtn?.classList.remove('hidden');
-        });
-
-        galleryGrid.appendChild(card);
+        // Match by product slug in file path/name
+        if (p.slug && (fileName.startsWith(p.slug.toLowerCase() + '_') || fileName.startsWith(p.slug.toLowerCase() + '/') || fileName.includes(p.slug.toLowerCase()))) {
+          return true;
+        }
+        return false;
       });
+
+      return {
+        name: img.name,
+        url: img.url,
+        timeCreated: img.timeCreated,
+        productId: matchedProduct?.id || null,
+        productSlug: matchedProduct?.slug || null,
+        productTitle: matchedProduct?.title || null,
+      };
+    });
+
+    if (galleryTotalCount) {
+      galleryTotalCount.textContent = state.gallery.images.length.toString();
     }
+
+    // Default to 'all' if active folder doesn't exist
+    renderGalleryFolders();
+    renderFilteredGallery();
   } catch (err) {
     console.error("Error fetching images:", err);
   } finally {
@@ -925,9 +1264,116 @@ async function loadGalleryImages() {
   }
 }
 
+// Gallery Real-Time Search Handler
+gallerySearchInput?.addEventListener('input', () => {
+  state.gallery.searchQuery = gallerySearchInput.value;
+  renderFilteredGallery();
+});
+
+// Gallery Drag & Drop and Upload
+async function handleGalleryUpload(files: FileList | File[]) {
+  const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (fileArray.length === 0) {
+    showToast("Por favor selecciona archivos de imagen válidos.", "error");
+    return;
+  }
+
+  const currentFolder = state.gallery.selectedFolder;
+  const currentContext = state.gallery.currentProductContext;
+  const uploadPrefix = (currentFolder !== 'all' && currentFolder !== 'unassigned')
+    ? currentFolder
+    : currentContext.slug || 'gallery';
+
+  if (galleryUploadProgress) {
+    galleryUploadProgress.classList.remove('hidden');
+    if (galleryProgressBar) galleryProgressBar.style.width = '0%';
+    if (galleryProgressPercent) galleryProgressPercent.textContent = '0%';
+    if (galleryProgressStatus) galleryProgressStatus.textContent = `Subiendo ${fileArray.length} archivo(s)...`;
+  }
+
+  try {
+    let lastUrl = '';
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      const basePercent = Math.round((i / fileArray.length) * 100);
+      const nextPercent = Math.round(((i + 1) / fileArray.length) * 100);
+
+      lastUrl = await handleImageUpload(file, uploadPrefix, (statusText, subPercent) => {
+        const itemPercent = basePercent + Math.round((subPercent / 100) * (nextPercent - basePercent));
+        if (galleryProgressBar) galleryProgressBar.style.width = `${itemPercent}%`;
+        if (galleryProgressPercent) galleryProgressPercent.textContent = `${itemPercent}%`;
+        if (galleryProgressStatus) galleryProgressStatus.textContent = `[${i + 1}/${fileArray.length}] ${statusText}`;
+      });
+    }
+
+    if (galleryProgressBar) galleryProgressBar.style.width = '100%';
+    if (galleryProgressPercent) galleryProgressPercent.textContent = '100%';
+    if (galleryProgressStatus) galleryProgressStatus.textContent = '✓ ¡Subida y optimización completadas!';
+    showToast(`${fileArray.length} imagen(es) subida(s) con éxito.`);
+    await loadGalleryImages();
+
+    // Auto-select the last uploaded image
+    if (lastUrl) {
+      state.gallery.selectedUrl = lastUrl;
+      renderFilteredGallery();
+      insertGalleryBtn.disabled = false;
+      deleteGalleryImgBtn?.classList.remove('hidden');
+    }
+  } catch (err: any) {
+    console.error("Gallery upload error:", err);
+    showToast(`Error al subir imagen: ${err.message || 'Error desconocido'}`, "error");
+  } finally {
+    setTimeout(() => {
+      if (galleryUploadProgress) {
+        galleryUploadProgress.classList.add('hidden');
+        if (galleryProgressBar) galleryProgressBar.style.width = '0%';
+      }
+    }, 1500);
+  }
+}
+
+// Gallery Dropzone Area
+if (galleryDropzoneArea) {
+  ['dragenter', 'dragover'].forEach(eventName => {
+    galleryDropzoneArea.addEventListener(eventName, (e) => {
+      const dragEv = e as DragEvent;
+      if (dragEv.dataTransfer?.types.includes('Files')) {
+        dragEv.preventDefault();
+        dragEv.stopPropagation();
+        galleryDropzoneArea.classList.add('ring-4', 'ring-rose-500/20', 'bg-rose-50/20');
+      }
+    });
+  });
+
+  ['dragleave', 'dragend'].forEach(eventName => {
+    galleryDropzoneArea.addEventListener(eventName, () => {
+      galleryDropzoneArea.classList.remove('ring-4', 'ring-rose-500/20', 'bg-rose-50/20');
+    });
+  });
+
+  galleryDropzoneArea.addEventListener('drop', (e) => {
+    const dragEv = e as DragEvent;
+    galleryDropzoneArea.classList.remove('ring-4', 'ring-rose-500/20', 'bg-rose-50/20');
+    if (dragEv.dataTransfer?.files && dragEv.dataTransfer.files.length > 0) {
+      dragEv.preventDefault();
+      dragEv.stopPropagation();
+      handleGalleryUpload(dragEv.dataTransfer.files);
+    }
+  });
+}
+
 function openGallery(inputEl: HTMLInputElement, previewEl: HTMLDivElement) {
   state.gallery.activeInput = inputEl;
   state.gallery.activePreview = previewEl;
+  const currentSlug = slugInput?.value?.trim() || null;
+  state.gallery.currentProductContext = {
+    id: (document.getElementById('form-product-id') as HTMLInputElement)?.value || null,
+    slug: currentSlug,
+    title: titleInput?.value?.trim() || null,
+  };
+  if (currentSlug) {
+    state.gallery.selectedFolder = currentSlug;
+  }
   toggleGalleryModal(true);
 }
 
@@ -951,12 +1397,12 @@ cancelGalleryModal?.addEventListener('click', () => toggleGalleryModal(false));
 deleteGalleryImgBtn?.addEventListener('click', async () => {
   if (!state.gallery.selectedUrl) return;
   const imgName = state.gallery.selectedUrl.split('?')[0].split('/').pop();
-  const decodedName = imgName ? decodeURIComponent(imgName).replace('products/', '') : 'imagen';
+  const decodedName = imgName ? decodeURIComponent(imgName).replace('products/gallery/', '') : 'imagen';
   
-  if (confirm(`¿Estás seguro de que deseas eliminar la imagen "${decodedName}" permanentemente de la base de datos?`)) {
+  if (confirm(`¿Estás seguro de que deseas eliminar la imagen "${decodedName}" permanentemente de Firebase Storage?`)) {
     deleteGalleryImgBtn.disabled = true;
-    const originalText = deleteGalleryImgBtn.textContent;
-    deleteGalleryImgBtn.textContent = "Eliminando...";
+    const originalText = deleteGalleryImgBtn.innerHTML;
+    deleteGalleryImgBtn.innerHTML = "<span>Eliminando...</span>";
     
     try {
       const { error } = await actions.deleteImage({ url: state.gallery.selectedUrl });
@@ -969,10 +1415,10 @@ deleteGalleryImgBtn?.addEventListener('click', async () => {
       loadGalleryImages();
     } catch (err: any) {
       console.error("Error deleting gallery image:", err);
-      alert("Error al eliminar la imagen: " + (err.message || err.code));
+      showToast("Error al eliminar la imagen: " + (err.message || err.code), "error");
     } finally {
       deleteGalleryImgBtn.disabled = false;
-      deleteGalleryImgBtn.textContent = originalText;
+      deleteGalleryImgBtn.innerHTML = originalText;
     }
   }
 });
@@ -996,30 +1442,96 @@ galleryUploadNewBtn?.addEventListener('click', () => {
 });
 
 galleryFileInput?.addEventListener('change', async () => {
-  const file = galleryFileInput.files?.[0];
-  if (!file) return;
-
-  galleryUploadNewBtn.disabled = true;
-  const originalText = galleryUploadNewBtn.innerHTML;
-  galleryUploadNewBtn.innerHTML = 'Subiendo...';
-
-  try {
-    await handleImageUpload(file, 'gallery');
-    await loadGalleryImages();
-    
-    const firstCard = galleryGrid.firstElementChild as HTMLDivElement;
-    if (firstCard) {
-      firstCard.click();
-    }
-  } catch (err) {
-    console.error("Gallery upload error:", err);
-    alert("Error al subir la imagen.");
-  } finally {
-    galleryUploadNewBtn.disabled = false;
-    galleryUploadNewBtn.innerHTML = originalText;
+  if (galleryFileInput.files && galleryFileInput.files.length > 0) {
+    await handleGalleryUpload(galleryFileInput.files);
     galleryFileInput.value = "";
   }
 });
+
+// --- 8.1. Modal: Eliminar / Quitar Imagen de Producto ---
+const removeMediaModal = document.getElementById('remove-media-modal') as HTMLDivElement;
+const closeRemoveMediaModal = document.getElementById('close-remove-media-modal') as HTMLButtonElement;
+const cancelRemoveMediaBtn = document.getElementById('cancel-remove-media-btn') as HTMLButtonElement;
+const removeMediaPreviewImg = document.getElementById('remove-media-preview-img') as HTMLImageElement;
+const btnRemoveFromProductOnly = document.getElementById('btn-remove-from-product-only') as HTMLButtonElement;
+const btnDeleteFromDbStorage = document.getElementById('btn-delete-from-db-storage') as HTMLButtonElement;
+
+let pendingMediaRemoval: { url: string; index: number } | null = null;
+
+function openRemoveMediaModal(url: string, index: number) {
+  pendingMediaRemoval = { url, index };
+  if (removeMediaPreviewImg) {
+    removeMediaPreviewImg.src = url;
+  }
+  toggleModal(removeMediaModal, true);
+}
+
+function closeRemoveMediaPrompt() {
+  toggleModal(removeMediaModal, false);
+  pendingMediaRemoval = null;
+  if (btnDeleteFromDbStorage) {
+    btnDeleteFromDbStorage.disabled = false;
+    btnDeleteFromDbStorage.classList.remove('opacity-60', 'pointer-events-none');
+  }
+}
+
+closeRemoveMediaModal?.addEventListener('click', closeRemoveMediaPrompt);
+cancelRemoveMediaBtn?.addEventListener('click', closeRemoveMediaPrompt);
+
+btnRemoveFromProductOnly?.addEventListener('click', () => {
+  if (!pendingMediaRemoval) return;
+  const { index } = pendingMediaRemoval;
+  
+  if (index >= 0 && index < state.product.images.length) {
+    state.product.images.splice(index, 1);
+    renderProductMedia();
+    showToast("Imagen quitada del producto (sigue en la galería).");
+  }
+  closeRemoveMediaPrompt();
+});
+
+btnDeleteFromDbStorage?.addEventListener('click', async () => {
+  if (!pendingMediaRemoval) return;
+  const { url, index } = pendingMediaRemoval;
+
+  btnDeleteFromDbStorage.disabled = true;
+  btnDeleteFromDbStorage.classList.add('opacity-60', 'pointer-events-none');
+  const originalHtml = btnDeleteFromDbStorage.innerHTML;
+  btnDeleteFromDbStorage.innerHTML = `
+    <div class="w-full flex items-center justify-center py-2 gap-2 text-rose-700">
+      <div class="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full animate-spin"></div>
+      <span class="text-xs font-bold uppercase tracking-wider">Eliminando de la base de datos...</span>
+    </div>
+  `;
+
+  try {
+    const { error } = await actions.deleteImage({ url });
+    if (error) throw error;
+
+    // 1. Quitar de las fotos del producto
+    if (index >= 0 && index < state.product.images.length) {
+      state.product.images.splice(index, 1);
+      renderProductMedia();
+    }
+
+    // 2. Si la galería ya estaba cargada en memoria, actualizarla y sincronizar las vistas
+    if (state.gallery.images && state.gallery.images.length > 0) {
+      state.gallery.images = state.gallery.images.filter(img => img.url !== url);
+      renderGalleryFolders();
+      renderFilteredGallery();
+    }
+
+    showToast("Imagen eliminada definitivamente de la base de datos y de la galería.");
+    closeRemoveMediaPrompt();
+  } catch (err: any) {
+    console.error("Error deleting image from DB/Storage:", err);
+    showToast("Error al eliminar la imagen: " + (err.message || err.code || "Error desconocido"), "error");
+    btnDeleteFromDbStorage.disabled = false;
+    btnDeleteFromDbStorage.classList.remove('opacity-60', 'pointer-events-none');
+    btnDeleteFromDbStorage.innerHTML = originalHtml;
+  }
+});
+
 
 // --- 9. Video Gallery Modal Logic ---
 const videoGalleryModal = document.getElementById('video-gallery-modal') as HTMLDivElement;
@@ -1162,13 +1674,33 @@ videoGalleryFileInput?.addEventListener('change', async () => {
   videoGalleryUploadNewBtn.innerHTML = 'Subiendo...';
 
   try {
-    const base64Data = await blobToBase64(file);
-    const fileExt = file.name.split('.').pop() || 'mp4';
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
     const fileName = `video_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+    const contentType = file.type || (fileExt === 'webm' ? 'video/webm' : 'video/mp4');
 
-    const { data, error } = await actions.uploadVideo({ base64Data, fileName });
-    if (error || !data?.success || !data?.url) {
-      throw new Error(error?.message || 'Error al subir el video.');
+    // 1. Obtener URL de subida firmada de Firebase Storage
+    const { data: urlData, error: urlError } = await actions.getVideoUploadUrl({ fileName, contentType });
+    if (urlError || !urlData?.uploadUrl) {
+      throw new Error(urlError?.message || 'Error al obtener la URL de subida.');
+    }
+
+    // 2. Subida directa binaria a Firebase Storage (evita el límite 413 de Vercel/Payload)
+    const uploadRes = await fetch(urlData.uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+      },
+      body: file,
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error(`Error en la subida a Storage (${uploadRes.status} ${uploadRes.statusText})`);
+    }
+
+    // 3. Finalizar y generar enlace con token en Firebase
+    const { data: finalData, error: finalError } = await actions.finalizeVideoUpload({ fileName, contentType });
+    if (finalError || !finalData?.url) {
+      throw new Error(finalError?.message || 'Error al procesar el video subido.');
     }
 
     await loadGalleryVideos();
@@ -1803,6 +2335,13 @@ document.querySelectorAll('.edit-product-btn').forEach((btn) => {
     modalTitle.textContent = "Editar Producto";
     (document.getElementById('form-product-id') as HTMLInputElement).value = productData.id;
     
+    state.gallery.currentProductContext = {
+      id: productData.id,
+      slug: productData.slug,
+      title: productData.title,
+    };
+    state.gallery.selectedFolder = productData.slug || 'all';
+
     state.product.translations = {
       title: productData.title || '',
       description: productData.description || '',
@@ -2342,6 +2881,8 @@ openNewCollectionModal?.addEventListener('click', () => {
   (document.getElementById('form-collection-id') as HTMLInputElement).value = "";
   const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
   if (showOnIndexCheckbox) showOnIndexCheckbox.checked = false;
+  const isSynergyCheckbox = document.getElementById('form-collection-is-synergy') as HTMLInputElement;
+  if (isSynergyCheckbox) isSynergyCheckbox.checked = false;
   const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
   if (indexOrderInput) indexOrderInput.value = "0";
   deleteCurrentCollectionBtn?.classList.add('hidden');
@@ -2389,6 +2930,8 @@ collectionForm?.addEventListener('submit', async (e) => {
 
   const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
   const showOnIndex = showOnIndexCheckbox ? showOnIndexCheckbox.checked : false;
+  const isSynergyCheckbox = document.getElementById('form-collection-is-synergy') as HTMLInputElement;
+  const isSynergy = isSynergyCheckbox ? isSynergyCheckbox.checked : false;
   const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
   const indexOrder = indexOrderInput ? parseInt(indexOrderInput.value) || 0 : 0;
 
@@ -2403,6 +2946,7 @@ collectionForm?.addEventListener('submit', async (e) => {
     productIds: state.collection.currentOpenedFolderIds,
     showOnIndex,
     indexOrder,
+    isSynergy,
     seo: {
       title: state.collection.translations.seo_title || state.collection.translations.title,
       description: state.collection.translations.seo_desc || state.collection.translations.description,
@@ -2453,6 +2997,8 @@ document.querySelectorAll('.collection-folder').forEach((folder) => {
     (document.getElementById('form-collection-slug') as HTMLInputElement).value = colData.slug;
     const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
     if (showOnIndexCheckbox) showOnIndexCheckbox.checked = !!colData.showOnIndex;
+    const isSynergyCheckbox = document.getElementById('form-collection-is-synergy') as HTMLInputElement;
+    if (isSynergyCheckbox) isSynergyCheckbox.checked = !!colData.isSynergy;
     const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
     if (indexOrderInput) indexOrderInput.value = colData.indexOrder !== undefined ? String(colData.indexOrder) : "0";
 

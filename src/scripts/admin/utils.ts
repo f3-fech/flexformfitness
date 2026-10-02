@@ -93,13 +93,14 @@ export async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 // Image compression
-export async function compressImage(file: File): Promise<Blob> {
+export async function compressImage(file: File, quality = 0.92, maxDimension = 3000): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.src = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    img.src = objectUrl;
     img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
       const canvas = document.createElement('canvas');
-      const maxDimension = 3000;
       let width = img.width;
       let height = img.height;
 
@@ -135,22 +136,43 @@ export async function compressImage(file: File): Promise<Blob> {
           }
         },
         'image/webp',
-        0.95
+        quality
       );
     };
-    img.onerror = (err) => reject(err);
+    img.onerror = (err) => {
+      URL.revokeObjectURL(objectUrl);
+      reject(err);
+    };
   });
 }
 
-// Compress and upload image
-export async function handleImageUpload(file: File, prefix = 'product'): Promise<string> {
+// Compress and upload image with optional progress callback
+export async function handleImageUpload(
+  file: File,
+  prefix = 'product',
+  onProgress?: (status: string, percent: number) => void
+): Promise<string> {
+  if (onProgress) onProgress('Comprimiendo imagen a WebP...', 25);
   const compressedBlob = await compressImage(file);
-  const base64Data = await blobToBase64(compressedBlob);
-  const fileName = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.webp`;
 
+  if (onProgress) onProgress('Codificando imagen...', 55);
+  const base64Data = await blobToBase64(compressedBlob);
+
+  const cleanPrefix = prefix
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]/g, '_')
+    .slice(0, 40) || 'product';
+
+  const fileName = `${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.webp`;
+
+  if (onProgress) onProgress('Subiendo a Firebase Storage...', 80);
   const { data, error } = await actions.uploadImage({ base64Data, fileName, folder: 'products/gallery' });
   if (error || !data?.success || !data?.url) {
     throw new Error(error?.message || 'Error al subir la imagen.');
   }
+
+  if (onProgress) onProgress('¡Subida completada!', 100);
   return data.url;
 }
+

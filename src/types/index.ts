@@ -85,6 +85,7 @@ export interface ProductCollection {
   productIds: string[];
   showOnIndex?: boolean;
   indexOrder?: number;
+  isSynergy?: boolean;
   seo: ProductSEO;
   seo_en?: ProductSEO;
   parentCategory?: string | null;
