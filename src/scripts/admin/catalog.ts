@@ -730,7 +730,6 @@ const closeCrop = () => {
 closeCropModal?.addEventListener('click', closeCrop);
 cancelCropBtn?.addEventListener('click', closeCrop);
 
-// --- 6. SKU and Slug Computation ---
 function cleanSkuPart(val: string): string {
   return val
     .toUpperCase()
@@ -740,15 +739,19 @@ function cleanSkuPart(val: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+function getBranchColorCode(branchEl: HTMLElement): string {
+  const branches = Array.from(document.querySelectorAll('.color-branch'));
+  const idx = branches.indexOf(branchEl);
+  return `COLOR${idx >= 0 ? idx + 1 : 1}`;
+}
+
 function updateAllSKUs() {
   if (!slugInput) return;
   const slugVal = cleanSkuPart(slugInput.value);
   const productBranches = document.querySelectorAll('.color-branch');
   
-  productBranches.forEach((branch) => {
-    const colorNameInput = branch.querySelector('.color-name') as HTMLInputElement;
-    if (!colorNameInput) return;
-    const colorVal = cleanSkuPart(colorNameInput.value);
+  productBranches.forEach((branch, bIdx) => {
+    const colorCode = `COLOR${bIdx + 1}`;
     const sizeRows = branch.querySelectorAll('.size-row');
     
     sizeRows.forEach((row) => {
@@ -757,7 +760,7 @@ function updateAllSKUs() {
       if (!sizeInput || !skuInput) return;
       const sizeVal = cleanSkuPart(sizeInput.value);
       
-      const parts = [slugVal, colorVal, sizeVal].filter(Boolean);
+      const parts = [slugVal, colorCode, sizeVal].filter(Boolean);
       skuInput.value = parts.join('-');
     });
   });
@@ -766,9 +769,7 @@ function updateAllSKUs() {
 function updateSKUsForBranch(branchEl: HTMLElement) {
   if (!slugInput) return;
   const slugVal = cleanSkuPart(slugInput.value);
-  const colorNameInput = branchEl.querySelector('.color-name') as HTMLInputElement;
-  if (!colorNameInput) return;
-  const colorVal = cleanSkuPart(colorNameInput.value);
+  const colorCode = getBranchColorCode(branchEl);
   
   const sizeRows = branchEl.querySelectorAll('.size-row');
   sizeRows.forEach((row) => {
@@ -777,7 +778,7 @@ function updateSKUsForBranch(branchEl: HTMLElement) {
     if (!sizeInput || !skuInput) return;
     const sizeVal = cleanSkuPart(sizeInput.value);
     
-    const parts = [slugVal, colorVal, sizeVal].filter(Boolean);
+    const parts = [slugVal, colorCode, sizeVal].filter(Boolean);
     skuInput.value = parts.join('-');
   });
 }
@@ -1903,7 +1904,7 @@ function createSizeRowHTML(_branchId: string, sizeData: any = {}) {
         <input type="text" placeholder="Talla" value="${sizeName}" class="size-name w-full bg-white text-slate-900 border border-slate-200 rounded-lg px-2 py-1 text-3xs focus:outline-none focus:border-rose-600 font-bold text-center uppercase" required />
       </td>
       <td class="py-2 px-2">
-        <input type="text" placeholder="SKU" value="${sku}" class="size-sku w-full bg-white text-slate-900 border border-slate-200 rounded-lg px-2 py-1 text-3xs font-mono focus:outline-none focus:border-rose-600" required />
+        <input type="text" placeholder="SKU (Auto)" value="${sku}" class="size-sku w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-2 py-1 text-3xs font-mono cursor-not-allowed select-none focus:outline-none" readonly title="El SKU de la variante se genera automáticamente de forma fija" required />
       </td>
       <td class="py-2 px-2">
         <input type="number" step="0.01" placeholder="0.00" value="${price}" class="size-price w-full bg-white text-slate-950 border border-slate-200 rounded-lg px-2 py-1 text-3xs focus:outline-none focus:border-rose-600 font-mono text-right" required />
@@ -2458,6 +2459,7 @@ function addColorBranch(colorName = '', colorHex = '#0f172a', imageUrl = '', siz
 
   card.querySelector('.remove-branch-btn')?.addEventListener('click', () => {
     card.remove();
+    updateAllSKUs();
     updateGeneralStockSum();
   });
 
