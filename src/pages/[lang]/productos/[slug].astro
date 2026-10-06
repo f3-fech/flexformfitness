@@ -39,7 +39,19 @@ interface Props {
   product: Product;
 }
 
-const { product } = Astro.props;
+let { product } = Astro.props;
+
+// In dev mode, fetch fresh product from Firestore so admin edits (color, variants, stock) reflect immediately
+if (import.meta.env.DEV && Astro.params.slug) {
+  try {
+    const freshSnap = await db.collection('products').where('slug', '==', Astro.params.slug).limit(1).get();
+    if (!freshSnap.empty) {
+      product = { id: freshSnap.docs[0].id, ...freshSnap.docs[0].data() } as Product;
+    }
+  } catch (err) {
+    console.error('Error fetching fresh product in DEV mode:', err);
+  }
+}
 
 if (!product) {
   return Astro.redirect('/404');

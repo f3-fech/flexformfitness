@@ -1176,43 +1176,80 @@ if (megamenuBridgeEl) {
 }
 
 // --- STORE COLORS PALETTE MANAGER IN SETTINGS ---
+import { isLightColor, formatHex, isValidHex, presetFitnessColors, getColorHex } from '../../lib/utils';
+
+let currentColorFilterQuery = '';
+
 export function renderSettingsColorsList() {
   const container = document.getElementById('settings-colors-list');
+  const countBadge = document.getElementById('settings-colors-count');
   if (!container) return;
 
-  const colors = getStoreColors();
+  const allColors = getStoreColors();
+  if (countBadge) {
+    countBadge.textContent = `${allColors.length} ${allColors.length === 1 ? 'color' : 'colores'}`;
+  }
+
+  const query = currentColorFilterQuery.toLowerCase().trim();
+  const colors = query
+    ? allColors.filter((c) => c.name.toLowerCase().includes(query) || c.hex.toLowerCase().includes(query))
+    : allColors;
+
   container.innerHTML = '';
 
-  colors.forEach((col, idx) => {
+  if (colors.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-400">
+        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z"/></svg>
+        <span class="text-xs font-bold text-slate-500">${query ? 'No se encontraron colores que coincidan' : 'No hay colores guardados en la paleta'}</span>
+        <span class="text-3xs text-slate-400">${query ? 'Prueba con otro término de búsqueda' : 'Utiliza el creador superior para añadir nuevos colores'}</span>
+      </div>
+    `;
+    return;
+  }
+
+  colors.forEach((col) => {
+    const originalIdx = allColors.findIndex((c) => c.name === col.name && c.hex === col.hex);
+    const idx = originalIdx >= 0 ? originalIdx : 0;
+    const isLight = isLightColor(col.hex);
+
     const card = document.createElement('div');
-    card.className = 'group p-3 rounded-xl border border-slate-200 bg-white flex flex-col gap-2 shadow-2xs hover:border-slate-300 transition-all';
+    card.className = 'group p-3 rounded-2xl border border-slate-200 bg-white flex flex-col gap-2.5 shadow-2xs hover:border-slate-300 hover:shadow-sm transition-all relative';
     card.innerHTML = `
-      <div class="color-setting-view flex items-center justify-between gap-2">
+      <div class="color-setting-view flex items-center justify-between gap-2.5">
         <div class="flex items-center gap-2.5 overflow-hidden flex-1 select-none">
-          <span class="w-5 h-5 rounded-full border border-slate-300 shrink-0 shadow-3xs" style="background-color: ${col.hex}"></span>
+          <span class="w-7 h-7 rounded-xl ${isLight ? 'border border-slate-300' : 'border border-black/10'} shrink-0 shadow-2xs transition-transform group-hover:scale-105" style="background-color: ${col.hex}"></span>
           <div class="flex flex-col overflow-hidden">
             <span class="text-xs font-bold text-slate-800 truncate capitalize">${col.name}</span>
-            <span class="text-[10px] font-mono text-slate-400 uppercase">${col.hex}</span>
+            <span class="text-[10px] font-mono font-extrabold text-slate-400 uppercase tracking-wider">${col.hex}</span>
           </div>
         </div>
         <div class="flex items-center gap-1 shrink-0">
-          <button type="button" class="edit-setting-color-btn p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer" title="Editar color">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+          <button type="button" class="edit-setting-color-btn p-1.5 text-slate-400 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer" title="Editar color">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
           </button>
           <button type="button" class="del-setting-color-btn p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="Eliminar color">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
       </div>
 
-      <div class="color-setting-edit hidden flex flex-col gap-2 pt-1">
+      <div class="color-setting-edit hidden flex flex-col gap-2 pt-1 border-t border-slate-100">
         <div class="flex gap-2 items-center">
-          <input type="color" class="edit-color-hex-input w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="${col.hex}" />
-          <input type="text" class="edit-color-name-input min-w-0 flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-600" value="${col.name}" />
+          <div class="relative shrink-0">
+            <input type="color" class="edit-color-hex-input w-8 h-8 rounded-lg border border-slate-300 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="${col.hex}" />
+          </div>
+          <div class="flex-1 flex flex-col gap-1">
+            <input type="text" class="edit-color-name-input w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-rose-600 focus:bg-white" value="${col.name}" placeholder="Nombre" />
+            <div class="flex items-center gap-1">
+              <span class="text-[10px] font-mono font-bold text-slate-400">#</span>
+              <input type="text" class="edit-color-hex-text w-full bg-transparent text-[10px] font-mono font-extrabold text-slate-700 uppercase focus:outline-none" value="${col.hex.replace(/^#/, '')}" maxlength="7" />
+            </div>
+          </div>
         </div>
-        <div class="flex justify-end gap-1.5">
+        <div class="flex justify-end gap-1.5 pt-1">
           <button type="button" class="cancel-edit-color-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-3xs font-bold uppercase transition-colors shrink-0 cursor-pointer">Cancelar</button>
-          <button type="button" class="save-edit-color-btn px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors shrink-0 cursor-pointer">Guardar</button>
+          <button type="button" class="save-edit-color-btn px-3 py-1 bg-slate-950 hover:bg-rose-600 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors shrink-0 cursor-pointer shadow-3xs">Guardar</button>
         </div>
       </div>
     `;
@@ -1223,6 +1260,20 @@ export function renderSettingsColorsList() {
     const delBtn = card.querySelector('.del-setting-color-btn') as HTMLButtonElement;
     const saveBtn = card.querySelector('.save-edit-color-btn') as HTMLButtonElement;
     const cancelBtn = card.querySelector('.cancel-edit-color-btn') as HTMLButtonElement;
+    const editHexInput = card.querySelector('.edit-color-hex-input') as HTMLInputElement;
+    const editHexText = card.querySelector('.edit-color-hex-text') as HTMLInputElement;
+
+    // Sync inline edit color inputs
+    editHexInput?.addEventListener('input', () => {
+      if (editHexText) editHexText.value = editHexInput.value.replace(/^#/, '').toUpperCase();
+    });
+
+    editHexText?.addEventListener('input', () => {
+      const clean = editHexText.value.trim().replace(/^#/, '');
+      if (isValidHex(clean)) {
+        editHexInput.value = formatHex(clean);
+      }
+    });
 
     editBtn?.addEventListener('click', () => {
       viewMode.classList.add('hidden');
@@ -1236,30 +1287,30 @@ export function renderSettingsColorsList() {
 
     saveBtn?.addEventListener('click', async () => {
       const nameInput = card.querySelector('.edit-color-name-input') as HTMLInputElement;
-      const hexInput = card.querySelector('.edit-color-hex-input') as HTMLInputElement;
       const newName = nameInput.value.trim();
-      const newHex = hexInput.value;
+      const rawHexText = editHexText?.value.trim() || editHexInput?.value;
+      const newHex = formatHex(rawHexText, col.hex);
 
       if (!newName) {
         showToast('El nombre no puede estar vacío', 'error');
         return;
       }
 
-      const updated = [...colors];
+      const updated = [...allColors];
       updated[idx] = { name: newName, hex: newHex };
       setStoreColors(updated);
       renderSettingsColorsList();
 
       try {
         await actions.updateStoreColors({ savedColors: updated });
-        showToast(`Color "${newName}" guardado`, 'success');
+        showToast(`Color "${newName}" actualizado`, 'success');
       } catch (err) {
         console.error(err);
       }
     });
 
     delBtn?.addEventListener('click', async () => {
-      const updated = colors.filter((_, i) => i !== idx);
+      const updated = allColors.filter((_, i) => i !== idx);
       setStoreColors(updated);
       renderSettingsColorsList();
 
@@ -1277,16 +1328,87 @@ export function renderSettingsColorsList() {
 
 (window as any).renderSettingsColorsList = renderSettingsColorsList;
 
+// Color Creator Studio Controls in Settings
 const settingsAddColorBtn = document.getElementById('settings-add-color-btn') as HTMLButtonElement;
 const settingsNewColorName = document.getElementById('settings-new-color-name') as HTMLInputElement;
 const settingsNewColorHex = document.getElementById('settings-new-color-hex') as HTMLInputElement;
+const settingsNewColorHexText = document.getElementById('settings-new-color-hex-text') as HTMLInputElement;
+const settingsSwatchPreview = document.getElementById('settings-color-swatch-preview') as HTMLSpanElement;
+const settingsQuickPresets = document.getElementById('settings-quick-presets') as HTMLDivElement;
+const settingsColorsSearch = document.getElementById('settings-colors-search') as HTMLInputElement;
 const settingsSaveColorsBtn = document.getElementById('settings-save-colors-btn') as HTMLButtonElement;
 
-settingsAddColorBtn?.addEventListener('click', async () => {
-  const name = settingsNewColorName.value.trim();
+// Render Quick Preset Chips
+export function initSettingsQuickPresets() {
+  if (!settingsQuickPresets) return;
+  settingsQuickPresets.innerHTML = '';
+
+  const presets = presetFitnessColors.slice(0, 16);
+  presets.forEach((p) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-all text-3xs font-bold text-slate-700 cursor-pointer shadow-3xs active:scale-95';
+    
+    const isLight = isLightColor(p.hex);
+    chip.innerHTML = `
+      <span class="w-3 h-3 rounded-full ${isLight ? 'border border-slate-300' : 'border border-black/10'} shrink-0" style="background-color: ${p.hex}"></span>
+      <span class="truncate">${p.name.split('/')[0].trim()}</span>
+    `;
+
+    chip.addEventListener('click', () => {
+      if (settingsNewColorHex) settingsNewColorHex.value = p.hex;
+      if (settingsNewColorHexText) settingsNewColorHexText.value = p.hex.replace(/^#/, '').toUpperCase();
+      if (settingsNewColorName) settingsNewColorName.value = p.name.split('/')[0].trim();
+      if (settingsSwatchPreview) settingsSwatchPreview.style.backgroundColor = p.hex;
+    });
+
+    settingsQuickPresets.appendChild(chip);
+  });
+}
+
+// Live sync color picker & hex input
+settingsNewColorHex?.addEventListener('input', () => {
   const hex = settingsNewColorHex.value;
+  if (settingsNewColorHexText) settingsNewColorHexText.value = hex.replace(/^#/, '').toUpperCase();
+  if (settingsSwatchPreview) settingsSwatchPreview.style.backgroundColor = hex;
+});
+
+settingsNewColorHexText?.addEventListener('input', () => {
+  const clean = settingsNewColorHexText.value.trim().replace(/^#/, '');
+  if (isValidHex(clean)) {
+    const formatted = formatHex(clean);
+    if (settingsNewColorHex) settingsNewColorHex.value = formatted;
+    if (settingsSwatchPreview) settingsSwatchPreview.style.backgroundColor = formatted;
+  }
+});
+
+// Auto-suggest hex on typing color name if unchanged
+settingsNewColorName?.addEventListener('input', () => {
+  const name = settingsNewColorName.value.trim();
+  if (name.length >= 3) {
+    const guessed = getColorHex(name);
+    if (guessed && guessed !== '#64748b' && (!settingsNewColorHexText?.value || settingsNewColorHexText.value === 'DB2777')) {
+      if (settingsNewColorHex) settingsNewColorHex.value = guessed;
+      if (settingsNewColorHexText) settingsNewColorHexText.value = guessed.replace(/^#/, '').toUpperCase();
+      if (settingsSwatchPreview) settingsSwatchPreview.style.backgroundColor = guessed;
+    }
+  }
+});
+
+// Search filter
+settingsColorsSearch?.addEventListener('input', () => {
+  currentColorFilterQuery = settingsColorsSearch.value;
+  renderSettingsColorsList();
+});
+
+settingsAddColorBtn?.addEventListener('click', async () => {
+  const name = settingsNewColorName?.value.trim();
+  const hexRaw = settingsNewColorHexText?.value.trim() || settingsNewColorHex?.value || '#0f172a';
+  const hex = formatHex(hexRaw);
+
   if (!name) {
     showToast('Introduce un nombre para el color', 'error');
+    settingsNewColorName?.focus();
     return;
   }
 
@@ -1302,8 +1424,8 @@ settingsAddColorBtn?.addEventListener('click', async () => {
 
   setStoreColors(updated);
   renderSettingsColorsList();
-  settingsNewColorName.value = '';
-  showToast(`Color "${name}" añadido a la paleta`, 'success');
+  if (settingsNewColorName) settingsNewColorName.value = '';
+  showToast(`Color "${name}" (${hex}) guardado en la paleta`, 'success');
 
   try {
     await actions.updateStoreColors({ savedColors: updated });
@@ -1326,8 +1448,13 @@ settingsSaveColorsBtn?.addEventListener('click', async () => {
 
 // Initial render
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', renderSettingsColorsList);
+  document.addEventListener('DOMContentLoaded', () => {
+    initSettingsQuickPresets();
+    renderSettingsColorsList();
+  });
 } else {
+  initSettingsQuickPresets();
   renderSettingsColorsList();
 }
+
 

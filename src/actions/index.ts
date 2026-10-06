@@ -22,6 +22,7 @@ const variantSchema = z.object({
   price: z.number().int().nonnegative('Price must be positive (in cents)'),
   stock: z.number().int().nonnegative('Stock must be positive'),
   image: z.string().url('Image must be a valid URL').optional().nullable(),
+  colorHex: z.string().optional().nullable(),
 });
 
 const seoSchema = z.object({
@@ -514,7 +515,47 @@ export const server = {
           });
         }
 
+        // 1. Delete product document
         await productRef.delete();
+
+        // 2. Remove product from all collections referencing it
+        const collectionsSnap = await db.collection('collections').where('productIds', 'array-contains', input.id).get();
+        if (!collectionsSnap.empty) {
+          const batch = db.batch();
+          collectionsSnap.docs.forEach((colDoc) => {
+            const data = colDoc.data();
+            const updatedProductIds = (data.productIds || []).filter((pid: string) => pid !== input.id);
+            batch.update(colDoc.ref, { productIds: updatedProductIds, updatedAt: new Date() });
+          });
+          await batch.commit();
+        }
+
+        // 3. Remove product from active database carts
+        const cartsSnap = await db.collection('carts').get();
+        if (!cartsSnap.empty) {
+          const cartBatch = db.batch();
+          let cartUpdatesCount = 0;
+          cartsSnap.docs.forEach((cartDoc) => {
+            const cartData = cartDoc.data();
+            const items = cartData.items || {};
+            let modified = false;
+            const newItems: Record<string, any> = {};
+            for (const [key, item] of Object.entries(items) as [string, any][]) {
+              if (item?.productId === input.id) {
+                modified = true;
+              } else {
+                newItems[key] = item;
+              }
+            }
+            if (modified) {
+              cartBatch.update(cartDoc.ref, { items: newItems, updatedAt: new Date() });
+              cartUpdatesCount++;
+            }
+          });
+          if (cartUpdatesCount > 0) {
+            await cartBatch.commit();
+          }
+        }
 
         return { success: true };
       } catch (error: any) {
@@ -1123,6 +1164,51 @@ export const server = {
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Error al guardar el carrito en la base de datos.',
         });
+      }
+    },
+  }),
+
+  validateCartItems: defineAction({
+    accept: 'json',
+    input: z.object({
+      items: z.array(z.object({
+        key: z.string(),
+        productId: z.string(),
+        variantSku: z.string().optional().nullable(),
+        title: z.string().optional(),
+      })),
+    }),
+    handler: async (input) => {
+      try {
+        const removedKeys: string[] = [];
+        const removedTitles: string[] = [];
+
+        for (const item of input.items) {
+          const productDoc = await db.collection('products').doc(item.productId).get();
+          if (!productDoc.exists) {
+            removedKeys.push(item.key);
+            removedTitles.push(item.title || 'Producto');
+            continue;
+          }
+
+          const product = productDoc.data() as Product;
+          if (item.variantSku) {
+            const variantExists = (product.variants || []).some((v) => v.sku === item.variantSku);
+            if (!variantExists) {
+              removedKeys.push(item.key);
+              removedTitles.push(item.title || 'Variante de producto');
+            }
+          }
+        }
+
+        return {
+          valid: removedKeys.length === 0,
+          removedKeys,
+          removedTitles,
+        };
+      } catch (error: any) {
+        console.error('Error validating cart items:', error);
+        return { valid: true, removedKeys: [], removedTitles: [] };
       }
     },
   }),

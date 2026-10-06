@@ -3,6 +3,7 @@ import { db } from '../../lib/firebase';
 import type { Product, ProductCollection } from '../../types';
 import SEO from '../../components/SEO.astro';
 import Navbar from '../../components/Navbar.astro';
+import { getColorHex, isLightColor } from '../../lib/utils';
 
 export const prerender = true;
 
@@ -24,24 +25,6 @@ const getObjectPosition = (url: string | undefined): string => {
     return match[1].replace('_', ' ');
   }
   return 'center';
-};
-
-// Helper for color hex
-const getColorHex = (colorName: string): string => {
-  const name = colorName.toLowerCase().trim();
-  const colorMap: Record<string, string> = {
-    'negro': '#0f172a',
-    'black': '#0f172a',
-    'gris': '#94a3b8',
-    'grey': '#94a3b8',
-    'blanco': '#ffffff',
-    'white': '#ffffff',
-    'rojo': '#dc2626',
-    'red': '#dc2626',
-    'militar': '#4d5d43',
-    'oliva': '#556b2f',
-  };
-  return colorMap[name] || '#cbd5e1';
 };
 
 // Fetch synergy collections from Firestore

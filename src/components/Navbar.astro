@@ -3,6 +3,7 @@ import { db } from '../lib/firebase';
 import type { Product, ProductCollection } from '../types';
 import { getGeneralSettings } from '../lib/settings';
 import { useTranslations } from '../lib/i18n';
+import { getColorHex, isLightColor } from '../lib/utils';
 
 let collections: ProductCollection[] = [];
 try {
@@ -23,43 +24,6 @@ try {
 } catch (e) {
   console.error('Error loading products for Navbar search:', e);
 }
-
-// Helper to get color hex
-const getColorHex = (colorName: string): string => {
-  const name = colorName.toLowerCase().trim();
-  const colorMap: Record<string, string> = {
-    'negro': '#0f172a',
-    'black': '#0f172a',
-    'gris': '#94a3b8',
-    'grey': '#94a3b8',
-    'gray': '#94a3b8',
-    'gris-oscuro': '#4b5563',
-    'rosa': '#db2777',
-    'pink': '#db2777',
-    'rojo': '#dc2626',
-    'red': '#dc2626',
-    'azul': '#2563eb',
-    'blue': '#2563eb',
-    'verde': '#16a34a',
-    'green': '#16a34a',
-    'blanco': '#f8fafc',
-    'white': '#f8fafc',
-    'amarillo': '#ca8a04',
-    'yellow': '#ca8a04',
-    'lila': '#d8b4fe',
-    'lavender': '#d8b4fe',
-    'naranja': '#ea580c',
-    'orange': '#ea580c',
-    'marron': '#78350f',
-    'brown': '#78350f',
-    'beige': '#f5f5dc',
-    'navy': '#1e3a8a',
-    'marino': '#1e3a8a',
-    'celeste': '#38bdf8',
-    'unisex': '#64748b'
-  };
-  return colorMap[name] || '#cbd5e1';
-};
 
 interface SwatchColor {
   name: string;

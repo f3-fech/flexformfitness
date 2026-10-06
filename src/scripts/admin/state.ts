@@ -121,21 +121,6 @@ export function setDbCollections(cols: any[]) {
   }
 }
 
-const defaultPresetColors = [
-  { name: 'Negro', hex: '#0f172a' },
-  { name: 'Blanco', hex: '#ffffff' },
-  { name: 'Gris', hex: '#94a3b8' },
-  { name: 'Gris Oscuro', hex: '#4b5563' },
-  { name: 'Rosa', hex: '#db2777' },
-  { name: 'Amarillo', hex: '#fbbf24' },
-  { name: 'Azul Metalizado', hex: '#475569' },
-  { name: 'Azul Marino', hex: '#1e3a8a' },
-  { name: 'Azul Claro', hex: '#a5f3fc' },
-  { name: 'Rojo', hex: '#dc2626' },
-  { name: 'Verde', hex: '#16a34a' },
-  { name: 'Naranja', hex: '#ea580c' },
-];
-
 let cachedSavedColors: Array<{ name: string; hex: string }> | null = null;
 
 export function getStoreColors(): Array<{ name: string; hex: string }> {
@@ -148,12 +133,11 @@ export function getStoreColors(): Array<{ name: string; hex: string }> {
       } catch {
         cachedSavedColors = [];
       }
-    }
-    if (!cachedSavedColors || cachedSavedColors.length === 0) {
-      cachedSavedColors = defaultPresetColors;
+    } else {
+      cachedSavedColors = [];
     }
   }
-  return cachedSavedColors;
+  return cachedSavedColors || [];
 }
 
 export function setStoreColors(colors: Array<{ name: string; hex: string }>) {

@@ -1,5 +1,5 @@
 import { actions } from 'astro:actions';
-import { getObjectPosition, getColorHex } from '../../lib/utils';
+import { getObjectPosition, getColorHex, isLightColor, formatHex, isValidHex, presetFitnessColors } from '../../lib/utils';
 import { state, getDbCollections, getDbProducts, getStoreColors, setStoreColors } from './state';
 import { toggleModal, showToast, blobToBase64, handleImageUpload } from './utils';
 
@@ -581,7 +581,10 @@ openNewProductModal?.addEventListener('click', () => {
   renderProductMedia();
 
   variantTreeContainer.innerHTML = '';
-  addColorBranch('negro', '#0f172a', '', [
+  const firstSavedColor = getStoreColors()[0];
+  const initialColorName = firstSavedColor?.name || 'Negro';
+  const initialColorHex = firstSavedColor?.hex || '#0f172a';
+  addColorBranch(initialColorName, initialColorHex, '', [
     { size: 'xs', sku: '', price: '', stock: '10' },
     { size: 's', sku: '', price: '', stock: '10' },
     { size: 'm', sku: '', price: '', stock: '10' }
@@ -1917,6 +1920,7 @@ function createSizeRowHTML(_branchId: string, sizeData: any = {}) {
 
 function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
   const grid = popoverEl.querySelector('.color-list-grid') as HTMLDivElement;
+  const searchInput = popoverEl.querySelector('.popover-color-search') as HTMLInputElement;
   if (!grid) return;
 
   const colorNameInput = card.querySelector('.color-name') as HTMLInputElement;
@@ -1924,18 +1928,49 @@ function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
   const badge = card.querySelector('.color-swatch-badge') as HTMLSpanElement;
   const label = card.querySelector('.color-selected-label') as HTMLSpanElement;
 
-  const storeColors = getStoreColors();
+  const currentColorName = (colorNameInput.value || '').trim().toLowerCase();
+  const currentColorHex = (colorHexInput.value || '').trim().toLowerCase();
+
+  const allColors = getStoreColors();
+  const filterQuery = (searchInput?.value || '').trim().toLowerCase();
+
+  const colors = filterQuery
+    ? allColors.filter((c) => c.name.toLowerCase().includes(filterQuery) || c.hex.toLowerCase().includes(filterQuery))
+    : allColors;
+
   grid.innerHTML = '';
 
-  storeColors.forEach((col, idx) => {
+  if (colors.length === 0) {
+    grid.innerHTML = `
+      <div class="py-4 text-center text-slate-400 text-3xs font-medium">
+        No se encontraron colores coincidentes
+      </div>
+    `;
+  }
+
+  colors.forEach((col) => {
+    const originalIdx = allColors.findIndex((c) => c.name === col.name && c.hex === col.hex);
+    const idx = originalIdx >= 0 ? originalIdx : 0;
+    const isLight = isLightColor(col.hex);
+    const isSelected = currentColorName === col.name.toLowerCase() || currentColorHex === col.hex.toLowerCase();
+
     const item = document.createElement('div');
-    item.className = 'group flex flex-col p-1.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/70 transition-all text-left';
+    item.className = `group flex flex-col p-2 rounded-xl border transition-all text-left ${
+      isSelected 
+        ? 'border-rose-500 bg-rose-50/60 shadow-2xs' 
+        : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50/90'
+    }`;
     item.innerHTML = `
       <!-- View Mode -->
       <div class="color-item-view flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2 overflow-hidden flex-1 select-none cursor-pointer select-color-btn">
-          <span class="w-4 h-4 rounded-full border border-slate-300 shrink-0 shadow-3xs" style="background-color: ${col.hex}"></span>
-          <span class="text-xs font-bold text-slate-800 truncate capitalize">${col.name}</span>
+        <div class="flex items-center gap-2.5 overflow-hidden flex-1 select-none cursor-pointer select-color-btn">
+          <span class="w-5 h-5 rounded-lg ${isLight ? 'border border-slate-300' : 'border border-black/10'} shrink-0 shadow-3xs flex items-center justify-center transition-transform group-hover:scale-105" style="background-color: ${col.hex}">
+            ${isSelected ? `<svg class="w-3 h-3 ${isLight ? 'text-slate-900' : 'text-white'}" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>` : ''}
+          </span>
+          <div class="flex flex-col overflow-hidden">
+            <span class="text-xs font-bold ${isSelected ? 'text-rose-950' : 'text-slate-800'} truncate capitalize">${col.name}</span>
+            <span class="text-[9px] font-mono font-extrabold text-slate-400 uppercase tracking-wider">${col.hex}</span>
+          </div>
         </div>
         <div class="flex items-center gap-1 shrink-0">
           <button type="button" class="edit-color-btn opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/60 transition-all cursor-pointer" title="Editar color">
@@ -1948,16 +1983,20 @@ function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
       </div>
 
       <!-- Edit Mode -->
-      <div class="color-item-edit hidden flex items-center gap-1.5 pt-1 w-full">
-        <input type="color" class="edit-hex-input w-7 h-7 rounded-lg border border-slate-200 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="${col.hex}" />
-        <input type="text" class="edit-name-input min-w-0 flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-600" value="${col.name}" />
-        <div class="flex items-center gap-1 shrink-0">
-          <button type="button" class="save-edit-btn px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors cursor-pointer" title="Guardar">
-            ✓
-          </button>
-          <button type="button" class="cancel-edit-btn px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-3xs font-extrabold uppercase transition-colors cursor-pointer" title="Cancelar">
-            ✕
-          </button>
+      <div class="color-item-edit hidden flex flex-col gap-2 pt-1 border-t border-slate-100">
+        <div class="flex gap-2 items-center">
+          <input type="color" class="edit-hex-input w-7 h-7 rounded-lg border border-slate-300 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="${col.hex}" />
+          <div class="flex-1 flex flex-col gap-1">
+            <input type="text" class="edit-name-input w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-600 focus:bg-white" value="${col.name}" placeholder="Nombre" />
+            <div class="flex items-center gap-1">
+              <span class="text-[9px] font-mono font-bold text-slate-400">#</span>
+              <input type="text" class="edit-hex-text w-full bg-transparent text-[9px] font-mono font-extrabold text-slate-700 uppercase focus:outline-none" value="${col.hex.replace(/^#/, '')}" maxlength="7" />
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end items-center gap-1">
+          <button type="button" class="cancel-edit-btn px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-3xs font-bold uppercase transition-colors cursor-pointer">Cancelar</button>
+          <button type="button" class="save-edit-btn px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-extrabold uppercase transition-colors cursor-pointer">Guardar</button>
         </div>
       </div>
     `;
@@ -1969,11 +2008,28 @@ function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
     const delBtn = item.querySelector('.delete-color-btn') as HTMLButtonElement;
     const saveEditBtn = item.querySelector('.save-edit-btn') as HTMLButtonElement;
     const cancelEditBtn = item.querySelector('.cancel-edit-btn') as HTMLButtonElement;
+    const editHexInput = item.querySelector('.edit-hex-input') as HTMLInputElement;
+    const editHexText = item.querySelector('.edit-hex-text') as HTMLInputElement;
+
+    // Sync inline edit
+    editHexInput?.addEventListener('input', () => {
+      if (editHexText) editHexText.value = editHexInput.value.replace(/^#/, '').toUpperCase();
+    });
+
+    editHexText?.addEventListener('input', () => {
+      const clean = editHexText.value.trim().replace(/^#/, '');
+      if (isValidHex(clean)) {
+        editHexInput.value = formatHex(clean);
+      }
+    });
 
     selectArea.addEventListener('click', () => {
       colorNameInput.value = col.name;
       colorHexInput.value = col.hex;
-      if (badge) badge.style.backgroundColor = col.hex;
+      if (badge) {
+        badge.style.backgroundColor = col.hex;
+        badge.className = `color-swatch-badge w-4 h-4 rounded-full ${isLightColor(col.hex) ? 'border border-slate-300' : 'border border-black/10'} shadow-2xs shrink-0`;
+      }
       if (label) label.textContent = col.name;
 
       updateSKUsForBranch(card);
@@ -1995,24 +2051,26 @@ function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
     saveEditBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const editNameInput = item.querySelector('.edit-name-input') as HTMLInputElement;
-      const editHexInput = item.querySelector('.edit-hex-input') as HTMLInputElement;
-
       const newName = editNameInput.value.trim();
-      const newHex = editHexInput.value;
+      const rawHex = editHexText?.value.trim() || editHexInput?.value;
+      const newHex = formatHex(rawHex, col.hex);
 
       if (!newName) {
         showToast('El nombre del color no puede estar vacío', 'error');
         return;
       }
 
-      const updatedColors = [...storeColors];
+      const updatedColors = [...allColors];
       updatedColors[idx] = { name: newName, hex: newHex };
       setStoreColors(updatedColors);
 
       if (colorNameInput.value.toLowerCase() === col.name.toLowerCase()) {
         colorNameInput.value = newName;
         colorHexInput.value = newHex;
-        if (badge) badge.style.backgroundColor = newHex;
+        if (badge) {
+          badge.style.backgroundColor = newHex;
+          badge.className = `color-swatch-badge w-4 h-4 rounded-full ${isLightColor(newHex) ? 'border border-slate-300' : 'border border-black/10'} shadow-2xs shrink-0`;
+        }
         if (label) label.textContent = newName;
         updateSKUsForBranch(card);
       }
@@ -2029,7 +2087,7 @@ function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
 
     delBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const updatedColors = storeColors.filter((_, i) => i !== idx);
+      const updatedColors = allColors.filter((_, i) => i !== idx);
       setStoreColors(updatedColors);
       renderColorPopoverContent(popoverEl, card);
 
@@ -2045,7 +2103,7 @@ function renderColorPopoverContent(popoverEl: HTMLElement, card: HTMLElement) {
   });
 }
 
-function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', sizes: any[] = []) {
+function addColorBranch(colorName = '', colorHex = '#0f172a', imageUrl = '', sizes: any[] = []) {
   state.branchIndex++;
   const branchId = `branch-${state.branchIndex}`;
   
@@ -2053,7 +2111,8 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
   card.className = 'color-branch border border-slate-200 bg-white p-4 rounded-2xl flex flex-col gap-3 relative shadow-2xs';
   card.id = branchId;
 
-  const resolvedHex = (colorHex && colorHex !== '#e11d48') ? colorHex : (getColorHex(colorName) || '#0f172a');
+  const resolvedHex = formatHex(colorHex || getColorHex(colorName) || '#0f172a');
+  const isLight = isLightColor(resolvedHex);
   
   card.innerHTML = `
     <div class="flex justify-between items-center gap-3 border-b border-slate-100 pb-2">
@@ -2061,7 +2120,7 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
         <span class="text-3xs font-bold text-slate-400 uppercase tracking-wider shrink-0">Color/Estilo:</span>
         
         <button type="button" class="color-palette-trigger flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2 transition-all cursor-pointer text-left shrink-0 shadow-3xs">
-          <span class="color-swatch-badge w-4 h-4 rounded-full border border-slate-300 shadow-2xs shrink-0" style="background-color: ${resolvedHex}"></span>
+          <span class="color-swatch-badge w-4 h-4 rounded-full ${isLight ? 'border border-slate-300' : 'border border-black/10'} shadow-2xs shrink-0" style="background-color: ${resolvedHex}"></span>
           <span class="color-selected-label text-xs font-bold text-slate-800 capitalize">${colorName || 'Seleccionar color'}</span>
           <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
         </button>
@@ -2070,23 +2129,75 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
         <input type="hidden" value="${resolvedHex}" class="color-hex" />
 
         <!-- Color Palette Popover Dropdown -->
-        <div class="color-popover hidden absolute top-full left-0 mt-2 w-84 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3.5 flex flex-col gap-3 animate-fade-in">
-          <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-            <span class="text-3xs font-black text-slate-500 uppercase tracking-wider">Paleta de la Tienda</span>
-          </div>
-
-          <div class="color-list-grid max-h-52 overflow-y-auto flex flex-col gap-1.5 pr-2">
-          </div>
-
-          <div class="border-t border-slate-100 pt-3 flex flex-col gap-2">
-            <span class="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">+ Crear Nuevo Color</span>
-            <div class="flex items-center gap-2">
-              <input type="color" class="new-color-hex w-9 h-9 rounded-xl border border-slate-200 cursor-pointer p-0 shrink-0 bg-transparent shadow-3xs" value="#db2777" title="Elige color" />
-              <input type="text" class="new-color-name flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-rose-600" placeholder="Nombre p.ej. Rosa Palo" />
+        <div class="color-popover hidden absolute top-full left-0 mt-2 w-84 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 flex flex-col gap-3.5 animate-fade-in max-h-[85vh] overflow-y-auto">
+          <!-- Popover Header & Search -->
+          <div class="flex flex-col gap-2 border-b border-slate-100 pb-2.5">
+            <div class="flex justify-between items-center">
+              <span class="text-3xs font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+                Paleta de Colores
+              </span>
+              <span class="text-[10px] text-slate-400 font-medium">Elige o crea un color</span>
             </div>
-            <button type="button" class="add-new-color-btn w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-3xs font-extrabold uppercase tracking-wider transition-all shrink-0 cursor-pointer shadow-3xs active:scale-95 text-center">
-              + Añadir a la Paleta
-            </button>
+            <div class="relative">
+              <input type="text" placeholder="Buscar color en catálogo..." class="popover-color-search w-full bg-slate-50 border border-slate-200 rounded-xl pl-7 pr-3 py-1.5 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:bg-white" />
+              <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+            </div>
+          </div>
+
+          <!-- Store Colors List Grid -->
+          <div class="color-list-grid max-h-48 overflow-y-auto flex flex-col gap-1.5 pr-1">
+          </div>
+
+          <!-- Color Studio / Creator -->
+          <div class="border-t border-slate-100 pt-3 flex flex-col gap-3 bg-slate-50/80 -mx-4 -mb-4 p-4 rounded-b-2xl">
+            <span class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              Personalizar o Crear Color
+            </span>
+
+            <div class="grid grid-cols-12 gap-2 items-center">
+              <!-- Swatch Preview + Native Picker -->
+              <div class="col-span-5 flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1.5 shadow-3xs">
+                <label class="relative cursor-pointer shrink-0 group">
+                  <span class="popover-color-swatch-preview w-8 h-8 rounded-lg border border-slate-300 shadow-3xs flex items-center justify-center transition-transform group-hover:scale-105" style="background-color: #db2777;">
+                    <svg class="w-3.5 h-3.5 text-white drop-shadow-xs" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 6.257L6.166 4.666M4.5 10.5H2.25"/></svg>
+                  </span>
+                  <input type="color" class="new-color-hex sr-only" value="#db2777" title="Elige color" />
+                </label>
+                <div class="flex flex-col min-w-0 flex-1">
+                  <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">HEX</span>
+                  <div class="flex items-center gap-0.5">
+                    <span class="text-3xs font-mono font-bold text-slate-400">#</span>
+                    <input type="text" class="new-color-hex-text w-full bg-transparent text-3xs font-mono font-extrabold text-slate-800 uppercase focus:outline-none" value="DB2777" maxlength="7" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Name Input -->
+              <div class="col-span-7 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-3xs flex flex-col justify-center">
+                <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Nombre</span>
+                <input type="text" class="new-color-name w-full bg-transparent text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:text-rose-600" placeholder="Ej: Verde Menta" />
+              </div>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="flex flex-col gap-1.5">
+              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Presets rápidos:</span>
+              <div class="popover-quick-presets flex flex-wrap gap-1">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button type="button" class="apply-color-only-btn py-2 px-2.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-3xs font-extrabold uppercase tracking-wider transition-all shrink-0 cursor-pointer shadow-3xs active:scale-95 text-center">
+                Aplicar a Variante
+              </button>
+              <button type="button" class="add-new-color-btn py-2 px-2.5 bg-slate-950 hover:bg-rose-600 text-white rounded-xl text-3xs font-extrabold uppercase tracking-wider transition-all shrink-0 cursor-pointer shadow-3xs active:scale-95 text-center">
+                + Guardar y Aplicar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2151,9 +2262,71 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
 
   const popover = card.querySelector('.color-popover') as HTMLDivElement;
   const trigger = card.querySelector('.color-palette-trigger') as HTMLButtonElement;
+  const searchInput = card.querySelector('.popover-color-search') as HTMLInputElement;
   const newColorNameInput = card.querySelector('.new-color-name') as HTMLInputElement;
   const newColorHexInput = card.querySelector('.new-color-hex') as HTMLInputElement;
+  const newColorHexTextInput = card.querySelector('.new-color-hex-text') as HTMLInputElement;
+  const popoverSwatchPreview = card.querySelector('.popover-color-swatch-preview') as HTMLSpanElement;
+  const popoverPresetsContainer = card.querySelector('.popover-quick-presets') as HTMLDivElement;
+  const applyColorOnlyBtn = card.querySelector('.apply-color-only-btn') as HTMLButtonElement;
   const addNewColorBtn = card.querySelector('.add-new-color-btn') as HTMLButtonElement;
+
+  // Render quick preset chips in popover
+  if (popoverPresetsContainer) {
+    popoverPresetsContainer.innerHTML = '';
+    presetFitnessColors.slice(0, 10).forEach((p) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white border border-slate-200 hover:border-slate-400 text-[9px] font-bold text-slate-700 cursor-pointer shadow-3xs active:scale-95';
+      const isLgt = isLightColor(p.hex);
+      chip.innerHTML = `
+        <span class="w-2.5 h-2.5 rounded-full ${isLgt ? 'border border-slate-300' : 'border border-black/10'} shrink-0" style="background-color: ${p.hex}"></span>
+        <span class="truncate">${p.name.split('/')[0].trim()}</span>
+      `;
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (newColorHexInput) newColorHexInput.value = p.hex;
+        if (newColorHexTextInput) newColorHexTextInput.value = p.hex.replace(/^#/, '').toUpperCase();
+        if (newColorNameInput) newColorNameInput.value = p.name.split('/')[0].trim();
+        if (popoverSwatchPreview) popoverSwatchPreview.style.backgroundColor = p.hex;
+      });
+      popoverPresetsContainer.appendChild(chip);
+    });
+  }
+
+  // Live sync color picker & hex input in popover
+  newColorHexInput?.addEventListener('input', () => {
+    const hex = newColorHexInput.value;
+    if (newColorHexTextInput) newColorHexTextInput.value = hex.replace(/^#/, '').toUpperCase();
+    if (popoverSwatchPreview) popoverSwatchPreview.style.backgroundColor = hex;
+  });
+
+  newColorHexTextInput?.addEventListener('input', () => {
+    const clean = newColorHexTextInput.value.trim().replace(/^#/, '');
+    if (isValidHex(clean)) {
+      const formatted = formatHex(clean);
+      if (newColorHexInput) newColorHexInput.value = formatted;
+      if (popoverSwatchPreview) popoverSwatchPreview.style.backgroundColor = formatted;
+    }
+  });
+
+  // Auto suggest on typing name
+  newColorNameInput?.addEventListener('input', () => {
+    const name = newColorNameInput.value.trim();
+    if (name.length >= 3) {
+      const guessed = getColorHex(name);
+      if (guessed && guessed !== '#64748b' && (!newColorHexTextInput?.value || newColorHexTextInput.value === 'DB2777')) {
+        if (newColorHexInput) newColorHexInput.value = guessed;
+        if (newColorHexTextInput) newColorHexTextInput.value = guessed.replace(/^#/, '').toUpperCase();
+        if (popoverSwatchPreview) popoverSwatchPreview.style.backgroundColor = guessed;
+      }
+    }
+  });
+
+  // Search filter in popover
+  searchInput?.addEventListener('input', () => {
+    renderColorPopoverContent(popover, card);
+  });
 
   // Toggle popover
   trigger?.addEventListener('click', (e) => {
@@ -2174,14 +2347,47 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
     }
   });
 
-  // Add new color to palette handler
-  addNewColorBtn?.addEventListener('click', async (e) => {
+  // Helper to apply custom color to this branch
+  const applyColorToBranch = (name: string, hex: string) => {
+    colorNameInput.value = name;
+    colorHexInput.value = hex;
+    if (badge) {
+      badge.style.backgroundColor = hex;
+      badge.className = `color-swatch-badge w-4 h-4 rounded-full ${isLightColor(hex) ? 'border border-slate-300' : 'border border-black/10'} shadow-2xs shrink-0`;
+    }
+    if (label) label.textContent = name;
+
+    updateSKUsForBranch(card);
+    popover.classList.add('hidden');
+  };
+
+  // 1. Apply to variant only
+  applyColorOnlyBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     const name = newColorNameInput.value.trim();
-    const hex = newColorHexInput.value;
+    const hexRaw = newColorHexTextInput?.value.trim() || newColorHexInput?.value || '#0f172a';
+    const hex = formatHex(hexRaw);
 
     if (!name) {
       showToast('Introduce un nombre para el color', 'error');
+      newColorNameInput?.focus();
+      return;
+    }
+
+    applyColorToBranch(name, hex);
+    showToast(`Color "${name}" (${hex}) aplicado a la variante`, 'success');
+  });
+
+  // 2. Add new color to palette and apply
+  addNewColorBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const name = newColorNameInput.value.trim();
+    const hexRaw = newColorHexTextInput?.value.trim() || newColorHexInput?.value || '#0f172a';
+    const hex = formatHex(hexRaw);
+
+    if (!name) {
+      showToast('Introduce un nombre para el color', 'error');
+      newColorNameInput?.focus();
       return;
     }
 
@@ -2196,17 +2402,10 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
     }
 
     setStoreColors(updatedColors);
-
-    colorNameInput.value = name;
-    colorHexInput.value = hex;
-    if (badge) badge.style.backgroundColor = hex;
-    if (label) label.textContent = name;
-
-    updateSKUsForBranch(card);
-    popover.classList.add('hidden');
+    applyColorToBranch(name, hex);
     newColorNameInput.value = '';
 
-    showToast(`Color "${name}" añadido a la paleta de la tienda`, 'success');
+    showToast(`Color "${name}" (${hex}) guardado en la paleta y aplicado`, 'success');
 
     try {
       await actions.updateStoreColors({ savedColors: updatedColors });
@@ -2215,20 +2414,6 @@ function addColorBranch(colorName = '', colorHex = '#e11d48', imageUrl = '', siz
     }
   });
 
-  colorNameInput.addEventListener('input', () => {
-    const val = colorNameInput.value.trim();
-    if (label) label.textContent = val || 'Seleccionar color';
-    const guessedHex = getColorHex(val);
-    if (guessedHex && guessedHex !== '#64748b') {
-      colorHexInput.value = guessedHex;
-      if (badge) badge.style.backgroundColor = guessedHex;
-    }
-    updateSKUsForBranch(card);
-  });
-
-  colorHexInput.addEventListener('input', () => {
-    if (badge) badge.style.backgroundColor = colorHexInput.value;
-  });
   imgInput.addEventListener('input', () => {
     const url = imgInput.value.trim();
     if (url) {

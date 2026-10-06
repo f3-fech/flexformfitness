@@ -3,52 +3,7 @@ import { useStore } from '@nanostores/react';
 import { cartStore, removeFromCart, updateQuantity } from '../stores/cart';
 import { actions } from 'astro:actions';
 import { useTranslations } from '../lib/i18n';
-
-const getColorHex = (colorName: string): string => {
-  const name = colorName.toLowerCase().trim();
-  const colorMap: Record<string, string> = {
-    'negro': '#0f172a',
-    'black': '#0f172a',
-    'gris': '#94a3b8',
-    'grey': '#94a3b8',
-    'gray': '#94a3b8',
-    'gris oscuro': '#4b5563',
-    'gris-oscuro': '#4b5563',
-    'rosa': '#db2777',
-    'pink': '#db2777',
-    'rojo': '#dc2626',
-    'red': '#dc2626',
-    'azul marino': '#1e3a8a',
-    'azul-marino': '#1e3a8a',
-    'marino': '#1e3a8a',
-    'navy': '#1e3a8a',
-    'azul': '#2563eb',
-    'blue': '#2563eb',
-    'verde': '#16a34a',
-    'green': '#16a34a',
-    'blanco': '#ffffff',
-    'white': '#ffffff',
-    'amarillo': '#ca8a04',
-    'yellow': '#ca8a04',
-    'lila': '#d8b4fe',
-    'lavender': '#d8b4fe',
-    'naranja': '#ea580c',
-    'orange': '#ea580c',
-    'marron': '#78350f',
-    'marrón': '#78350f',
-    'brown': '#78350f',
-    'beige': '#f5f5dc',
-    'celeste': '#38bdf8',
-    'unisex': '#64748b'
-  };
-  
-  for (const key in colorMap) {
-    if (name.includes(key)) {
-      return colorMap[key];
-    }
-  }
-  return '#94a3b8';
-};
+import { getColorHex, isLightColor } from '../lib/utils';
 
 interface CartListProps {
   shippingPrice?: number;
@@ -91,6 +46,42 @@ export const CartList: React.FC<CartListProps> = ({ shippingPrice = 499, freeShi
 
   const shipping = subtotalAfterDiscount >= freeShippingMin || subtotal === 0 ? 0 : shippingPrice;
   const total = subtotalAfterDiscount + shipping;
+
+  // Auto-validate cart items against database on mount to auto-remove deleted products
+  useEffect(() => {
+    if (cartItems.length === 0) return;
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const { data } = await actions.validateCartItems({
+          items: cartItems.map((item) => ({
+            key: item.key,
+            productId: item.productId,
+            variantSku: item.variantSku || null,
+            title: item.title,
+          })),
+        });
+
+        if (isMounted && data && !data.valid && data.removedKeys.length > 0) {
+          data.removedKeys.forEach((key: string) => {
+            removeFromCart(key);
+          });
+          const titlesList = data.removedTitles.filter(Boolean).join(', ');
+          const notice = isEn
+            ? `Items no longer available (${titlesList}) were automatically removed from your cart.`
+            : `Los productos no disponibles (${titlesList}) han sido retirados automáticamente de tu carrito.`;
+          setError(notice);
+        }
+      } catch (err) {
+        console.error('Error validating cart items on mount:', err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Auto-remove shipping promo code if user adds items and subtotal becomes >= freeShippingMin
   useEffect(() => {
@@ -178,6 +169,15 @@ export const CartList: React.FC<CartListProps> = ({ shippingPrice = 499, freeShi
       const data = await res.json();
 
       if (!res.ok) {
+        // Auto-remove the deleted product from local cart immediately
+        if (data.removedKey) {
+          removeFromCart(data.removedKey);
+        } else if (data.missingProductId) {
+          const fallbackKey = data.missingVariantSku 
+            ? `${data.missingProductId}_${data.missingVariantSku}` 
+            : data.missingProductId;
+          removeFromCart(fallbackKey);
+        }
         throw new Error(data.error || (isEn ? 'Something went wrong during checkout.' : 'Algo salió mal durante el checkout.'));
       }
 

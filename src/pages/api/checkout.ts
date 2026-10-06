@@ -42,7 +42,18 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
       const productDoc = await db.collection('products').doc(item.productId).get();
       
       if (!productDoc.exists) {
-        return new Response(JSON.stringify({ error: `Product not found: ${item.title}` }), { status: 404 });
+        const removedKey = item.variantSku ? `${item.productId}_${item.variantSku}` : item.productId;
+        return new Response(
+          JSON.stringify({ 
+            error: userLang === 'en'
+              ? `The product "${item.title}" is no longer available and has been removed from your cart.`
+              : `El producto "${item.title}" ya no está disponible en la tienda y ha sido retirado de tu carrito.`,
+            removedKey,
+            missingProductId: item.productId,
+            missingVariantSku: item.variantSku || null
+          }), 
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        );
       }
 
       const product = { id: productDoc.id, ...productDoc.data() } as Product;
@@ -53,9 +64,17 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
       if (item.variantSku) {
         const variant = product.variants.find((v) => v.sku === item.variantSku);
         if (!variant) {
+          const removedKey = `${item.productId}_${item.variantSku}`;
           return new Response(
-            JSON.stringify({ error: `Variant not found for variant SKU ${item.variantSku}` }),
-            { status: 404 }
+            JSON.stringify({ 
+              error: userLang === 'en'
+                ? `The selected variant for "${product.title}" is no longer available and has been removed from your cart.`
+                : `La variante seleccionada para "${product.title}" ya no está disponible y ha sido retirada de tu carrito.`,
+              removedKey,
+              missingProductId: item.productId,
+              missingVariantSku: item.variantSku
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
           );
         }
         finalPrice = variant.price;
