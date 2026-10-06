@@ -1191,9 +1191,9 @@ export const server = {
             continue;
           }
 
-          const product = productDoc.data() as Product;
+          const product = productDoc.data() as any;
           if (item.variantSku) {
-            const variantExists = (product.variants || []).some((v) => v.sku === item.variantSku);
+            const variantExists = (product?.variants || []).some((v: any) => v.sku === item.variantSku);
             if (!variantExists) {
               removedKeys.push(item.key);
               removedTitles.push(item.title || 'Variante de producto');
@@ -1286,8 +1286,8 @@ export const server = {
 
         const filePath = decodeURIComponent(match[1]);
 
-        // Guard: Only allow deleting files under products/crops/ and products/gallery/ to avoid accidental deletions of other critical assets
-        if (!filePath.startsWith('products/crops/') && !filePath.startsWith('products/gallery/')) {
+        // Guard: Only allow deleting files under products/crops/, products/gallery/ and hero/gallery/ to avoid accidental deletions of other critical assets
+        if (!filePath.startsWith('products/crops/') && !filePath.startsWith('products/gallery/') && !filePath.startsWith('hero/gallery/')) {
           throw new Error('Sólo está permitido eliminar imágenes de la galería o recortadas.');
         }
 
@@ -1302,7 +1302,7 @@ export const server = {
         }
 
         // If the deleted image was an original gallery image, find and delete all its associated crops
-        if (filePath.startsWith('products/gallery/')) {
+        if (filePath.startsWith('products/gallery/') || filePath.startsWith('hero/gallery/')) {
           const originalFileName = filePath.split('/').pop() || '';
           const cleanBaseName = originalFileName.replace(/\.[^/.]+$/, ""); // strip extension
           
@@ -1313,7 +1313,7 @@ export const server = {
                 prefix: 'products/crops/'
               });
               
-              // Filter files that contain the cleanBaseName in their name
+              // Filter files that contain the cleanBaseName in products crops
               const filesToDelete = croppedFiles.filter(f => f.name.includes(`crop_${cleanBaseName}`));
               
               for (const cropFile of filesToDelete) {
@@ -1349,8 +1349,13 @@ export const server = {
         const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
         const bucket = admin.storage().bucket(bucketName);
         
-        // List files in the products/gallery/ folder to save API list overhead and only get standard images
-        const [files] = await bucket.getFiles({ prefix: 'products/gallery/' });
+        // List files in products/gallery/ and hero/gallery/
+        const [[productFiles], [heroFiles]] = await Promise.all([
+          bucket.getFiles({ prefix: 'products/gallery/' }),
+          bucket.getFiles({ prefix: 'hero/gallery/' }),
+        ]);
+
+        const files = [...productFiles, ...heroFiles];
 
         const images = await Promise.all(
           files.map(async (file) => {
@@ -1374,7 +1379,7 @@ export const server = {
               const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${token}`;
 
               return {
-                name: file.name.replace('products/gallery/', ''),
+                name: file.name.replace('products/gallery/', '').replace('hero/gallery/', 'hero_'),
                 url: downloadUrl,
                 timeCreated: metadata.timeCreated || new Date().toISOString(),
               };

@@ -1043,7 +1043,7 @@ function renderGalleryFolders() {
   const totalCount = allImages.length;
 
   // Folder Counts mapping
-  const counts: Record<string, number> = { all: totalCount, unassigned: 0 };
+  const counts: Record<string, number> = { all: totalCount, hero: 0, unassigned: 0 };
   const currentContext = state.gallery.currentProductContext;
 
   dbProducts.forEach((p: any) => {
@@ -1051,7 +1051,9 @@ function renderGalleryFolders() {
   });
 
   allImages.forEach(img => {
-    if (img.productSlug && counts[img.productSlug] !== undefined) {
+    if (img.productSlug === 'hero' || img.name.toLowerCase().startsWith('hero_') || img.name.toLowerCase().startsWith('hero/') || img.name.toLowerCase().includes('hero')) {
+      counts.hero++;
+    } else if (img.productSlug && counts[img.productSlug] !== undefined) {
       counts[img.productSlug]++;
     } else if (img.productSlug) {
       counts[img.productSlug] = (counts[img.productSlug] || 0) + 1;
@@ -1091,10 +1093,21 @@ function renderGalleryFolders() {
   galleryFoldersContainer.appendChild(createFolderItem('all', '📁', 'Todas las fotos', totalCount));
 
   // 2. "Este Producto" if editing/creating a product
-  if (currentContext.slug) {
+  if (currentContext.slug && currentContext.slug !== 'hero') {
     const label = `Este Producto (${currentContext.title || currentContext.slug})`;
     galleryFoldersContainer.appendChild(createFolderItem(currentContext.slug, '⭐', label, counts[currentContext.slug] || 0, true));
   }
+
+  // Section Header: "PORTADA Y HERO"
+  const heroDivider = document.createElement('div');
+  heroDivider.className = 'px-2 pt-2.5 pb-0.5 text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono select-none flex items-center justify-between';
+  heroDivider.innerHTML = `
+    <span>Página Principal</span>
+  `;
+  galleryFoldersContainer.appendChild(heroDivider);
+
+  // Dedicated "Hero / Portada (Alta Calidad)" folder
+  galleryFoldersContainer.appendChild(createFolderItem('hero', '🌟', 'Hero / Portadas (Alta Calidad)', counts.hero, currentContext.slug === 'hero'));
 
   // Section Header: "POR PRODUCTO"
   const sectionDivider = document.createElement('div');
@@ -1124,6 +1137,8 @@ function renderGalleryFolders() {
   if (galleryCurrentFolderTitle) {
     if (state.gallery.selectedFolder === 'all') {
       galleryCurrentFolderTitle.innerHTML = `📁 Todas las fotos <span class="text-slate-400 font-mono text-[11px] font-normal">(${totalCount})</span>`;
+    } else if (state.gallery.selectedFolder === 'hero') {
+      galleryCurrentFolderTitle.innerHTML = `🌟 Carpeta: <span class="text-rose-600 font-black">Hero / Portadas (Mínima compresión, Calidad 98%)</span> <span class="text-slate-400 font-mono text-[11px] font-normal">(${counts.hero})</span>`;
     } else if (state.gallery.selectedFolder === 'unassigned') {
       galleryCurrentFolderTitle.innerHTML = `📦 Fotos Generales <span class="text-slate-400 font-mono text-[11px] font-normal">(${counts.unassigned})</span>`;
     } else {
@@ -1145,8 +1160,12 @@ function renderFilteredGallery() {
   const filtered = state.gallery.images.filter(img => {
     // 1. Folder filter
     if (folder !== 'all') {
-      if (folder === 'unassigned') {
-        if (img.productSlug) return false;
+      if (folder === 'hero') {
+        const isHero = img.productSlug === 'hero' || img.name.toLowerCase().startsWith('hero_') || img.name.toLowerCase().startsWith('hero/') || img.name.toLowerCase().includes('hero');
+        if (!isHero) return false;
+      } else if (folder === 'unassigned') {
+        const isHero = img.productSlug === 'hero' || img.name.toLowerCase().startsWith('hero_') || img.name.toLowerCase().startsWith('hero/') || img.name.toLowerCase().includes('hero');
+        if (img.productSlug || isHero) return false;
       } else if (img.productSlug !== folder) {
         return false;
       }
@@ -1177,7 +1196,10 @@ function renderFilteredGallery() {
     }`;
 
     const cleanName = img.name.split('/').pop() || img.name;
-    const badgeHtml = img.productTitle
+    const isHeroImg = img.productSlug === 'hero' || cleanName.toLowerCase().startsWith('hero_');
+    const badgeHtml = isHeroImg
+      ? `<span class="absolute top-1.5 left-1.5 bg-rose-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-3xs max-w-[85%] truncate select-none">Hero HQ</span>`
+      : img.productTitle
       ? `<span class="absolute top-1.5 left-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-3xs max-w-[85%] truncate select-none">${img.productTitle}</span>`
       : `<span class="absolute top-1.5 left-1.5 bg-slate-500/80 backdrop-blur-xs text-white text-[7px] font-bold px-1 py-0.5 rounded shadow-3xs select-none">General</span>`;
 
@@ -1228,10 +1250,12 @@ async function loadGalleryImages() {
     const dbProducts = getDbProducts();
     const rawImages = (data.images || []).filter((img: any) => !img.name.startsWith('crop_'));
 
-    // Intelligent Association: Map each image to its product
+    // Intelligent Association: Map each image to its product or hero category
     state.gallery.images = rawImages.map((img: any) => {
       const fileName = img.name.toLowerCase();
-      let matchedProduct = dbProducts.find((p: any) => {
+      const isHero = fileName.startsWith('hero_') || fileName.startsWith('hero/') || fileName.includes('hero');
+
+      let matchedProduct = isHero ? null : dbProducts.find((p: any) => {
         // Match by exact URL in product media
         const inMain = (p.images || []).includes(img.url);
         const inVariants = (p.variants || []).some((v: any) => v.image === img.url);
@@ -1248,9 +1272,9 @@ async function loadGalleryImages() {
         name: img.name,
         url: img.url,
         timeCreated: img.timeCreated,
-        productId: matchedProduct?.id || null,
-        productSlug: matchedProduct?.slug || null,
-        productTitle: matchedProduct?.title || null,
+        productId: matchedProduct?.id || (isHero ? 'hero' : null),
+        productSlug: isHero ? 'hero' : (matchedProduct?.slug || null),
+        productTitle: isHero ? 'Hero Slide (Portada)' : (matchedProduct?.title || null),
       };
     });
 
@@ -1284,9 +1308,17 @@ async function handleGalleryUpload(files: FileList | File[]) {
 
   const currentFolder = state.gallery.selectedFolder;
   const currentContext = state.gallery.currentProductContext;
-  const uploadPrefix = (currentFolder !== 'all' && currentFolder !== 'unassigned')
+  const isHeroFolder = currentFolder === 'hero' || currentContext.slug === 'hero';
+
+  const uploadPrefix = isHeroFolder
+    ? 'hero'
+    : (currentFolder !== 'all' && currentFolder !== 'unassigned')
     ? currentFolder
     : currentContext.slug || 'gallery';
+
+  const uploadOptions = isHeroFolder
+    ? { quality: 0.98, maxDimension: 3840, folder: 'hero/gallery' }
+    : {};
 
   if (galleryUploadProgress) {
     galleryUploadProgress.classList.remove('hidden');
@@ -1307,12 +1339,12 @@ async function handleGalleryUpload(files: FileList | File[]) {
         if (galleryProgressBar) galleryProgressBar.style.width = `${itemPercent}%`;
         if (galleryProgressPercent) galleryProgressPercent.textContent = `${itemPercent}%`;
         if (galleryProgressStatus) galleryProgressStatus.textContent = `[${i + 1}/${fileArray.length}] ${statusText}`;
-      });
+      }, uploadOptions);
     }
 
     if (galleryProgressBar) galleryProgressBar.style.width = '100%';
     if (galleryProgressPercent) galleryProgressPercent.textContent = '100%';
-    if (galleryProgressStatus) galleryProgressStatus.textContent = '✓ ¡Subida y optimización completadas!';
+    if (galleryProgressStatus) galleryProgressStatus.textContent = isHeroFolder ? '✓ ¡Subida en Alta Calidad (Hero) completada!' : '✓ ¡Subida y optimización completadas!';
     showToast(`${fileArray.length} imagen(es) subida(s) con éxito.`);
     await loadGalleryImages();
 
@@ -1856,6 +1888,10 @@ document.addEventListener('click', (e) => {
     if (inputEl && previewEl) {
       state.gallery.activeInput = inputEl;
       state.gallery.activePreview = previewEl;
+      if (inputId.toLowerCase().includes('hero') || inputId.toLowerCase().includes('slide')) {
+        state.gallery.selectedFolder = 'hero';
+        state.gallery.currentProductContext = { id: 'hero', slug: 'hero', title: 'Hero Slide' };
+      }
       toggleGalleryModal(true);
     }
   }

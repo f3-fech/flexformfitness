@@ -165,8 +165,8 @@ try {
 
 const heroSlides = settings.heroSlides || [];
 const firstSlide = heroSlides[0];
-const shouldPreloadFirstSlideImage = firstSlide && firstSlide.desktopType === 'image';
-const firstSlidePreloadUrl = shouldPreloadFirstSlideImage ? firstSlide.desktopUrl : '';
+const preloadDesktop = firstSlide && firstSlide.desktopType === 'image' ? firstSlide.desktopUrl : '';
+const preloadMobile = firstSlide && firstSlide.mobileType === 'image' ? firstSlide.mobileUrl : '';
 
 const user = Astro.locals.user;
 
@@ -205,9 +205,13 @@ const storeJsonLd = {
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    {firstSlidePreloadUrl && (
-      <link rel="preload" href={firstSlidePreloadUrl} as="image" fetchpriority="high" />
+    {preloadDesktop && (
+      <link rel="preload" href={preloadDesktop} as="image" media="(min-width: 900px)" fetchpriority="high" />
+    )}
+    {preloadMobile && (
+      <link rel="preload" href={preloadMobile} as="image" media="(max-width: 899px)" fetchpriority="high" />
     )}
   </head>
   <body class="bg-white text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between w-full overflow-x-hidden">
@@ -250,10 +254,15 @@ const storeJsonLd = {
             >
               {/* Media for desktop (>= 900px) */}
               {slide.desktopType === 'image' ? (
-                <div
-                  class="hidden min-[900px]:block absolute inset-0 bg-cover bg-center"
-                  style={`background-image: url(${slide.desktopUrl});`}
-                >
+                <div class="hidden min-[900px]:block absolute inset-0">
+                  <img
+                    src={slide.desktopUrl}
+                    alt={slide.button1?.text || "Flex Form Fitness Hero"}
+                    class="w-full h-full object-cover object-center"
+                    loading={isFirst ? "eager" : "lazy"}
+                    decoding={isFirst ? "sync" : "async"}
+                    fetchpriority={isFirst ? "high" : "low"}
+                  />
                 </div>
               ) : (
                 <div class="hidden min-[900px]:block absolute inset-0 bg-slate-950">
@@ -270,10 +279,15 @@ const storeJsonLd = {
 
               {/* Media for mobile (< 900px) */}
               {slide.mobileType === 'image' ? (
-                <div
-                  class="block min-[900px]:hidden absolute inset-0 bg-cover bg-center"
-                  style={`background-image: url(${slide.mobileUrl});`}
-                >
+                <div class="block min-[900px]:hidden absolute inset-0">
+                  <img
+                    src={slide.mobileUrl}
+                    alt={slide.button1?.text || "Flex Form Fitness Hero Mobile"}
+                    class="w-full h-full object-cover object-center"
+                    loading={isFirst ? "eager" : "lazy"}
+                    decoding={isFirst ? "sync" : "async"}
+                    fetchpriority={isFirst ? "high" : "low"}
+                  />
                 </div>
               ) : (
                 <div class="block min-[900px]:hidden absolute inset-0 bg-slate-950">

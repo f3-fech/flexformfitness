@@ -150,10 +150,16 @@ export async function compressImage(file: File, quality = 0.92, maxDimension = 3
 export async function handleImageUpload(
   file: File,
   prefix = 'product',
-  onProgress?: (status: string, percent: number) => void
+  onProgress?: (status: string, percent: number) => void,
+  options: { quality?: number; maxDimension?: number; folder?: string } = {}
 ): Promise<string> {
-  if (onProgress) onProgress('Comprimiendo imagen a WebP...', 25);
-  const compressedBlob = await compressImage(file);
+  const isHero = prefix.toLowerCase().includes('hero') || options.folder?.toLowerCase().includes('hero');
+  const quality = options.quality ?? (isHero ? 0.98 : 0.92);
+  const maxDimension = options.maxDimension ?? (isHero ? 3840 : 3000);
+  const targetFolder = options.folder ?? (isHero ? 'hero/gallery' : 'products/gallery');
+
+  if (onProgress) onProgress(isHero ? 'Optimizando imagen para Hero (Alta Fidelidad)...' : 'Comprimiendo imagen a WebP...', 25);
+  const compressedBlob = await compressImage(file, quality, maxDimension);
 
   if (onProgress) onProgress('Codificando imagen...', 55);
   const base64Data = await blobToBase64(compressedBlob);
@@ -167,7 +173,7 @@ export async function handleImageUpload(
   const fileName = `${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.webp`;
 
   if (onProgress) onProgress('Subiendo a Firebase Storage...', 80);
-  const { data, error } = await actions.uploadImage({ base64Data, fileName, folder: 'products/gallery' });
+  const { data, error } = await actions.uploadImage({ base64Data, fileName, folder: targetFolder });
   if (error || !data?.success || !data?.url) {
     throw new Error(error?.message || 'Error al subir la imagen.');
   }
