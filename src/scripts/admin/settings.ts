@@ -655,12 +655,21 @@ function renderMegamenuList(section: 1 | 2) {
 }
 
 function saveCurrentMegaMenuFormToState() {
-  const s1Title = (document.getElementById('megamenu-s1-title') as HTMLInputElement)?.value.trim() || '';
-  const s1TitleEn = (document.getElementById('megamenu-s1-title-en') as HTMLInputElement)?.value.trim() || '';
-  const s1Collections = [...s1SelectedIds];
+  const defaultS1Title = activeMegaMenuTarget === 'hombre' ? 'Colección Hombre' : activeMegaMenuTarget === 'mujer' ? 'Colección Mujer' : 'Nuestras Colecciones';
+  const defaultS1TitleEn = activeMegaMenuTarget === 'hombre' ? "Men's Collection" : activeMegaMenuTarget === 'mujer' ? "Women's Collection" : 'Our Collections';
+  const defaultS2Title = 'Más Categorías';
+  const defaultS2TitleEn = 'More Categories';
 
-  const s2Title = (document.getElementById('megamenu-s2-title') as HTMLInputElement)?.value.trim() || '';
-  const s2TitleEn = (document.getElementById('megamenu-s2-title-en') as HTMLInputElement)?.value.trim() || '';
+  const s1Title = (document.getElementById('megamenu-s1-title') as HTMLInputElement)?.value.trim() || defaultS1Title;
+  const s1TitleEn = (document.getElementById('megamenu-s1-title-en') as HTMLInputElement)?.value.trim() || defaultS1TitleEn;
+  const s1Collections = activeMegaMenuTarget === 'hombre' 
+    ? (subCollectionsHombre.length > 0 ? subCollectionsHombre.map(c => c.id) : [...s1SelectedIds])
+    : activeMegaMenuTarget === 'mujer'
+      ? (subCollectionsMujer.length > 0 ? subCollectionsMujer.map(c => c.id) : [...s1SelectedIds])
+      : [...s1SelectedIds];
+
+  const s2Title = (document.getElementById('megamenu-s2-title') as HTMLInputElement)?.value.trim() || defaultS2Title;
+  const s2TitleEn = (document.getElementById('megamenu-s2-title-en') as HTMLInputElement)?.value.trim() || defaultS2TitleEn;
   const s2Collections = [...s2SelectedIds];
 
   const p1Image = (document.getElementById('megamenu-p1-image') as HTMLInputElement)?.value.trim() || '';
@@ -689,8 +698,10 @@ function saveCurrentMegaMenuFormToState() {
   else if (activeMegaMenuTarget === 'mujer') megaMenuMujerState = config;
 }
 
-function loadMegaMenuTargetForm(target: 'col' | 'hombre' | 'mujer') {
-  saveCurrentMegaMenuFormToState();
+function loadMegaMenuTargetForm(target: 'col' | 'hombre' | 'mujer', savePrevious = true) {
+  if (savePrevious) {
+    saveCurrentMegaMenuFormToState();
+  }
   activeMegaMenuTarget = target;
 
   document.querySelectorAll('.megamenu-target-btn').forEach(btn => {
@@ -788,12 +799,12 @@ if (megamenuBridgeEl) {
     btn.addEventListener('click', (e) => {
       const target = (e.currentTarget as HTMLButtonElement).dataset.target as 'col' | 'hombre' | 'mujer';
       if (target && target !== activeMegaMenuTarget) {
-        loadMegaMenuTargetForm(target);
+        loadMegaMenuTargetForm(target, true);
       }
     });
   });
 
-  loadMegaMenuTargetForm('col');
+  loadMegaMenuTargetForm('col', false);
 
   // Setup real-time thumbnail preview updates for Promo 1 & 2
   const setupImagePreview = (inputId: string, previewId: string) => {
