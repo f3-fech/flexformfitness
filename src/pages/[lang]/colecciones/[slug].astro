@@ -4,6 +4,7 @@ import type { Product, ProductCollection } from '../../../types';
 import SEO from '../../../components/SEO.astro';
 import Navbar from '../../../components/Navbar.astro';
 import { getColorHex, isLightColor } from '../../../lib/utils';
+import { optimizeProduct } from '../../../lib/cdn';
 
 export const prerender = true;
 
@@ -143,7 +144,7 @@ try {
   if (collection.productIds && collection.productIds.length > 0) {
     const productsSnap = await db.collection('products').get();
     if (!productsSnap.empty) {
-      const allProducts = productsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+      const allProducts = productsSnap.docs.map((doc) => optimizeProduct({ id: doc.id, ...doc.data() } as Product));
       products = allProducts.filter((p) => collection.productIds.includes(p.id));
 
       // Sort products by their sub-collection order, then by their position in that sub-collection

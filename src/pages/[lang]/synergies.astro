@@ -4,6 +4,7 @@ import type { Product, ProductCollection } from '../../types';
 import SEO from '../../components/SEO.astro';
 import Navbar from '../../components/Navbar.astro';
 import { getColorHex, isLightColor } from '../../lib/utils';
+import { optimizeProduct } from '../../lib/cdn';
 
 export const prerender = true;
 
@@ -40,7 +41,7 @@ try {
       const prodDocs = await Promise.all(
         productIds.slice(0, 8).map((id) => db.collection('products').doc(id).get())
       );
-      dbProducts = prodDocs.filter((d) => d.exists).map((d) => ({ id: d.id, ...d.data() }) as Product);
+      dbProducts = prodDocs.filter((d) => d.exists).map((d) => optimizeProduct({ id: d.id, ...d.data() } as Product));
     }
   }
 } catch (error) {

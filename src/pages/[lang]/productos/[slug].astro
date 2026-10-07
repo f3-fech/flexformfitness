@@ -5,6 +5,7 @@ import SEO from '../../../components/SEO.astro';
 import Navbar from '../../../components/Navbar.astro';
 import { ProductSelector } from '../../../components/ProductSelector';
 import { getApparelAttributes } from '../../../lib/merchantUtils';
+import { optimizeProduct } from '../../../lib/cdn';
 
 export const prerender = true;
 
@@ -17,7 +18,7 @@ export async function getStaticPaths() {
     }
 
     return productsSnap.docs.flatMap((doc) => {
-      const product = { id: doc.id, ...doc.data() } as Product;
+      const product = optimizeProduct({ id: doc.id, ...doc.data() } as Product);
       return [
         {
           params: { lang: 'es', slug: product.slug },
@@ -46,11 +47,13 @@ if (import.meta.env.DEV && Astro.params.slug) {
   try {
     const freshSnap = await db.collection('products').where('slug', '==', Astro.params.slug).limit(1).get();
     if (!freshSnap.empty) {
-      product = { id: freshSnap.docs[0].id, ...freshSnap.docs[0].data() } as Product;
+      product = optimizeProduct({ id: freshSnap.docs[0].id, ...freshSnap.docs[0].data() } as Product);
     }
   } catch (err) {
     console.error('Error fetching fresh product in DEV mode:', err);
   }
+} else if (product) {
+  product = optimizeProduct(product);
 }
 
 if (!product) {

@@ -4,6 +4,7 @@ import type { Product, ProductCollection } from '../types';
 import { getGeneralSettings } from '../lib/settings';
 import { useTranslations } from '../lib/i18n';
 import { getColorHex, isLightColor } from '../lib/utils';
+import { optimizeProduct } from '../lib/cdn';
 
 let collections: ProductCollection[] = [];
 try {
@@ -19,7 +20,7 @@ let allProducts: Product[] = [];
 try {
   const snap = await db.collection('products').orderBy('createdAt', 'desc').get();
   if (!snap.empty) {
-    allProducts = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Product);
+    allProducts = snap.docs.map((doc) => optimizeProduct({ id: doc.id, ...doc.data() } as Product));
   }
 } catch (e) {
   console.error('Error loading products for Navbar search:', e);

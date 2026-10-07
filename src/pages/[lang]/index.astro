@@ -5,6 +5,7 @@ import SEO from '../../components/SEO.astro';
 import Navbar from '../../components/Navbar.astro';
 import { getGeneralSettings } from '../../lib/settings';
 import { getColorHex, isLightColor } from '../../lib/utils';
+import { optimizeProduct, optimizeStorageUrl } from '../../lib/cdn';
 
 export const prerender = true;
 
@@ -118,7 +119,7 @@ try {
         .where('__name__', 'in', targetIds)
         .get();
       
-      const unsortedProducts = productsSnap.docs.map((pDoc) => ({ id: pDoc.id, ...pDoc.data() }) as Product);
+      const unsortedProducts = productsSnap.docs.map((pDoc) => optimizeProduct({ id: pDoc.id, ...pDoc.data() } as Product));
       colProducts = targetIds
         .map(id => unsortedProducts.find(p => p.id === id))
         .filter((p): p is Product => p !== undefined);
@@ -136,7 +137,7 @@ try {
   // Fallback if no collections have products
   if (homepageCollections.length === 0) {
     const productsSnap = await db.collection('products').limit(30).get();
-    const fallbackProducts = productsSnap.docs.map((pDoc) => ({ id: pDoc.id, ...pDoc.data() }) as Product);
+    const fallbackProducts = productsSnap.docs.map((pDoc) => optimizeProduct({ id: pDoc.id, ...pDoc.data() } as Product));
     homepageCollections.push({
       id: 'fallback',
       title: isEn ? "All Products" : "Todos los Productos",
@@ -163,7 +164,13 @@ try {
   console.error("Error building collectionsMap for homepage:", err);
 }
 
-const heroSlides = settings.heroSlides || [];
+const rawHeroSlides = settings.heroSlides || [];
+const heroSlides = rawHeroSlides.map((slide) => ({
+  ...slide,
+  desktopUrl: optimizeStorageUrl(slide.desktopUrl),
+  mobileUrl: optimizeStorageUrl(slide.mobileUrl),
+}));
+
 const firstSlide = heroSlides[0];
 const preloadDesktop = firstSlide && firstSlide.desktopType === 'image' ? firstSlide.desktopUrl : '';
 const preloadMobile = firstSlide && firstSlide.mobileType === 'image' ? firstSlide.mobileUrl : '';
@@ -205,7 +212,7 @@ const storeJsonLd = {
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://cdn-storage.spring-band-85d5.workers.dev" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     {preloadDesktop && (
       <link rel="preload" href={preloadDesktop} as="image" media="(min-width: 900px)" fetchpriority="high" />

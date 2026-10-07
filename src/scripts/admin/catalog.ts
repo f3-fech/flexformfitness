@@ -1695,8 +1695,9 @@ videoGalleryFileInput?.addEventListener('change', async () => {
   const file = videoGalleryFileInput.files?.[0];
   if (!file) return;
 
-  if (!file.type.startsWith('video/')) {
-    alert('Por favor, selecciona un archivo de video válido.');
+  const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+  if (file.type !== 'video/webm' && fileExt !== 'webm') {
+    alert('Solo se aceptan videos en formato WebM (.webm). Por favor, comprime o convierte tu video a WebM antes de subirlo.');
     return;
   }
 
@@ -1710,9 +1711,8 @@ videoGalleryFileInput?.addEventListener('change', async () => {
   videoGalleryUploadNewBtn.innerHTML = 'Subiendo...';
 
   try {
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
-    const fileName = `video_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-    const contentType = file.type || (fileExt === 'webm' ? 'video/webm' : 'video/mp4');
+    const fileName = `video_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.webm`;
+    const contentType = 'video/webm';
 
     // 1. Obtener URL de subida firmada de Firebase Storage
     const { data: urlData, error: urlError } = await actions.getVideoUploadUrl({ fileName, contentType });
