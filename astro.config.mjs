@@ -13,11 +13,7 @@ export default defineConfig({
   security: {
     actionBodySizeLimit: 15 * 1024 * 1024, // 15 MB
   },
-  adapter: vercel({
-    webAnalytics: {
-      enabled: true,
-    },
-  }),
+  adapter: vercel(),
   integrations: [tailwind(), react()],
   vite: {
     resolve: {
