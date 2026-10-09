@@ -8,7 +8,13 @@ const IV_LENGTH = 12; // 12 bytes standard for GCM
  * Returns a 32-byte Buffer key derived from the environment encryption secret or Firebase credentials.
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_SECRET || process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_PROJECT_ID || 'flexformfitness-secure-key-2026-production';
+  const secret = process.env.ENCRYPTION_SECRET || process.env.FIREBASE_PRIVATE_KEY;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production' || import.meta.env.PROD) {
+      throw new Error('[Crypto] FATAL: ENCRYPTION_SECRET or FIREBASE_PRIVATE_KEY must be defined in production environment.');
+    }
+    return crypto.createHash('sha256').update('flexformfitness-dev-only-secret-key-local').digest();
+  }
   return crypto.createHash('sha256').update(secret).digest();
 }
 

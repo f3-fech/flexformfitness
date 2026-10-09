@@ -1,6 +1,6 @@
 import { actions } from 'astro:actions';
 import { state } from './state';
-import { toggleModal, showToast } from './utils';
+import { toggleModal, showToast, escapeHtml } from './utils';
 
 // Elements
 const ordersTableBody = document.getElementById('orders-table-body') as HTMLTableSectionElement;
@@ -66,7 +66,7 @@ export async function loadOrdersList(lastVisibleId: string | null = null) {
       const itemsList = order.items || [];
       const itemsHTML = itemsList.map((item: any) => `
         <span class="text-3xs text-slate-500 truncate">
-          • ${item.title} ${item.variantName ? `(${item.variantName})` : ''} x${item.quantity}
+          • ${escapeHtml(item.title)} ${item.variantName ? `(${escapeHtml(item.variantName)})` : ''} x${Number(item.quantity) || 1}
         </span>
       `).join('');
 
@@ -97,9 +97,9 @@ export async function loadOrdersList(lastVisibleId: string | null = null) {
         ? `<button
             type="button"
             class="ship-order-btn px-3 py-1.5 bg-rose-600 hover:bg-red-700 text-white rounded-lg text-3xs font-bold uppercase tracking-wider transition-colors active:scale-95 shadow-2xs"
-            data-order-id="${order.id}"
-            data-shipping-status="${order.shippingStatus}"
-            data-tracking-number="${order.trackingNumber || ''}"
+            data-order-id="${escapeHtml(order.id)}"
+            data-shipping-status="${escapeHtml(order.shippingStatus)}"
+            data-tracking-number="${escapeHtml(order.trackingNumber || '')}"
           >
             ${order.shippingStatus === 'shipped' ? 'Completar / Editar' : 'Enviar'}
           </button>`
@@ -107,26 +107,26 @@ export async function loadOrdersList(lastVisibleId: string | null = null) {
 
       const trackingHTML = order.trackingNumber
         ? `<span class="block text-slate-500 text-3xs font-mono mt-1">
-             Seguimiento: <strong class="text-slate-700">${order.trackingNumber}</strong>
+             Seguimiento: <strong class="text-slate-700">${escapeHtml(order.trackingNumber)}</strong>
            </span>`
         : '';
 
       return `
         <tr class="order-row hover:bg-slate-50 transition-colors cursor-pointer"
-          data-id="${order.id}"
-          data-name="${(order.customerDetails?.name || '').toLowerCase()}"
-          data-email="${(order.customerDetails?.email || '').toLowerCase()}"
-          data-payment-status="${order.paymentStatus}"
-          data-shipping-status="${order.shippingStatus}"
-          data-return-status="${order.returnRequest?.status || ''}"
+          data-id="${escapeHtml(order.id)}"
+          data-name="${escapeHtml((order.customerDetails?.name || '').toLowerCase())}"
+          data-email="${escapeHtml((order.customerDetails?.email || '').toLowerCase())}"
+          data-payment-status="${escapeHtml(order.paymentStatus)}"
+          data-shipping-status="${escapeHtml(order.shippingStatus)}"
+          data-return-status="${escapeHtml(order.returnRequest?.status || '')}"
         >
           <td class="p-4 pl-6">
-            <span class="block font-bold font-mono text-slate-900 text-xs">${order.id.slice(-8).toUpperCase()}...</span>
+            <span class="block font-bold font-mono text-slate-900 text-xs">${escapeHtml(order.id.slice(-8).toUpperCase())}...</span>
             <span class="block text-slate-400 text-3xs mt-0.5">${createdAtDate.toLocaleDateString()} ${createdAtDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
           </td>
           <td class="p-4">
-            <span class="block font-bold text-slate-900">${order.customerDetails?.name || 'N/A'}</span>
-            <span class="block text-slate-400 text-3xs font-mono">${order.customerDetails?.email || 'N/A'}</span>
+            <span class="block font-bold text-slate-900">${escapeHtml(order.customerDetails?.name || 'N/A')}</span>
+            <span class="block text-slate-400 text-3xs font-mono">${escapeHtml(order.customerDetails?.email || 'N/A')}</span>
           </td>
           <td class="p-4 font-mono font-bold text-emerald-600">
             ${(order.totalAmount / 100).toFixed(2)} €
@@ -193,15 +193,15 @@ export function renderOrderDetails(order: any) {
 
   const itemsHTML = (order.items || []).map((item: any) => `
     <div class="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
-      ${item.image ? `<img src="${item.image}" class="w-10 h-10 rounded-lg object-cover border border-slate-150 shrink-0" />` : '<div class="w-10 h-10 bg-slate-50 border border-slate-150 rounded-lg shrink-0 flex items-center justify-center text-slate-400 font-bold uppercase tracking-wider text-3xs">F</div>'}
+      ${item.image ? `<img src="${escapeHtml(item.image)}" class="w-10 h-10 rounded-lg object-cover border border-slate-150 shrink-0" />` : '<div class="w-10 h-10 bg-slate-50 border border-slate-150 rounded-lg shrink-0 flex items-center justify-center text-slate-400 font-bold uppercase tracking-wider text-3xs">F</div>'}
       <div class="flex-grow min-w-0">
-        <span class="block font-bold text-slate-800 truncate">${item.title}</span>
-        ${item.variantName ? `<span class="block text-brand-600 text-3xs font-semibold">${item.variantName}</span>` : ''}
-        ${item.variantSku ? `<span class="block text-slate-400 text-[9px] font-mono font-extrabold uppercase">SKU: ${item.variantSku}</span>` : ''}
+        <span class="block font-bold text-slate-800 truncate">${escapeHtml(item.title)}</span>
+        ${item.variantName ? `<span class="block text-brand-600 text-3xs font-semibold">${escapeHtml(item.variantName)}</span>` : ''}
+        ${item.variantSku ? `<span class="block text-slate-400 text-[9px] font-mono font-extrabold uppercase">SKU: ${escapeHtml(item.variantSku)}</span>` : ''}
       </div>
       <div class="text-right shrink-0">
         <span class="block font-bold text-slate-900">${(item.price / 100).toFixed(2)} €</span>
-        <span class="block text-slate-400 text-3xs">Cant: ${item.quantity}</span>
+        <span class="block text-slate-400 text-3xs">Cant: ${Number(item.quantity) || 1}</span>
       </div>
     </div>
   `).join('');
@@ -209,8 +209,8 @@ export function renderOrderDetails(order: any) {
   contentEl.innerHTML = `
     <div class="flex flex-col gap-1 border-b border-slate-100 pb-3">
       <div class="flex justify-between items-center">
-        <span class="text-xs font-bold text-slate-900 font-mono">ID: ${order.id}</span>
-        <span class="text-3xs font-bold text-slate-400 uppercase tracking-wider">${dateStr}</span>
+        <span class="text-xs font-bold text-slate-900 font-mono">ID: ${escapeHtml(order.id)}</span>
+        <span class="text-3xs font-bold text-slate-400 uppercase tracking-wider">${escapeHtml(dateStr)}</span>
       </div>
       <div class="flex gap-2 mt-2">
         <span class="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${
@@ -220,7 +220,7 @@ export function renderOrderDetails(order: any) {
             ? 'bg-red-50 border-red-200 text-red-700'
             : 'bg-amber-50 border-amber-200 text-amber-700'
         }">
-          Pago: ${order.paymentStatus === 'paid' ? 'Pagado' : order.paymentStatus === 'refunded' ? 'Reembolsado' : order.paymentStatus}
+          Pago: ${escapeHtml(order.paymentStatus === 'paid' ? 'Pagado' : order.paymentStatus === 'refunded' ? 'Reembolsado' : order.paymentStatus)}
         </span>
         <span class="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${
           order.shippingStatus === 'shipped' 
@@ -233,7 +233,7 @@ export function renderOrderDetails(order: any) {
             ? 'bg-red-50 border-red-200 text-red-700'
             : 'bg-slate-50 border-slate-200 text-slate-600'
         }">
-          Envío: ${order.shippingStatus}
+          Envío: ${escapeHtml(order.shippingStatus)}
         </span>
       </div>
     </div>
@@ -243,15 +243,15 @@ export function renderOrderDetails(order: any) {
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-3xs font-medium">
         <div>
           <span class="block text-slate-400 font-bold uppercase tracking-wider">Nombre completo</span>
-          <span class="block text-slate-800 text-xs font-bold mt-0.5">${order.customerDetails?.name || 'No especificado'}</span>
+          <span class="block text-slate-800 text-xs font-bold mt-0.5">${escapeHtml(order.customerDetails?.name || 'No especificado')}</span>
         </div>
         <div>
           <span class="block text-slate-400 font-bold uppercase tracking-wider">Correo electrónico</span>
-          <span class="block text-slate-800 text-xs font-bold mt-0.5">${order.customerDetails?.email || 'No especificado'}</span>
+          <span class="block text-slate-800 text-xs font-bold mt-0.5">${escapeHtml(order.customerDetails?.email || 'No especificado')}</span>
         </div>
         <div>
           <span class="block text-slate-400 font-bold uppercase tracking-wider">Teléfono</span>
-          <span class="block text-slate-800 text-xs font-bold mt-0.5">${order.customerDetails?.phone || 'No especificado'}</span>
+          <span class="block text-slate-800 text-xs font-bold mt-0.5">${escapeHtml(order.customerDetails?.phone || 'No especificado')}</span>
         </div>
       </div>
     </div>
@@ -262,26 +262,26 @@ export function renderOrderDetails(order: any) {
         <div>
           <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Dirección</span>
           <span class="block text-slate-800 font-semibold mt-0.5">
-            ${address.line1 || 'No especificada'}
-            ${address.line2 ? `<br/><span class="text-slate-500 font-medium">${address.line2}</span>` : ''}
+            ${escapeHtml(address.line1 || 'No especificada')}
+            ${address.line2 ? `<br/><span class="text-slate-500 font-medium">${escapeHtml(address.line2)}</span>` : ''}
           </span>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
           <div>
             <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Ciudad</span>
-            <span class="block text-slate-800 font-semibold mt-0.5">${address.city || 'No especificada'}</span>
+            <span class="block text-slate-800 font-semibold mt-0.5">${escapeHtml(address.city || 'No especificada')}</span>
           </div>
           <div>
             <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Provincia / Región</span>
-            <span class="block text-slate-800 font-semibold mt-0.5">${address.state || 'No especificada'}</span>
+            <span class="block text-slate-800 font-semibold mt-0.5">${escapeHtml(address.state || 'No especificada')}</span>
           </div>
           <div>
             <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">Código Postal</span>
-            <span class="block text-slate-850 font-bold font-mono mt-0.5">${address.postal_code || 'No especificado'}</span>
+            <span class="block text-slate-850 font-bold font-mono mt-0.5">${escapeHtml(address.postal_code || 'No especificado')}</span>
           </div>
           <div>
             <span class="block text-3xs text-slate-400 font-bold uppercase tracking-wider">País</span>
-            <span class="block text-slate-800 font-semibold mt-0.5">${address.country || 'No especificado'}</span>
+            <span class="block text-slate-800 font-semibold mt-0.5">${escapeHtml(address.country || 'No especificado')}</span>
           </div>
         </div>
       </div>
@@ -329,15 +329,15 @@ export function renderOrderDetails(order: any) {
           </div>
           <div class="text-3xs font-medium mt-1">
             <span class="block text-amber-500 font-bold uppercase tracking-wider">Motivo del cliente</span>
-            <span class="block text-xs font-semibold mt-0.5 bg-white/70 p-2.5 rounded-lg border border-amber-100 leading-relaxed">${order.returnRequest.reason}</span>
+            <span class="block text-xs font-semibold mt-0.5 bg-white/70 p-2.5 rounded-lg border border-amber-100 leading-relaxed">${escapeHtml(order.returnRequest.reason)}</span>
           </div>
           ${order.returnRequest.images && order.returnRequest.images.length > 0 ? `
             <div class="text-3xs font-medium mt-1">
               <span class="block text-amber-500 font-bold uppercase tracking-wider mb-1.5">Imágenes Adjuntas (${order.returnRequest.images.length})</span>
               <div class="grid grid-cols-4 gap-2">
                 ${order.returnRequest.images.map((img: string) => `
-                  <a href="${img}" target="_blank" class="block aspect-square overflow-hidden rounded-lg border border-amber-200/60 hover:opacity-90 transition-opacity shadow-sm">
-                    <img src="${img}" class="w-full h-full object-cover" />
+                  <a href="${escapeHtml(img)}" target="_blank" rel="noopener noreferrer" class="block aspect-square overflow-hidden rounded-lg border border-amber-200/60 hover:opacity-90 transition-opacity shadow-sm">
+                    <img src="${escapeHtml(img)}" class="w-full h-full object-cover" />
                   </a>
                 `).join('')}
               </div>

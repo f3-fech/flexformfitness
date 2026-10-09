@@ -153,13 +153,26 @@ export async function fulfillOrder(sessionId: string) {
 
       const emailSettings = await getEmailSettings();
 
+      const escapeHtml = (str: any) => {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      };
+
+      const safeCustomerName = escapeHtml(customerDetails.name || 'Cliente');
+      const safeSubjectName = (customerDetails.name || 'Cliente').replace(/[\r\n]/g, '').trim();
+
       const itemsHtml = `<ul>
         ${items
           .map(
             (item) => `
           <li>
-            ${item.title} ${item.variantName ? `(${item.variantName})` : ''} - 
-            Cantidad: ${item.quantity} - 
+            ${escapeHtml(item.title)} ${item.variantName ? `(${escapeHtml(item.variantName)})` : ''} - 
+            Cantidad: ${Number(item.quantity) || 1} - 
             Precio: ${(item.price / 100).toFixed(2)} €
           </li>`
           )
@@ -167,18 +180,18 @@ export async function fulfillOrder(sessionId: string) {
       </ul>`;
 
       const invoiceLink = hostedInvoiceUrl 
-        ? `<p>Puedes ver tu factura online aquí: <a href="${hostedInvoiceUrl}" target="_blank">Ver Factura de Stripe</a></p>` 
+        ? `<p>Puedes ver tu factura online aquí: <a href="${hostedInvoiceUrl}" target="_blank" rel="noopener noreferrer">Ver Factura de Stripe</a></p>` 
         : '';
 
       const emailContent = emailSettings.orderBody
-        .replace(/{{customerName}}/g, customerDetails.name || 'Cliente')
-        .replace(/{{orderId}}/g, session.id)
+        .replace(/{{customerName}}/g, safeCustomerName)
+        .replace(/{{orderId}}/g, escapeHtml(session.id))
         .replace(/{{orderItems}}/g, itemsHtml)
         .replace(/{{totalAmount}}/g, `${(totalAmount / 100).toFixed(2)} €`)
         .replace(/{{invoiceUrl}}/g, invoiceLink);
 
       const subject = emailSettings.orderSubject
-        .replace(/{{customerName}}/g, customerDetails.name || 'Cliente')
+        .replace(/{{customerName}}/g, safeSubjectName)
         .replace(/{{orderId}}/g, session.id.slice(-6).toUpperCase());
 
       await sendEmail({

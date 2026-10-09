@@ -78,6 +78,133 @@ const collSecProducts = document.getElementById('coll-sec-products') as HTMLDivE
 const collCatalogSearch = document.getElementById('coll-catalog-search') as HTMLInputElement;
 const collCurrentList = document.getElementById('coll-current-list') as HTMLDivElement;
 
+// Helper to determine collection category
+export function getCollectionCategory(col: any): 'Hombre' | 'Mujer' | 'Portada' | 'F3 Synergies' | 'General' {
+  if (col.parentCategory === 'Hombre') return 'Hombre';
+  if (col.parentCategory === 'Mujer') return 'Mujer';
+  if (col.parentCategory === 'Portada') return 'Portada';
+  if (col.parentCategory === 'F3 Synergies') return 'F3 Synergies';
+  if (col.parentCategory === 'General') return 'General';
+
+  if (col.isSynergy) return 'F3 Synergies';
+  if (col.showOnIndex) return 'Portada';
+
+  const isMen = col.slug?.includes('hombre') || col.title?.toLowerCase().includes('hombre') || col.title?.toLowerCase().includes('men');
+  const isWomen = col.slug?.includes('mujer') || col.title?.toLowerCase().includes('mujer') || col.title?.toLowerCase().includes('women');
+  if (isMen) return 'Hombre';
+  if (isWomen) return 'Mujer';
+  return 'General';
+}
+
+// Function to synchronize collection checkboxes and enforce anti-duplicate / gender isolation rules
+export function syncProductCollectionsRules() {
+  const container = document.getElementById('product-collections-container');
+  if (!container) return;
+
+  const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>('input[name="product-col-assoc"]'));
+  const checkedBoxes = checkboxes.filter((cb) => cb.checked);
+
+  const hasCheckedHombre = checkedBoxes.some((cb) => cb.dataset.category === 'Hombre');
+  const hasCheckedMujer = checkedBoxes.some((cb) => cb.dataset.category === 'Mujer');
+  const hasCheckedPortada = checkedBoxes.some((cb) => cb.dataset.category === 'Portada');
+
+  const genderRadio = document.querySelector('input[name="product-gender-assoc"]:checked') as HTMLInputElement | null;
+  let currentGender = genderRadio ? genderRadio.value : '';
+
+  // Auto-sync radio with checked collections
+  if (hasCheckedHombre && currentGender !== 'hombre') {
+    currentGender = 'hombre';
+    document.querySelectorAll<HTMLInputElement>('input[name="product-gender-assoc"]').forEach((r) => {
+      r.checked = (r.value === 'hombre');
+    });
+  } else if (hasCheckedMujer && currentGender !== 'mujer') {
+    currentGender = 'mujer';
+    document.querySelectorAll<HTMLInputElement>('input[name="product-gender-assoc"]').forEach((r) => {
+      r.checked = (r.value === 'mujer');
+    });
+  }
+
+  checkboxes.forEach((cb) => {
+    const label = cb.closest('label');
+    const badgeEl = label?.querySelector('.col-conflict-badge') as HTMLElement | null;
+    const cat = cb.dataset.category;
+    const isChecked = cb.checked;
+
+    if (cat === 'Hombre') {
+      if (hasCheckedMujer || currentGender === 'mujer') {
+        cb.disabled = true;
+        if (isChecked) cb.checked = false;
+        label?.classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.remove('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = `<span class="text-[8px] font-black uppercase tracking-wider text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">En uso: Mujer</span>`;
+      } else if (hasCheckedHombre && !isChecked) {
+        cb.disabled = true;
+        label?.classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.remove('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = `<span class="text-[8px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">En uso: Hombre</span>`;
+      } else {
+        cb.disabled = false;
+        label?.classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.add('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = '';
+      }
+    } else if (cat === 'Mujer') {
+      if (hasCheckedHombre || currentGender === 'hombre') {
+        cb.disabled = true;
+        if (isChecked) cb.checked = false;
+        label?.classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.remove('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = `<span class="text-[8px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">En uso: Hombre</span>`;
+      } else if (hasCheckedMujer && !isChecked) {
+        cb.disabled = true;
+        label?.classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.remove('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = `<span class="text-[8px] font-black uppercase tracking-wider text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">En uso: Mujer</span>`;
+      } else {
+        cb.disabled = false;
+        label?.classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.add('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = '';
+      }
+    } else if (cat === 'Portada') {
+      if (hasCheckedPortada && !isChecked) {
+        cb.disabled = true;
+        label?.classList.add('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.remove('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = `<span class="text-[8px] font-black uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">En uso: Portada</span>`;
+      } else {
+        cb.disabled = false;
+        label?.classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+        label?.classList.add('hover:bg-slate-100', 'cursor-pointer');
+        if (badgeEl) badgeEl.innerHTML = '';
+      }
+    } else {
+      // General
+      cb.disabled = false;
+      label?.classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-50');
+      label?.classList.add('hover:bg-slate-100', 'cursor-pointer');
+      if (badgeEl) badgeEl.innerHTML = '';
+    }
+  });
+}
+
+// Global listener for gender radio buttons change
+document.querySelectorAll('input[name="product-gender-assoc"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    const val = (radio as HTMLInputElement).value;
+    if (val === 'hombre') {
+      document.querySelectorAll<HTMLInputElement>('input[name="product-col-assoc"][data-category="Mujer"]:checked').forEach((cb) => {
+        cb.checked = false;
+      });
+    } else if (val === 'mujer') {
+      document.querySelectorAll<HTMLInputElement>('input[name="product-col-assoc"][data-category="Hombre"]:checked').forEach((cb) => {
+        cb.checked = false;
+      });
+    }
+    syncProductCollectionsRules();
+  });
+});
+
 // --- 1. Product Collections Associations Render ---
 export function renderProductCollections(productId: string | null) {
   const container = document.getElementById('product-collections-container');
@@ -86,19 +213,19 @@ export function renderProductCollections(productId: string | null) {
   container.innerHTML = '';
   const dbCollections = getDbCollections() || [];
 
-  // Determine gender association from dbCollections
+  // Determine initial gender association from subcollections
   let hasHombre = false;
   let hasMujer = false;
   
   if (productId) {
-    const menCol = dbCollections.find((c: any) => c.slug === 'hombre');
-    const womenCol = dbCollections.find((c: any) => c.slug === 'mujer');
-    if (menCol && (menCol.productIds || []).includes(productId)) {
-      hasHombre = true;
-    }
-    if (womenCol && (womenCol.productIds || []).includes(productId)) {
-      hasMujer = true;
-    }
+    hasHombre = dbCollections.some((c: any) => {
+      const isMen = getCollectionCategory(c) === 'Hombre';
+      return isMen && (c.productIds || []).includes(productId);
+    });
+    hasMujer = dbCollections.some((c: any) => {
+      const isWomen = getCollectionCategory(c) === 'Mujer';
+      return isWomen && (c.productIds || []).includes(productId);
+    });
   }
 
   // Update gender radio buttons
@@ -109,27 +236,47 @@ export function renderProductCollections(productId: string | null) {
   });
 
   if (dbCollections.length === 0) {
-    container.innerHTML = `<span class="text-slate-400 font-medium">No hay colecciones creadas en la tienda.</span>`;
+    container.innerHTML = `<span class="text-slate-400 font-medium text-xs">No hay colecciones creadas en la tienda.</span>`;
     return;
   }
 
   dbCollections.forEach((col: any) => {
-    // Exclude Hombre & Mujer collections from general list
+    // Exclude fixed root Hombre & Mujer collections
     if (col.slug === 'hombre' || col.slug === 'mujer') return;
 
+    const cat = getCollectionCategory(col);
     const isAssociated = productId ? (col.productIds || []).includes(productId) : false;
     
     const label = document.createElement('label');
-    label.className = 'flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-100 cursor-pointer select-none transition-colors border border-transparent hover:border-slate-200';
+    label.className = 'flex items-center justify-between gap-2.5 p-2 rounded-lg hover:bg-slate-100 cursor-pointer select-none transition-colors border border-transparent hover:border-slate-200';
     label.innerHTML = `
-      <input type="checkbox" name="product-col-assoc" value="${col.id}" ${isAssociated ? 'checked' : ''} class="w-3.5 h-3.5 text-rose-600 border-slate-355 rounded-sm focus:ring-rose-500 cursor-pointer" />
-      <div class="flex flex-col">
-        <span class="font-bold text-slate-800 text-[11px] leading-tight">${col.title}</span>
-        <span class="text-[9px] text-slate-400 font-mono mt-0.5 leading-none">Slug: ${col.slug}</span>
+      <div class="flex items-center gap-2.5 min-w-0">
+        <input type="checkbox" name="product-col-assoc" value="${col.id}" data-category="${cat}" ${isAssociated ? 'checked' : ''} class="w-3.5 h-3.5 text-rose-600 border-slate-355 rounded-sm focus:ring-rose-500 cursor-pointer shrink-0" />
+        <div class="flex flex-col min-w-0">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="font-bold text-slate-800 text-[11px] leading-tight truncate">${col.title}</span>
+            <span class="px-1.5 py-0.2 text-[8px] font-black uppercase rounded ${
+              cat === 'Hombre' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+              cat === 'Mujer' ? 'bg-pink-50 text-pink-600 border border-pink-100' :
+              cat === 'Portada' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+              cat === 'F3 Synergies' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+              'bg-slate-100 text-slate-500 border border-slate-200'
+            }">${cat}</span>
+          </div>
+          <span class="text-[9px] text-slate-400 font-mono mt-0.5 leading-none">Slug: ${col.slug}</span>
+        </div>
       </div>
+      <div class="col-conflict-badge shrink-0"></div>
     `;
+
+    label.querySelector('input')?.addEventListener('change', () => {
+      syncProductCollectionsRules();
+    });
+
     container.appendChild(label);
   });
+
+  syncProductCollectionsRules();
 }
 
 // --- 2. Visual WYSIWYG Editor Helpers ---
@@ -2722,23 +2869,9 @@ productForm?.addEventListener('submit', async (e) => {
         .map((el) => (el as HTMLInputElement).value);
 
       const dbCollections = getDbCollections() || [];
-      const menCol = dbCollections.find((c: any) => c.slug === 'hombre');
-      const womenCol = dbCollections.find((c: any) => c.slug === 'mujer');
-      
-      const genderRadio = document.querySelector('input[name="product-gender-assoc"]:checked') as HTMLInputElement;
-      const genderVal = genderRadio ? genderRadio.value : '';
-
-      if (genderVal === 'hombre' && menCol) {
-        checkedCollectionIds.push(menCol.id);
-      } else if (genderVal === 'mujer' && womenCol) {
-        checkedCollectionIds.push(womenCol.id);
-      } else if (genderVal === 'unisex') {
-        if (menCol) checkedCollectionIds.push(menCol.id);
-        if (womenCol) checkedCollectionIds.push(womenCol.id);
-      }
 
       const initialCollectionIds = dbCollections
-        .filter((col: any) => (col.productIds || []).includes(targetProductId))
+        .filter((col: any) => col.slug !== 'hombre' && col.slug !== 'mujer' && (col.productIds || []).includes(targetProductId))
         .map((col: any) => col.id);
 
       const collectionsToAdd = checkedCollectionIds.filter((id: string) => !initialCollectionIds.includes(id));
@@ -2888,6 +3021,221 @@ function getDragAfterElement(container: HTMLElement, y: number) {
   }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
 }
 
+export function getCollectionConflictMap(currentColId: string | null) {
+  const categorySelect = document.getElementById('form-collection-parent-category') as HTMLSelectElement | null;
+  const parentCategory = categorySelect ? categorySelect.value : 'General';
+  const isPortada = parentCategory === 'Portada';
+
+  const dbCollections = getDbCollections() || [];
+  const otherCols = dbCollections.filter((c: any) => c.id !== currentColId && c.slug !== 'hombre' && c.slug !== 'mujer');
+
+  const conflictMap = new Map<string, { scope: string; collectionTitle: string }>();
+
+  if (parentCategory === 'Hombre') {
+    // 1. Any product belonging to other Hombre collections
+    const hombreCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Hombre');
+    for (const c of hombreCols) {
+      for (const pid of (c.productIds || [])) {
+        conflictMap.set(pid, { scope: 'Hombre', collectionTitle: c.title });
+      }
+    }
+
+    // 2. Any product belonging to Mujer collections (including root mujer collection)
+    const mujerCols = dbCollections.filter((c: any) => getCollectionCategory(c) === 'Mujer' || c.slug === 'mujer');
+    for (const c of mujerCols) {
+      for (const pid of (c.productIds || [])) {
+        if (!conflictMap.has(pid)) {
+          conflictMap.set(pid, { scope: 'Mujer', collectionTitle: c.title });
+        }
+      }
+    }
+
+    // 3. Any product whose inherent gender is Mujer (or whose title / SKU specifies mujer)
+    allProducts.forEach((p) => {
+      const isWomanProduct = p.gender === 'mujer' || 
+                             p.title.toLowerCase().includes('mujer') || 
+                             p.title.toLowerCase().includes('women') || 
+                             p.sku.toUpperCase().includes('MUJER');
+      if (isWomanProduct && !conflictMap.has(p.id)) {
+        conflictMap.set(p.id, { scope: 'Mujer', collectionTitle: 'Catálogo Mujer' });
+      }
+    });
+
+  } else if (parentCategory === 'Mujer') {
+    // 1. Any product belonging to other Mujer collections
+    const mujerCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Mujer');
+    for (const c of mujerCols) {
+      for (const pid of (c.productIds || [])) {
+        conflictMap.set(pid, { scope: 'Mujer', collectionTitle: c.title });
+      }
+    }
+
+    // 2. Any product belonging to Hombre collections (including root hombre collection)
+    const hombreCols = dbCollections.filter((c: any) => getCollectionCategory(c) === 'Hombre' || c.slug === 'hombre');
+    for (const c of hombreCols) {
+      for (const pid of (c.productIds || [])) {
+        if (!conflictMap.has(pid)) {
+          conflictMap.set(pid, { scope: 'Hombre', collectionTitle: c.title });
+        }
+      }
+    }
+
+    // 3. Any product whose inherent gender is Hombre (or whose title / SKU specifies hombre)
+    allProducts.forEach((p) => {
+      const isManProduct = p.gender === 'hombre' || 
+                           p.title.toLowerCase().includes('hombre') || 
+                           p.title.toLowerCase().includes('men') || 
+                           p.sku.toUpperCase().includes('HOMBRE');
+      if (isManProduct && !conflictMap.has(p.id)) {
+        conflictMap.set(p.id, { scope: 'Hombre', collectionTitle: 'Catálogo Hombre' });
+      }
+    });
+  }
+
+  if (isPortada) {
+    const portadaCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Portada');
+    for (const c of portadaCols) {
+      for (const pid of (c.productIds || [])) {
+        if (!conflictMap.has(pid)) {
+          conflictMap.set(pid, { scope: 'Portada', collectionTitle: c.title });
+        }
+      }
+    }
+  }
+
+  return conflictMap;
+}
+
+export function getCategoryConflictForCollection(colId: string | null, targetCat: string, productIds: string[]): { hasConflict: boolean; reason: string } {
+  if (!productIds || productIds.length === 0) {
+    return { hasConflict: false, reason: '' };
+  }
+
+  const dbCollections = getDbCollections() || [];
+  const otherCols = dbCollections.filter((c: any) => c.id !== colId && c.slug !== 'hombre' && c.slug !== 'mujer');
+  const productsInCollection = productIds.map(id => allProducts.find(p => p.id === id)).filter(Boolean);
+
+  if (targetCat === 'Hombre') {
+    const womanProduct = productsInCollection.find(p => p?.gender === 'mujer' || p?.title.toLowerCase().includes('mujer') || p?.sku.toUpperCase().includes('MUJER'));
+    if (womanProduct) {
+      return { hasConflict: true, reason: `Contiene productos de Mujer ("${womanProduct.title}")` };
+    }
+
+    const hombreCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Hombre');
+    for (const c of hombreCols) {
+      const dup = (c.productIds || []).find((pid: string) => productIds.includes(pid));
+      if (dup) {
+        const pMeta = allProducts.find(p => p.id === dup);
+        return { hasConflict: true, reason: `"${pMeta?.title || dup}" ya pertenece a otra colección de Hombre ("${c.title}")` };
+      }
+    }
+
+    const mujerCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Mujer');
+    for (const c of mujerCols) {
+      const dup = (c.productIds || []).find((pid: string) => productIds.includes(pid));
+      if (dup) {
+        const pMeta = allProducts.find(p => p.id === dup);
+        return { hasConflict: true, reason: `"${pMeta?.title || dup}" ya está asignado a Mujer ("${c.title}")` };
+      }
+    }
+  }
+
+  if (targetCat === 'Mujer') {
+    const manProduct = productsInCollection.find(p => p?.gender === 'hombre' || p?.title.toLowerCase().includes('hombre') || p?.sku.toUpperCase().includes('HOMBRE'));
+    if (manProduct) {
+      return { hasConflict: true, reason: `Contiene productos de Hombre ("${manProduct.title}")` };
+    }
+
+    const mujerCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Mujer');
+    for (const c of mujerCols) {
+      const dup = (c.productIds || []).find((pid: string) => productIds.includes(pid));
+      if (dup) {
+        const pMeta = allProducts.find(p => p.id === dup);
+        return { hasConflict: true, reason: `"${pMeta?.title || dup}" ya pertenece a otra colección de Mujer ("${c.title}")` };
+      }
+    }
+
+    const hombreCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Hombre');
+    for (const c of hombreCols) {
+      const dup = (c.productIds || []).find((pid: string) => productIds.includes(pid));
+      if (dup) {
+        const pMeta = allProducts.find(p => p.id === dup);
+        return { hasConflict: true, reason: `"${pMeta?.title || dup}" ya está asignado a Hombre ("${c.title}")` };
+      }
+    }
+  }
+
+  if (targetCat === 'Portada') {
+    const portadaCols = otherCols.filter((c: any) => getCollectionCategory(c) === 'Portada');
+    for (const c of portadaCols) {
+      const dup = (c.productIds || []).find((pid: string) => productIds.includes(pid));
+      if (dup) {
+        const pMeta = allProducts.find(p => p.id === dup);
+        return { hasConflict: true, reason: `"${pMeta?.title || dup}" ya se muestra en Portada ("${c.title}")` };
+      }
+    }
+  }
+
+  return { hasConflict: false, reason: '' };
+}
+
+let lastValidParentCategory = 'General';
+
+export function syncParentCategoryRestrictions() {
+  const categorySelect = document.getElementById('form-collection-parent-category') as HTMLSelectElement | null;
+  const conflictNote = document.getElementById('collection-category-conflict-note');
+  if (!categorySelect) return;
+
+  const currentColId = (document.getElementById('form-collection-id') as HTMLInputElement)?.value || null;
+  const currentProductIds = state.collection.currentOpenedFolderIds || [];
+
+  const baseLabels: Record<string, string> = {
+    'General': 'General (Colección Libre / Mega Menú)',
+    'Hombre': 'Hombre (Subcolección de Hombre)',
+    'Mujer': 'Mujer (Subcolección de Mujer)',
+    'Portada': 'Portada (Página de Inicio)',
+    'F3 Synergies': 'F3 Synergies (Alianzas / Gimnasios)'
+  };
+
+  const currentVal = categorySelect.value;
+  let activeConflictReason = '';
+
+  Array.from(categorySelect.options).forEach((opt) => {
+    const catVal = opt.value;
+    const baseText = baseLabels[catVal] || catVal;
+    const check = getCategoryConflictForCollection(currentColId, catVal, currentProductIds);
+
+    if (check.hasConflict) {
+      opt.disabled = true;
+      opt.textContent = `${baseText} 🚫 (${check.reason})`;
+      if (catVal === currentVal) {
+        activeConflictReason = check.reason;
+      }
+    } else {
+      opt.disabled = false;
+      opt.textContent = baseText;
+    }
+  });
+
+  if (conflictNote) {
+    if (activeConflictReason) {
+      conflictNote.classList.remove('hidden');
+      conflictNote.innerHTML = `
+        <div class="flex items-start gap-2.5 text-amber-900 bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] font-semibold select-none animate-fade-in">
+          <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+          <div class="flex flex-col gap-0.5">
+            <span class="font-extrabold uppercase tracking-wider text-[9px] text-amber-800">Categoría no permitida por duplicados</span>
+            <span>Esta colección contiene productos en conflicto con <strong>${currentVal}</strong> (${activeConflictReason}). Selecciona <em>General</em> o quita los productos repetidos en la pestaña "2. Organizar Productos".</span>
+          </div>
+        </div>
+      `;
+    } else {
+      conflictNote.classList.add('hidden');
+      conflictNote.innerHTML = '';
+    }
+  }
+}
+
 export function populateFolderProducts(associatedIds: string[]) {
   const currentListEl = document.getElementById('coll-current-list');
   const availableListEl = document.getElementById('coll-available-list');
@@ -2909,18 +3257,44 @@ export function populateFolderProducts(associatedIds: string[]) {
     return allProducts.find((p) => p.id === id);
   };
 
+  const currentColId = (document.getElementById('form-collection-id') as HTMLInputElement)?.value || null;
+  const conflictMap = getCollectionConflictMap(currentColId);
+
+  // Check for duplicate conflicts in current associated items
+  const conflictingCurrent = associatedIds.filter(id => conflictMap.has(id));
+  const collConflictAlert = document.getElementById('coll-conflict-alert');
+  const collConflictAlertText = document.getElementById('coll-conflict-alert-text');
+  if (collConflictAlert && collConflictAlertText) {
+    if (conflictingCurrent.length > 0) {
+      collConflictAlert.classList.remove('hidden');
+      const details = conflictingCurrent.slice(0, 2).map(id => {
+        const p = getProductMeta(id);
+        const conf = conflictMap.get(id);
+        return `"${p?.title || id}" (en ${conf?.scope}: ${conf?.collectionTitle})`;
+      }).join(', ');
+      collConflictAlertText.textContent = `Atención: Hay ${conflictingCurrent.length} producto(s) en conflicto (${details}). No se permiten duplicados en este ámbito. Quítalos antes de guardar.`;
+    } else {
+      collConflictAlert.classList.add('hidden');
+    }
+  }
+
   associatedIds.forEach((id, index) => {
     const p = getProductMeta(id);
     if (!p) return;
+    const conflict = conflictMap.get(p.id);
 
     const item = document.createElement('div');
-    item.className = 'flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-355 shadow-3xs cursor-grab active:cursor-grabbing transition-all select-none';
+    item.className = `flex items-center gap-3 p-2.5 rounded-xl border ${
+      conflict ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200 bg-white'
+    } hover:border-slate-355 shadow-3xs cursor-grab active:cursor-grabbing transition-all select-none`;
     item.draggable = true;
     item.dataset.id = p.id;
     item.dataset.index = String(index);
 
     item.innerHTML = `
-      <div class="flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-500 font-mono text-[9px] font-bold shrink-0 border border-slate-200">
+      <div class="flex items-center justify-center w-5 h-5 rounded-full ${
+        conflict ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-500 border-slate-200'
+      } font-mono text-[9px] font-bold shrink-0 border">
         ${index + 1}
       </div>
       <div class="w-14 h-18 rounded overflow-hidden bg-slate-50 shrink-0 border border-slate-200">
@@ -2937,6 +3311,11 @@ export function populateFolderProducts(associatedIds: string[]) {
           }">
             ${p.gender === 'hombre' ? 'Hombre' : p.gender === 'mujer' ? 'Mujer' : p.gender === 'unisex' ? 'Unisex' : 'Sin género'}
           </span>
+          ${conflict ? `
+            <span class="px-1.5 py-0.5 text-[8px] font-black uppercase rounded tracking-wider bg-amber-100 text-amber-800 border border-amber-300" title="Conflicto con ${conflict.collectionTitle}">
+              ⚠️ Duplicado en ${conflict.scope}
+            </span>
+          ` : ''}
         </div>
         <span class="block text-xs font-bold text-slate-900 truncate leading-tight">${p.title}</span>
       </div>
@@ -2982,9 +3361,16 @@ export function populateFolderProducts(associatedIds: string[]) {
     `;
   } else {
     filteredAvailable.forEach((p) => {
+      const conflict = conflictMap.get(p.id);
+      const isConflicting = !!conflict;
+
       const item = document.createElement('div');
-      item.className = 'flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white transition-all select-none cursor-grab active:cursor-grabbing';
-      item.draggable = true;
+      item.className = `flex items-center gap-3 p-2.5 rounded-xl border transition-all select-none ${
+        isConflicting 
+          ? 'border-amber-200/60 bg-amber-50/20 opacity-60 cursor-not-allowed'
+          : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white cursor-grab active:cursor-grabbing'
+      }`;
+      item.draggable = !isConflicting;
       item.dataset.id = p.id;
 
       item.innerHTML = `
@@ -3005,38 +3391,66 @@ export function populateFolderProducts(associatedIds: string[]) {
           </div>
           <span class="block text-xs font-bold text-slate-900 truncate leading-tight">${p.title}</span>
         </div>
-        <button 
-          type="button" 
-          class="add-assoc-btn text-2xs font-extrabold uppercase px-2.5 py-1.5 rounded-lg border border-rose-600 bg-rose-600 hover:bg-red-700 text-white shadow-3xs transition-all active:scale-95 shrink-0"
-        >
-          Añadir
-        </button>
+        ${
+          isConflicting
+            ? `<span class="text-3xs font-black uppercase px-2 py-1 rounded-lg border border-amber-200 bg-amber-100 text-amber-800 shrink-0 tracking-wider" title="Ya en uso en ${conflict?.collectionTitle} (${conflict?.scope})">En uso (${conflict?.scope})</span>`
+            : `<button 
+                type="button" 
+                class="add-assoc-btn text-2xs font-extrabold uppercase px-2.5 py-1.5 rounded-lg border border-rose-600 bg-rose-600 hover:bg-red-700 text-white shadow-3xs transition-all active:scale-95 shrink-0"
+              >
+                Añadir
+              </button>`
+        }
       `;
 
-      item.querySelector('.add-assoc-btn')?.addEventListener('click', () => {
-        associatedIds.push(p.id);
-        showToast(`"${p.title}" añadido.`);
-        populateFolderProducts(associatedIds);
-      });
+      if (!isConflicting) {
+        item.querySelector('.add-assoc-btn')?.addEventListener('click', () => {
+          associatedIds.push(p.id);
+          showToast(`"${p.title}" añadido.`);
+          populateFolderProducts(associatedIds);
+        });
 
-      item.addEventListener('dragstart', (e) => {
-        const dragEvent = e as DragEvent;
-        dragEvent.dataTransfer?.setData('text/plain', p.id);
-        dragEvent.dataTransfer?.setData('source-index', '');
-        item.classList.add('opacity-40');
-      });
+        item.addEventListener('dragstart', (e) => {
+          const dragEvent = e as DragEvent;
+          dragEvent.dataTransfer?.setData('text/plain', p.id);
+          dragEvent.dataTransfer?.setData('source-index', '');
+          item.classList.add('opacity-40');
+        });
 
-      item.addEventListener('dragend', () => {
-        item.classList.remove('opacity-40');
-      });
+        item.addEventListener('dragend', () => {
+          item.classList.remove('opacity-40');
+        });
+      }
 
       availableListEl.appendChild(item);
     });
   }
+
+  syncParentCategoryRestrictions();
 }
 
 collCatalogSearch?.addEventListener('input', () => {
   populateFolderProducts(state.collection.currentOpenedFolderIds);
+});
+
+const collectionParentCategorySelect = document.getElementById('form-collection-parent-category') as HTMLSelectElement | null;
+
+collectionParentCategorySelect?.addEventListener('change', () => {
+  const nextVal = collectionParentCategorySelect.value;
+  const currentColId = (document.getElementById('form-collection-id') as HTMLInputElement)?.value || null;
+  const currentProductIds = state.collection.currentOpenedFolderIds || [];
+
+  const check = getCategoryConflictForCollection(currentColId, nextVal, currentProductIds);
+  if (check.hasConflict) {
+    showToast(`Categoría no permitida: ${check.reason}.`, "error");
+    collectionParentCategorySelect.value = lastValidParentCategory;
+    syncParentCategoryRestrictions();
+    return;
+  }
+
+  lastValidParentCategory = nextVal;
+  populateFolderProducts(state.collection.currentOpenedFolderIds);
+  syncParentCategoryRestrictions();
 });
 
 collCurrentList?.addEventListener('dragover', (e) => {
@@ -3062,6 +3476,14 @@ collCurrentList?.addEventListener('drop', (e) => {
   if (!productId) return;
 
   if (!state.collection.currentOpenedFolderIds.includes(productId)) {
+    const currentColId = (document.getElementById('form-collection-id') as HTMLInputElement)?.value || null;
+    const conflictMap = getCollectionConflictMap(currentColId);
+    if (conflictMap.has(productId)) {
+      const conflict = conflictMap.get(productId);
+      showToast(`No se puede añadir: el producto ya está en "${conflict?.collectionTitle}" (${conflict?.scope}).`, "error");
+      return;
+    }
+
     const afterElement = getDragAfterElement(collCurrentList, dragEvent.clientY) as HTMLElement | null;
     if (afterElement) {
       const targetIndex = parseInt(afterElement.dataset.index || '0');
@@ -3091,6 +3513,8 @@ collCurrentList?.addEventListener('drop', (e) => {
   populateFolderProducts(state.collection.currentOpenedFolderIds);
 });
 
+let currentEditingIndexOrder = 0;
+
 // --- 14. Create / Edit Collection logic ---
 openNewCollectionModal?.addEventListener('click', () => {
   collectionForm.reset();
@@ -3102,20 +3526,25 @@ openNewCollectionModal?.addEventListener('click', () => {
   };
   collectionModalTitle.textContent = "Nueva Carpeta de Colección";
   (document.getElementById('form-collection-id') as HTMLInputElement).value = "";
-  const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
-  if (showOnIndexCheckbox) showOnIndexCheckbox.checked = false;
-  const isSynergyCheckbox = document.getElementById('form-collection-is-synergy') as HTMLInputElement;
-  if (isSynergyCheckbox) isSynergyCheckbox.checked = false;
-  const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
-  if (indexOrderInput) indexOrderInput.value = "0";
+  currentEditingIndexOrder = 0;
   deleteCurrentCollectionBtn?.classList.add('hidden');
   const modalViewLink = document.getElementById('modal-view-collection-link') as HTMLAnchorElement;
   if (modalViewLink) modalViewLink.classList.add('hidden');
   if (collCatalogSearch) collCatalogSearch.value = "";
+
+  const categoryWrapper = document.getElementById('collection-category-wrapper');
+  const categorySelect = document.getElementById('form-collection-parent-category') as HTMLSelectElement | null;
+  if (categoryWrapper) categoryWrapper.classList.remove('hidden');
+  if (collTabProducts) collTabProducts.classList.remove('hidden');
+  if (categorySelect) categorySelect.value = 'General';
+  lastValidParentCategory = 'General';
+  const collConflictAlert = document.getElementById('coll-conflict-alert');
+  if (collConflictAlert) collConflictAlert.classList.add('hidden');
   
   switchCollectionTab('info');
   state.collection.currentOpenedFolderIds = [];
   populateFolderProducts(state.collection.currentOpenedFolderIds);
+  syncParentCategoryRestrictions();
 
   updateVisualFromTextarea('iframe-col-desc', 'form-collection-desc');
   updateVisualFromTextarea('iframe-col-det', 'form-collection-detailed-desc');
@@ -3149,14 +3578,32 @@ collectionForm?.addEventListener('submit', async (e) => {
   const idVal = (document.getElementById('form-collection-id') as HTMLInputElement).value;
   const slugVal = (document.getElementById('form-collection-slug') as HTMLInputElement).value.trim();
 
+  // Validate conflicts before submitting
+  const conflictMap = getCollectionConflictMap(idVal || null);
+  const conflicting = state.collection.currentOpenedFolderIds.filter((id) => conflictMap.has(id));
+  if (conflicting.length > 0) {
+    showToast(`No se puede guardar: hay ${conflicting.length} producto(s) en conflicto que ya existen en otra colección de este ámbito.`, "error");
+    saveCollectionBtn.disabled = false;
+    saveCollectionBtn.innerHTML = originalBtnText;
+    return;
+  }
+
   syncCollectionFormToState(state.collection.activeLang);
 
-  const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
-  const showOnIndex = showOnIndexCheckbox ? showOnIndexCheckbox.checked : false;
-  const isSynergyCheckbox = document.getElementById('form-collection-is-synergy') as HTMLInputElement;
-  const isSynergy = isSynergyCheckbox ? isSynergyCheckbox.checked : false;
-  const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
-  const indexOrder = indexOrderInput ? parseInt(indexOrderInput.value) || 0 : 0;
+  const parentCategorySelect = document.getElementById('form-collection-parent-category') as HTMLSelectElement | null;
+  const parentCategoryVal = parentCategorySelect ? parentCategorySelect.value : 'General';
+
+  const catCheck = getCategoryConflictForCollection(idVal || null, parentCategoryVal, state.collection.currentOpenedFolderIds);
+  if (catCheck.hasConflict) {
+    showToast(`No se puede guardar en la categoría "${parentCategoryVal}": ${catCheck.reason}.`, "error");
+    saveCollectionBtn.disabled = false;
+    saveCollectionBtn.innerHTML = originalBtnText;
+    return;
+  }
+
+  const showOnIndex = (parentCategoryVal === 'Portada');
+  const isSynergy = (parentCategoryVal === 'F3 Synergies');
+  const indexOrder = (parentCategoryVal === 'Portada') ? currentEditingIndexOrder : 0;
 
   const collectionPayload: any = {
     title: state.collection.translations.title,
@@ -3167,6 +3614,7 @@ collectionForm?.addEventListener('submit', async (e) => {
     detailedDescription: state.collection.translations.detailedDescription || null,
     detailedDescription_en: state.collection.translations.detailedDescription_en || null,
     productIds: state.collection.currentOpenedFolderIds,
+    parentCategory: parentCategoryVal,
     showOnIndex,
     indexOrder,
     isSynergy,
@@ -3218,12 +3666,7 @@ document.querySelectorAll('.collection-folder').forEach((folder) => {
     collectionModalTitle.textContent = "Propiedades: Carpeta " + colData.title;
     (document.getElementById('form-collection-id') as HTMLInputElement).value = colData.id;
     (document.getElementById('form-collection-slug') as HTMLInputElement).value = colData.slug;
-    const showOnIndexCheckbox = document.getElementById('form-collection-show-on-index') as HTMLInputElement;
-    if (showOnIndexCheckbox) showOnIndexCheckbox.checked = !!colData.showOnIndex;
-    const isSynergyCheckbox = document.getElementById('form-collection-is-synergy') as HTMLInputElement;
-    if (isSynergyCheckbox) isSynergyCheckbox.checked = !!colData.isSynergy;
-    const indexOrderInput = document.getElementById('form-collection-index-order') as HTMLInputElement;
-    if (indexOrderInput) indexOrderInput.value = colData.indexOrder !== undefined ? String(colData.indexOrder) : "0";
+    currentEditingIndexOrder = colData.indexOrder !== undefined ? colData.indexOrder : 0;
 
     const modalViewLink = document.getElementById('modal-view-collection-link') as HTMLAnchorElement;
     if (modalViewLink) {
@@ -3250,8 +3693,38 @@ document.querySelectorAll('.collection-folder').forEach((folder) => {
     if (collectionLangSelect) collectionLangSelect.value = 'es';
     syncCollectionStateToForm('es');
 
+    const isFixedRoot = colData.slug === 'hombre' || colData.slug === 'mujer';
+    const categoryWrapper = document.getElementById('collection-category-wrapper');
+    const categorySelect = document.getElementById('form-collection-parent-category') as HTMLSelectElement | null;
+
+    if (categoryWrapper) {
+      if (isFixedRoot) categoryWrapper.classList.add('hidden');
+      else categoryWrapper.classList.remove('hidden');
+    }
+
+    if (categorySelect) {
+      if (isFixedRoot) {
+        categorySelect.value = 'General';
+        lastValidParentCategory = 'General';
+      } else {
+        const isMen = colData.slug.includes('hombre') || colData.title?.toLowerCase().includes('hombre') || colData.title?.toLowerCase().includes('men');
+        const isWomen = colData.slug.includes('mujer') || colData.title?.toLowerCase().includes('mujer') || colData.title?.toLowerCase().includes('women');
+        const detected = colData.parentCategory || (colData.isSynergy ? 'F3 Synergies' : colData.showOnIndex ? 'Portada' : isMen ? 'Hombre' : isWomen ? 'Mujer' : 'General');
+        
+        let hasOption = Array.from(categorySelect.options).some(opt => opt.value === detected);
+        if (!hasOption) {
+          const opt = document.createElement('option');
+          opt.value = detected;
+          opt.textContent = detected;
+          categorySelect.appendChild(opt);
+        }
+        categorySelect.value = detected;
+        lastValidParentCategory = detected;
+      }
+    }
+
     if (deleteCurrentCollectionBtn) {
-      if (colData.slug === 'hombre' || colData.slug === 'mujer') {
+      if (isFixedRoot) {
         deleteCurrentCollectionBtn.classList.add('hidden');
       } else {
         deleteCurrentCollectionBtn.classList.remove('hidden');
@@ -3262,7 +3735,7 @@ document.querySelectorAll('.collection-folder').forEach((folder) => {
 
     const slugInput = document.getElementById('form-collection-slug') as HTMLInputElement;
     if (slugInput) {
-      if (colData.slug === 'hombre' || colData.slug === 'mujer') {
+      if (isFixedRoot) {
         slugInput.readOnly = true;
         slugInput.classList.add('bg-slate-50', 'text-slate-400', 'cursor-not-allowed');
       } else {
@@ -3272,7 +3745,7 @@ document.querySelectorAll('.collection-folder').forEach((folder) => {
     }
 
     if (collTabProducts) {
-      if (colData.slug === 'hombre' || colData.slug === 'mujer') {
+      if (isFixedRoot) {
         collTabProducts.classList.add('hidden');
       } else {
         collTabProducts.classList.remove('hidden');
@@ -3311,34 +3784,71 @@ deleteCurrentCollectionBtn?.addEventListener('click', async () => {
   }
 });
 
+let activeDraggedCatalogProductId: string | null = null;
+
 // Dragging catalog products to folders on Desktop
 document.querySelectorAll('.product-draggable').forEach((card) => {
   card.addEventListener('dragstart', (e) => {
+    if (isReorderMode) {
+      e.preventDefault();
+      return;
+    }
+    const pid = card.getAttribute('data-id') || '';
+    activeDraggedCatalogProductId = pid;
     const dragEvent = e as DragEvent;
-    dragEvent.dataTransfer?.setData('text/plain', card.getAttribute('data-id') || '');
+    dragEvent.dataTransfer?.setData('text/plain', pid);
     card.classList.add('opacity-40');
   });
   card.addEventListener('dragend', () => {
+    activeDraggedCatalogProductId = null;
     card.classList.remove('opacity-40');
   });
 });
 
 document.querySelectorAll('.collection-folder').forEach((folder) => {
   folder.addEventListener('dragover', (e) => {
+    if (isReorderMode) return;
     e.preventDefault();
+    const dragEvent = e as DragEvent;
+
+    if (activeDraggedCatalogProductId) {
+      const colData = JSON.parse(folder.getAttribute('data-collection-json') || '{}');
+      if (colData.slug === 'hombre' || colData.slug === 'mujer') {
+        if (dragEvent.dataTransfer) dragEvent.dataTransfer.dropEffect = 'none';
+        folder.classList.remove('bg-amber-500/20', 'scale-105');
+        folder.classList.add('border-red-400', 'bg-red-50/20');
+        return;
+      }
+      const targetCat = getCollectionCategory(colData);
+      const targetProduct = allProducts.find(p => p.id === activeDraggedCatalogProductId);
+      const isWomanProduct = targetProduct ? (targetProduct.gender === 'mujer' || targetProduct.title.toLowerCase().includes('mujer') || targetProduct.sku.toUpperCase().includes('MUJER')) : false;
+      const isManProduct = targetProduct ? (targetProduct.gender === 'hombre' || targetProduct.title.toLowerCase().includes('hombre') || targetProduct.sku.toUpperCase().includes('HOMBRE')) : false;
+
+      if ((targetCat === 'Hombre' && isWomanProduct) || (targetCat === 'Mujer' && isManProduct)) {
+        if (dragEvent.dataTransfer) dragEvent.dataTransfer.dropEffect = 'none';
+        folder.classList.remove('bg-amber-500/20', 'scale-105');
+        folder.classList.add('border-red-400', 'bg-red-50/20');
+        return;
+      }
+    }
+
+    if (dragEvent.dataTransfer) dragEvent.dataTransfer.dropEffect = 'copy';
+    folder.classList.remove('border-red-400', 'bg-red-50/20');
     folder.classList.add('bg-amber-500/20', 'scale-105');
   });
   
   folder.addEventListener('dragleave', () => {
-    folder.classList.remove('bg-amber-500/20', 'scale-105');
+    if (isReorderMode) return;
+    folder.classList.remove('bg-amber-500/20', 'scale-105', 'border-red-400', 'bg-red-50/20');
   });
   
   folder.addEventListener('drop', async (e) => {
+    if (isReorderMode) return;
     e.preventDefault();
-    folder.classList.remove('bg-amber-500/20', 'scale-105');
+    folder.classList.remove('bg-amber-500/20', 'scale-105', 'border-red-400', 'bg-red-50/20');
     
     const dragEvent = e as DragEvent;
-    const productId = dragEvent.dataTransfer?.getData('text/plain');
+    const productId = dragEvent.dataTransfer?.getData('text/plain') || activeDraggedCatalogProductId;
     const collectionId = folder.getAttribute('data-id');
     const colData = JSON.parse(folder.getAttribute('data-collection-json') || '{}');
     
@@ -3353,6 +3863,46 @@ document.querySelectorAll('.collection-folder').forEach((folder) => {
     if (currentIds.includes(productId)) {
       showToast("Este producto ya está en esta carpeta", "error");
       return;
+    }
+
+    // Anti-duplicate validation across scopes
+    const dbCollections = getDbCollections() || [];
+    const otherCols = dbCollections.filter((c: any) => c.id !== collectionId && c.slug !== 'hombre' && c.slug !== 'mujer');
+    const isMenCol = colData.slug.includes('hombre') || colData.title?.toLowerCase().includes('hombre') || colData.title?.toLowerCase().includes('men');
+    const isWomenCol = colData.slug.includes('mujer') || colData.title?.toLowerCase().includes('mujer') || colData.title?.toLowerCase().includes('women');
+    const targetCat = colData.parentCategory || (colData.isSynergy ? 'F3 Synergies' : colData.showOnIndex ? 'Portada' : isMenCol ? 'Hombre' : isWomenCol ? 'Mujer' : 'General');
+
+    const targetProduct = allProducts.find(p => p.id === productId);
+    const isWomanProduct = targetProduct ? (targetProduct.gender === 'mujer' || targetProduct.title.toLowerCase().includes('mujer') || targetProduct.sku.toUpperCase().includes('MUJER')) : false;
+    const isManProduct = targetProduct ? (targetProduct.gender === 'hombre' || targetProduct.title.toLowerCase().includes('hombre') || targetProduct.sku.toUpperCase().includes('HOMBRE')) : false;
+
+    if (targetCat === 'Hombre') {
+      if (isWomanProduct) {
+        showToast(`No se puede añadir: el producto es de Mujer y no puede asignarse a Hombre.`, "error");
+        return;
+      }
+      const conflictCol = otherCols.find((c: any) => (getCollectionCategory(c) === 'Hombre' || getCollectionCategory(c) === 'Mujer') && (c.productIds || []).includes(productId));
+      if (conflictCol) {
+        showToast(`No se puede añadir: el producto ya está en "${conflictCol.title}".`, "error");
+        return;
+      }
+    } else if (targetCat === 'Mujer') {
+      if (isManProduct) {
+        showToast(`No se puede añadir: el producto es de Hombre y no puede asignarse a Mujer.`, "error");
+        return;
+      }
+      const conflictCol = otherCols.find((c: any) => (getCollectionCategory(c) === 'Mujer' || getCollectionCategory(c) === 'Hombre') && (c.productIds || []).includes(productId));
+      if (conflictCol) {
+        showToast(`No se puede añadir: el producto ya está en "${conflictCol.title}".`, "error");
+        return;
+      }
+    }
+    if (colData.showOnIndex || targetCat === 'Portada') {
+      const conflictCol = otherCols.find((c: any) => (getCollectionCategory(c) === 'Portada') && (c.productIds || []).includes(productId));
+      if (conflictCol) {
+        showToast(`No se puede añadir: el producto ya está en "${conflictCol.title}" de Portada.`, "error");
+        return;
+      }
     }
     
     const newIds = [...currentIds, productId];
@@ -3421,7 +3971,7 @@ createNewCategoryBtn?.addEventListener('click', async () => {
   
   try {
     const { data: res } = await actions.getCollectionCategories();
-    const current = res?.categories || ['Hombre', 'Mujer'];
+    const current = res?.categories || ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'];
     if (current.includes(trimmed)) {
       showToast("La categoría ya existe.", "error");
       return;
@@ -3445,7 +3995,7 @@ document.querySelectorAll('.delete-category-btn').forEach((btn) => {
     if (confirm(`¿Estás seguro de que deseas eliminar la categoría "${targetCat}"? Las carpetas dentro de ella volverán a su asignación por defecto.`)) {
       try {
         const { data: res } = await actions.getCollectionCategories();
-        let current = res?.categories || ['Hombre', 'Mujer'];
+        let current = res?.categories || ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'];
         current = current.filter((c: string) => c !== targetCat);
         
         const { error: err1 } = await actions.saveCollectionCategories({ categories: current });
@@ -3554,6 +4104,185 @@ function recalculatePositions() {
   });
 }
 
+// Helper to validate folder drop restrictions in real time during dragging and reordering
+export function checkReorderFolderConflict(
+  draggedFolderId: string,
+  targetCategory: string
+): { hasConflict: boolean; reason: string } {
+  if (!draggedFolderId || !targetCategory) {
+    return { hasConflict: false, reason: '' };
+  }
+
+  // Intra-category reordering: moving within the same category doesn't introduce new products
+  if (currentFolderCategories[draggedFolderId] === targetCategory) {
+    return { hasConflict: false, reason: '' };
+  }
+
+  // Non-restricted categories (General, F3 Synergies, custom) have no unique product constraints
+  if (targetCategory !== 'Hombre' && targetCategory !== 'Mujer' && targetCategory !== 'Portada') {
+    return { hasConflict: false, reason: '' };
+  }
+
+  const dbCollections = getDbCollections() || [];
+  let draggedCol = dbCollections.find((c: any) => c.id === draggedFolderId);
+  const folderEl = document.querySelector(`.draggable-folder[data-id="${draggedFolderId}"]`);
+  if (!draggedCol && folderEl) {
+    try {
+      draggedCol = JSON.parse(folderEl.getAttribute('data-collection-json') || '{}');
+    } catch {}
+  }
+
+  let draggedProductIds: string[] = draggedCol?.productIds || [];
+  if (draggedProductIds.length === 0 && folderEl) {
+    try {
+      const parsed = JSON.parse(folderEl.getAttribute('data-collection-json') || '{}');
+      if (Array.isArray(parsed.productIds)) {
+        draggedProductIds = parsed.productIds;
+      }
+    } catch {}
+  }
+
+  if (draggedProductIds.length === 0) {
+    return { hasConflict: false, reason: '' };
+  }
+
+  const allDbProds = getDbProducts() || [];
+  const getProdMeta = (pid: string) => {
+    return allProducts.find(p => p.id === pid) || allDbProds.find((p: any) => p.id === pid);
+  };
+  const getProdTitle = (pid: string) => {
+    const p = getProdMeta(pid);
+    return p?.title || pid;
+  };
+  const getColTitle = (col: any) => col?.title || 'Colección';
+
+  const draggedProducts = draggedProductIds.map(id => getProdMeta(id)).filter(Boolean);
+
+  const getEffectiveCategory = (c: any): string => {
+    if (currentFolderCategories[c.id]) {
+      return currentFolderCategories[c.id];
+    }
+    return getCollectionCategory(c);
+  };
+
+  const isHombre = (c: any) => c.slug === 'hombre' || getEffectiveCategory(c) === 'Hombre';
+  const isMujer = (c: any) => c.slug === 'mujer' || getEffectiveCategory(c) === 'Mujer';
+  const isPortada = (c: any) => getEffectiveCategory(c) === 'Portada';
+
+  if (targetCategory === 'Hombre') {
+    // 1. Gender check: cannot contain products of woman
+    const womanProduct = draggedProducts.find((p: any) => 
+      p?.gender === 'mujer' || 
+      p?.title?.toLowerCase().includes('mujer') || 
+      p?.sku?.toUpperCase().includes('MUJER')
+    );
+    if (womanProduct) {
+      return { 
+        hasConflict: true, 
+        reason: `Contiene productos de Mujer ("${womanProduct.title}"). No se puede mover a Hombre.` 
+      };
+    }
+
+    // 2. Duplicate check within other Hombre collections
+    const otherHombreCols = dbCollections.filter((c: any) => 
+      c.id !== draggedFolderId && 
+      c.slug !== 'hombre' && 
+      isHombre(c)
+    );
+    for (const c of otherHombreCols) {
+      const dupId = (c.productIds || []).find((pid: string) => draggedProductIds.includes(pid));
+      if (dupId) {
+        return { 
+          hasConflict: true, 
+          reason: `El producto "${getProdTitle(dupId)}" ya pertenece a "${getColTitle(c)}" en Hombre.` 
+        };
+      }
+    }
+
+    // 3. Isolation check against Mujer collections
+    const mujerCols = dbCollections.filter((c: any) => 
+      c.id !== draggedFolderId && 
+      isMujer(c)
+    );
+    for (const c of mujerCols) {
+      const dupId = (c.productIds || []).find((pid: string) => draggedProductIds.includes(pid));
+      if (dupId) {
+        return { 
+          hasConflict: true, 
+          reason: `El producto "${getProdTitle(dupId)}" ya está asignado a Mujer ("${getColTitle(c)}"). Un producto no puede estar en Hombre y Mujer a la vez.` 
+        };
+      }
+    }
+  }
+
+  if (targetCategory === 'Mujer') {
+    // 1. Gender check: cannot contain products of man
+    const manProduct = draggedProducts.find((p: any) => 
+      p?.gender === 'hombre' || 
+      p?.title?.toLowerCase().includes('hombre') || 
+      p?.sku?.toUpperCase().includes('HOMBRE')
+    );
+    if (manProduct) {
+      return { 
+        hasConflict: true, 
+        reason: `Contiene productos de Hombre ("${manProduct.title}"). No se puede mover a Mujer.` 
+      };
+    }
+
+    // 2. Duplicate check within other Mujer collections
+    const otherMujerCols = dbCollections.filter((c: any) => 
+      c.id !== draggedFolderId && 
+      c.slug !== 'mujer' && 
+      isMujer(c)
+    );
+    for (const c of otherMujerCols) {
+      const dupId = (c.productIds || []).find((pid: string) => draggedProductIds.includes(pid));
+      if (dupId) {
+        return { 
+          hasConflict: true, 
+          reason: `El producto "${getProdTitle(dupId)}" ya pertenece a "${getColTitle(c)}" en Mujer.` 
+        };
+      }
+    }
+
+    // 3. Isolation check against Hombre collections
+    const hombreCols = dbCollections.filter((c: any) => 
+      c.id !== draggedFolderId && 
+      isHombre(c)
+    );
+    for (const c of hombreCols) {
+      const dupId = (c.productIds || []).find((pid: string) => draggedProductIds.includes(pid));
+      if (dupId) {
+        return { 
+          hasConflict: true, 
+          reason: `El producto "${getProdTitle(dupId)}" ya está asignado a Hombre ("${getColTitle(c)}"). Un producto no puede estar en Hombre y Mujer a la vez.` 
+        };
+      }
+    }
+  }
+
+  if (targetCategory === 'Portada') {
+    // Duplicate check within other Portada collections
+    const otherPortadaCols = dbCollections.filter((c: any) => 
+      c.id !== draggedFolderId && 
+      isPortada(c)
+    );
+    for (const c of otherPortadaCols) {
+      const dupId = (c.productIds || []).find((pid: string) => draggedProductIds.includes(pid));
+      if (dupId) {
+        return { 
+          hasConflict: true, 
+          reason: `El producto "${getProdTitle(dupId)}" ya se muestra en Portada ("${getColTitle(c)}"). No se permiten productos repetidos en Portada.` 
+        };
+      }
+    }
+  }
+
+  return { hasConflict: false, reason: '' };
+}
+
+let activeDraggedFolderId: string | null = null;
+
 // Drag events for folders
 document.querySelectorAll('.draggable-folder').forEach((folder) => {
   folder.addEventListener('dragstart', (e) => {
@@ -3561,34 +4290,75 @@ document.querySelectorAll('.draggable-folder').forEach((folder) => {
       e.preventDefault();
       return;
     }
+    const folderId = folder.getAttribute('data-id') || '';
+    activeDraggedFolderId = folderId;
     const dragEvent = e as DragEvent;
-    dragEvent.dataTransfer?.setData('text/folder-id', folder.getAttribute('data-id') || '');
+    dragEvent.dataTransfer?.setData('text/folder-id', folderId);
     folder.classList.add('opacity-40');
   });
   
   folder.addEventListener('dragend', () => {
+    activeDraggedFolderId = null;
     folder.classList.remove('opacity-40');
+    document.querySelectorAll('.dropzone-category').forEach((dz) => {
+      dz.classList.remove('bg-slate-100/80', 'border-rose-400', 'bg-red-50/70', 'border-red-400');
+    });
+    document.querySelectorAll('.draggable-folder').forEach((f) => {
+      f.classList.remove('border-rose-500', 'border-t-2', 'border-red-500');
+    });
   });
 
   // Reordering: drag over another folder to insert before it
   folder.addEventListener('dragover', (e) => {
     if (!isReorderMode) return;
     e.preventDefault();
+    const dragEvent = e as DragEvent;
+
+    const targetDropzone = folder.closest('.dropzone-category') as HTMLElement | null;
+    const targetCategory = targetDropzone?.dataset.category || 'General';
+
+    const draggedId = activeDraggedFolderId;
+    if (draggedId && draggedId !== folder.getAttribute('data-id')) {
+      const conflict = checkReorderFolderConflict(draggedId, targetCategory);
+      if (conflict.hasConflict) {
+        if (dragEvent.dataTransfer) {
+          dragEvent.dataTransfer.dropEffect = 'none';
+        }
+        folder.classList.remove('border-rose-500');
+        folder.classList.add('border-red-500', 'border-t-2');
+        return;
+      }
+    }
+
+    if (dragEvent.dataTransfer) {
+      dragEvent.dataTransfer.dropEffect = 'move';
+    }
+    folder.classList.remove('border-red-500');
     folder.classList.add('border-rose-500', 'border-t-2');
   });
 
   folder.addEventListener('dragleave', () => {
-    folder.classList.remove('border-rose-500', 'border-t-2');
+    folder.classList.remove('border-rose-500', 'border-red-500', 'border-t-2');
   });
 
   folder.addEventListener('drop', (e) => {
     if (!isReorderMode) return;
     e.preventDefault();
-    folder.classList.remove('border-rose-500', 'border-t-2');
+    e.stopPropagation();
+    folder.classList.remove('border-rose-500', 'border-red-500', 'border-t-2');
 
     const dragEvent = e as DragEvent;
-    const draggedId = dragEvent.dataTransfer?.getData('text/folder-id') || '';
+    const draggedId = dragEvent.dataTransfer?.getData('text/folder-id') || activeDraggedFolderId || '';
     if (!draggedId || draggedId === folder.getAttribute('data-id')) return;
+
+    const targetDropzone = folder.closest('.dropzone-category') as HTMLElement | null;
+    const targetCategory = targetDropzone?.dataset.category || 'General';
+
+    const conflict = checkReorderFolderConflict(draggedId, targetCategory);
+    if (conflict.hasConflict) {
+      showToast(`No se puede mover a "${targetCategory}": ${conflict.reason}`, "error");
+      return;
+    }
 
     const draggedEl = document.querySelector(`.draggable-folder[data-id="${draggedId}"]`);
     if (draggedEl && folder.parentNode) {
@@ -3603,29 +4373,56 @@ document.querySelectorAll('.dropzone-category').forEach((dropzone) => {
   dropzone.addEventListener('dragover', (e) => {
     if (!isReorderMode) return;
     e.preventDefault();
+    const dragEvent = e as DragEvent;
+    const targetCategory = (dropzone as HTMLElement).dataset.category || 'General';
+
+    if (activeDraggedFolderId) {
+      const conflict = checkReorderFolderConflict(activeDraggedFolderId, targetCategory);
+      if (conflict.hasConflict) {
+        if (dragEvent.dataTransfer) {
+          dragEvent.dataTransfer.dropEffect = 'none';
+        }
+        dropzone.classList.remove('bg-slate-100/80', 'border-rose-400');
+        dropzone.classList.add('bg-red-50/70', 'border-red-400');
+        return;
+      }
+    }
+
+    if (dragEvent.dataTransfer) {
+      dragEvent.dataTransfer.dropEffect = 'move';
+    }
+    dropzone.classList.remove('bg-red-50/70', 'border-red-400');
     dropzone.classList.add('bg-slate-100/80', 'border-rose-400');
   });
 
-  dropzone.addEventListener('dragleave', () => {
-    dropzone.classList.remove('bg-slate-100/80', 'border-rose-400');
+  dropzone.addEventListener('dragleave', (e) => {
+    const related = (e as MouseEvent).relatedTarget as Node | null;
+    if (related && (dropzone as HTMLElement).contains(related)) return;
+    dropzone.classList.remove('bg-slate-100/80', 'border-rose-400', 'bg-red-50/70', 'border-red-400');
   });
 
   dropzone.addEventListener('drop', (e) => {
     if (!isReorderMode) return;
     e.preventDefault();
-    dropzone.classList.remove('bg-slate-100/80', 'border-rose-400');
+    dropzone.classList.remove('bg-slate-100/80', 'border-rose-400', 'bg-red-50/70', 'border-red-400');
     
     const dragEvent = e as DragEvent;
-    const folderId = dragEvent.dataTransfer?.getData('text/folder-id') || '';
-    const newCategory = (dropzone as HTMLElement).dataset.category || '';
+    const folderId = dragEvent.dataTransfer?.getData('text/folder-id') || activeDraggedFolderId || '';
+    const newCategory = (dropzone as HTMLElement).dataset.category || 'General';
     
     if (!folderId || !newCategory) return;
+
+    const conflict = checkReorderFolderConflict(folderId, newCategory);
+    if (conflict.hasConflict) {
+      showToast(`No se puede mover a "${newCategory}": ${conflict.reason}`, "error");
+      return;
+    }
     
-    // Find the folder element and append it to target grid container if not already dropped inside
+    // Find the folder element and append it to target grid container
     const folderEl = document.querySelector(`.draggable-folder[data-id="${folderId}"]`);
     const gridContainer = dropzone.querySelector('.grid-cols-2');
     
-    if (folderEl && gridContainer && !gridContainer.contains(e.target as Node)) {
+    if (folderEl && gridContainer) {
       gridContainer.appendChild(folderEl);
       recalculatePositions();
     }
@@ -3636,6 +4433,28 @@ document.querySelectorAll('.dropzone-category').forEach((dropzone) => {
 saveReorderBtn?.addEventListener('click', async () => {
   if (!isReorderMode) return;
   
+  const dbCollections = getDbCollections() || [];
+  const colMap = new Map(dbCollections.map((c: any) => [c.id, c]));
+
+  // Validate duplicate products across restricted scopes (Hombre, Mujer, Portada)
+  for (const cat of ['Hombre', 'Mujer', 'Portada']) {
+    const seenProducts = new Map<string, string>(); // productId -> collectionTitle
+    for (const [id, targetCat] of Object.entries(currentFolderCategories)) {
+      if (targetCat === cat) {
+        const col = colMap.get(id);
+        if (!col) continue;
+        for (const pid of (col.productIds || [])) {
+          if (seenProducts.has(pid)) {
+            const previousTitle = seenProducts.get(pid);
+            showToast(`Conflicto al reorganizar: "${col.title}" y "${previousTitle}" comparten un producto en ${cat}. No se permiten duplicados en esta categoría.`, "error");
+            return;
+          }
+          seenProducts.set(pid, col.title);
+        }
+      }
+    }
+  }
+
   const updatePromises = [];
   for (const [id, newCat] of Object.entries(currentFolderCategories)) {
     const oldCat = originalFolderCategories[id];
@@ -3646,7 +4465,9 @@ saveReorderBtn?.addEventListener('click', async () => {
       updatePromises.push(actions.updateCollection({ 
         id, 
         parentCategory: newCat,
-        indexOrder: newOrder
+        indexOrder: newOrder,
+        showOnIndex: newCat === 'Portada' ? true : false,
+        isSynergy: newCat === 'F3 Synergies' ? true : false
       }));
     }
   }

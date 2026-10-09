@@ -3,6 +3,7 @@ import type { Product } from '../types';
 import type { APIRoute } from 'astro';
 import { getApparelAttributes, formatMerchantId } from '../lib/merchantUtils';
 import { getGeneralSettings } from '../lib/settings';
+import { optimizeProduct } from '../lib/cdn';
 
 export const prerender = false; // Disable SSG for real-time live data
 
@@ -20,7 +21,8 @@ export const GET: APIRoute = async () => {
     const googleMerchantFeed: Record<string, any>[] = [];
 
     productsSnap.docs.forEach((doc) => {
-      const product = { id: doc.id, ...doc.data() } as Product;
+      const rawProduct = { id: doc.id, ...doc.data() } as Product;
+      const product = optimizeProduct(rawProduct);
       if (!product.slug) return;
 
       const baseDesc = (product.description || product.title || '').replace(/<[^>]*>?/gm, '').trim().substring(0, 5000);

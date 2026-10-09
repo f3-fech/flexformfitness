@@ -14,8 +14,27 @@ export const POST: APIRoute = async ({ cookies }) => {
   });
 };
 
-export const GET: APIRoute = async ({ cookies, redirect }) => {
-  // Allow simple GET requests to log out and redirect immediately
+export const GET: APIRoute = async ({ request, cookies, redirect }) => {
+  // CSRF Guard: prevent cross-site logout via <img>, <iframe>, or cross-origin links
+  const secFetchSite = request.headers.get('sec-fetch-site');
+  if (secFetchSite === 'cross-site') {
+    return new Response('Cross-site logout requests are forbidden.', { status: 403 });
+  }
+
+  const referer = request.headers.get('referer');
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      const reqUrl = new URL(request.url);
+      if (refUrl.origin !== reqUrl.origin) {
+        return new Response('Cross-origin logout requests are forbidden.', { status: 403 });
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }
+
+  // Delete the session cookie
   cookies.delete('session_token', {
     path: '/',
   } as any);

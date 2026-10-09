@@ -1,6 +1,6 @@
 import { actions } from 'astro:actions';
 import { state } from './state';
-import { toggleModal, showToast } from './utils';
+import { toggleModal, showToast, escapeHtml } from './utils';
 
 // Elements
 const contactsTableBody = document.getElementById('contacts-table-body') as HTMLTableSectionElement;
@@ -75,11 +75,11 @@ export async function loadContactsList(lastVisibleId: string | null = null) {
       return `
         <tr class="contact-row hover:bg-slate-50/50 transition-colors cursor-pointer" data-id="${msg.id}" data-name="${encodeURIComponent(msg.name)}" data-email="${encodeURIComponent(msg.email)}" data-date="${formattedDate}" data-status="${msg.status}" data-message="${encodeURIComponent(msg.message)}">
           <td class="py-4 px-5">
-            <div class="font-bold text-slate-900">${msg.name}</div>
-            <div class="text-slate-400 text-3xs font-mono">${msg.email}</div>
+            <div class="font-bold text-slate-900">${escapeHtml(msg.name)}</div>
+            <div class="text-slate-400 text-3xs font-mono">${escapeHtml(msg.email)}</div>
           </td>
           <td class="py-4 px-5 text-slate-600 font-medium max-w-xs truncate">
-            ${previewText}
+            ${escapeHtml(previewText)}
           </td>
           <td class="py-4 px-5 text-slate-500 font-medium whitespace-nowrap">
             ${formattedDate}
@@ -178,7 +178,7 @@ async function openDetails(row: HTMLTableRowElement) {
   if (detailName) detailName.textContent = name;
   if (detailDate) detailDate.textContent = date;
   if (detailEmail) detailEmail.textContent = email;
-  if (detailMessage) detailMessage.innerHTML = rawMessage.replace(/\n/g, '<br/>');
+  if (detailMessage) detailMessage.innerHTML = escapeHtml(rawMessage).replace(/\n/g, '<br/>');
 
   // Toggle button texts
   if (contactToggleStatusBtn) {

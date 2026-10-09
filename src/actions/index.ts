@@ -111,6 +111,14 @@ async function checkAdminAuth(context: any) {
     });
   }
 
+  // Security guard: verify email_verified claim to prevent unverified identity spoofing
+  if (!user.email_verified) {
+    throw new ActionError({
+      code: 'UNAUTHORIZED',
+      message: 'Tu correo electrónico debe estar verificado para realizar acciones de administrador.',
+    });
+  }
+
   const superAdminEmail = (import.meta.env.SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || 'admin@flexform.com').trim().toLowerCase();
   if (user.email.trim().toLowerCase() === superAdminEmail) {
     return; // Authorized
@@ -129,6 +137,124 @@ async function checkAdminAuth(context: any) {
     code: 'UNAUTHORIZED',
     message: 'No tienes permisos de administrador para realizar esta acción.',
   });
+}
+
+// Helper to validate anti-duplicate and fixed collection rules
+// (Hombre, Mujer, Portada, and General scopes)
+async function validateCollectionRules(colId: string | null, payload: Record<string, any>, oldData?: any) {
+  const slug = payload.slug || oldData?.slug || '';
+  const isFixedRoot = slug === 'hombre' || slug === 'mujer';
+
+  // 1. Fixed collections validation (Hombre y Mujer)
+  if (isFixedRoot) {
+    payload.showOnIndex = false;
+    payload.isSynergy = false;
+    payload.productIds = [];
+    payload.parentCategory = null;
+    return;
+  }
+
+  // Determine parentCategory, showOnIndex, isSynergy and target product IDs
+  let parentCategory = payload.parentCategory !== undefined ? payload.parentCategory : (oldData?.parentCategory ?? null);
+  let showOnIndex = payload.showOnIndex !== undefined ? payload.showOnIndex : (oldData?.showOnIndex ?? false);
+  let isSynergy = payload.isSynergy !== undefined ? payload.isSynergy : (oldData?.isSynergy ?? false);
+  const targetProductIds: string[] = payload.productIds !== undefined ? (payload.productIds || []) : (oldData?.productIds || []);
+
+  if (parentCategory === 'Portada') {
+    payload.showOnIndex = true;
+    showOnIndex = true;
+    payload.isSynergy = false;
+    isSynergy = false;
+  } else if (parentCategory === 'F3 Synergies') {
+    payload.isSynergy = true;
+    isSynergy = true;
+    payload.showOnIndex = false;
+    showOnIndex = false;
+  } else if (parentCategory !== null) {
+    if (payload.showOnIndex === undefined && (oldData?.showOnIndex || oldData?.parentCategory === 'Portada')) {
+      payload.showOnIndex = false;
+      showOnIndex = false;
+    }
+    if (payload.isSynergy === undefined && (oldData?.isSynergy || oldData?.parentCategory === 'F3 Synergies')) {
+      payload.isSynergy = false;
+      isSynergy = false;
+    }
+  }
+
+  if (targetProductIds.length === 0) return;
+
+  // Retrieve existing collections to validate duplicates
+  const allColsSnap = await db.collection('collections').get();
+  const otherCols = allColsSnap.docs
+    .map(d => ({ id: d.id, ...d.data() } as any))
+    .filter(c => c.id !== colId && c.slug !== 'hombre' && c.slug !== 'mujer');
+
+  // Check 1: Scope Hombre
+  if (parentCategory === 'Hombre') {
+    const hombreCols = otherCols.filter(c => c.parentCategory === 'Hombre');
+    for (const c of hombreCols) {
+      const existingProductIds = new Set<string>(c.productIds || []);
+      const duplicates = targetProductIds.filter(pid => existingProductIds.has(pid));
+      if (duplicates.length > 0) {
+        throw new ActionError({
+          code: 'CONFLICT',
+          message: `No se pueden repetir productos en la categoría Hombre. La colección "${c.title}" ya contiene ${duplicates.length === 1 ? 'uno de los productos' : `${duplicates.length} productos`}.`
+        });
+      }
+    }
+    const mujerCols = otherCols.filter(c => c.parentCategory === 'Mujer');
+    for (const c of mujerCols) {
+      const existingProductIds = new Set<string>(c.productIds || []);
+      const duplicates = targetProductIds.filter(pid => existingProductIds.has(pid));
+      if (duplicates.length > 0) {
+        throw new ActionError({
+          code: 'CONFLICT',
+          message: `Incompatibilidad de género: un producto asignado a Mujer (en "${c.title}") no puede incluirse en la categoría Hombre.`
+        });
+      }
+    }
+  }
+
+  // Check 2: Scope Mujer
+  if (parentCategory === 'Mujer') {
+    const mujerCols = otherCols.filter(c => c.parentCategory === 'Mujer');
+    for (const c of mujerCols) {
+      const existingProductIds = new Set<string>(c.productIds || []);
+      const duplicates = targetProductIds.filter(pid => existingProductIds.has(pid));
+      if (duplicates.length > 0) {
+        throw new ActionError({
+          code: 'CONFLICT',
+          message: `No se pueden repetir productos en la categoría Mujer. La colección "${c.title}" ya contiene ${duplicates.length === 1 ? 'uno de los productos' : `${duplicates.length} productos`}.`
+        });
+      }
+    }
+    const hombreCols = otherCols.filter(c => c.parentCategory === 'Hombre');
+    for (const c of hombreCols) {
+      const existingProductIds = new Set<string>(c.productIds || []);
+      const duplicates = targetProductIds.filter(pid => existingProductIds.has(pid));
+      if (duplicates.length > 0) {
+        throw new ActionError({
+          code: 'CONFLICT',
+          message: `Incompatibilidad de género: un producto asignado a Hombre (en "${c.title}") no puede incluirse en la categoría Mujer.`
+        });
+      }
+    }
+  }
+
+  // Check 3: Scope Portada
+  if (showOnIndex || parentCategory === 'Portada') {
+    const portadaCols = otherCols.filter(c => c.showOnIndex === true || c.parentCategory === 'Portada');
+    for (const c of portadaCols) {
+      const existingProductIds = new Set<string>(c.productIds || []);
+      const duplicates = targetProductIds.filter(pid => existingProductIds.has(pid));
+      if (duplicates.length > 0) {
+        throw new ActionError({
+          code: 'CONFLICT',
+          message: `No se pueden repetir productos mostrados en Portada. La colección "${c.title}" ya contiene ${duplicates.length === 1 ? 'uno de los productos' : `${duplicates.length} productos`}.`
+        });
+      }
+    }
+  }
 }
 
 export const server = {
@@ -422,7 +548,11 @@ export const server = {
         const buffer = Buffer.from(base64Content, 'base64');
         const bucketName = process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
         const bucket = admin.storage().bucket(bucketName);
-        const file = bucket.file(`returns/${user.uid}_${Date.now()}_${fileName}`);
+        
+        // Path Traversal Guard: strip directory traversal sequences and special characters
+        const cleanBaseName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-60) || 'return_image.webp';
+        const safeFileName = `${user.uid}_${Date.now()}_${randomUUID().slice(0, 8)}_${cleanBaseName}`;
+        const file = bucket.file(`returns/${safeFileName}`);
 
         const downloadToken = randomUUID();
         await file.save(buffer, {
@@ -569,6 +699,8 @@ export const server = {
     },
   }),
 
+  // Helper to validate anti-duplicate and fixed collection rules
+  // (Hombre, Mujer, Portada, and General scopes)
   // Action to create a new collection
   createCollection: defineAction({
     accept: 'json',
@@ -585,12 +717,13 @@ export const server = {
           });
         }
 
-
+        const createPayload: Record<string, any> = { ...input };
+        await validateCollectionRules(null, createPayload);
 
         const docRef = db.collection('collections').doc();
         await docRef.set({
           id: docRef.id,
-          ...input,
+          ...createPayload,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -654,6 +787,8 @@ export const server = {
             updatePayload[key] = val;
           }
         }
+
+        await validateCollectionRules(id, updatePayload, oldData);
 
         await colRef.update({
           ...updatePayload,
@@ -722,12 +857,19 @@ export const server = {
       try {
         const doc = await db.collection('settings').doc('collectionCategories').get();
         if (doc.exists) {
-          return doc.data() as { categories: string[] };
+          const cats = (doc.data() as { categories: string[] }).categories || [];
+          if (!cats.some(c => c.toLowerCase() === 'portada')) {
+            cats.push('Portada');
+          }
+          if (!cats.some(c => c.toLowerCase() === 'f3 synergies' || c.toLowerCase() === 'f3 sinergies')) {
+            cats.push('F3 Synergies');
+          }
+          return { categories: cats };
         }
-        return { categories: ['Hombre', 'Mujer'] };
+        return { categories: ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'] };
       } catch (error) {
         console.error('Error fetching collection categories:', error);
-        return { categories: ['Hombre', 'Mujer'] };
+        return { categories: ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'] };
       }
     }
   }),
@@ -888,9 +1030,38 @@ export const server = {
       await checkAdminAuth(context);
 
       try {
-        console.log('updateGeneralSettings action payload received:', JSON.stringify(input, null, 2));
+        // Exclude fixed collections (Hombre & Mujer) from mega menu configurations
+        const fixedSnap = await db.collection('collections').where('slug', 'in', ['hombre', 'mujer']).get();
+        const fixedIds = new Set(fixedSnap.docs.map(d => d.id));
+
+        const sanitizedInput = { ...input };
+        if (sanitizedInput.megaMenu) {
+          if (sanitizedInput.megaMenu.section1?.collectionIds) {
+            sanitizedInput.megaMenu.section1.collectionIds = sanitizedInput.megaMenu.section1.collectionIds.filter(id => !fixedIds.has(id));
+          }
+          if (sanitizedInput.megaMenu.section2?.collectionIds) {
+            sanitizedInput.megaMenu.section2.collectionIds = sanitizedInput.megaMenu.section2.collectionIds.filter(id => !fixedIds.has(id));
+          }
+        }
+        if (sanitizedInput.megaMenuHombre) {
+          if (sanitizedInput.megaMenuHombre.section1?.collectionIds) {
+            sanitizedInput.megaMenuHombre.section1.collectionIds = sanitizedInput.megaMenuHombre.section1.collectionIds.filter(id => !fixedIds.has(id));
+          }
+          if (sanitizedInput.megaMenuHombre.section2?.collectionIds) {
+            sanitizedInput.megaMenuHombre.section2.collectionIds = sanitizedInput.megaMenuHombre.section2.collectionIds.filter(id => !fixedIds.has(id));
+          }
+        }
+        if (sanitizedInput.megaMenuMujer) {
+          if (sanitizedInput.megaMenuMujer.section1?.collectionIds) {
+            sanitizedInput.megaMenuMujer.section1.collectionIds = sanitizedInput.megaMenuMujer.section1.collectionIds.filter(id => !fixedIds.has(id));
+          }
+          if (sanitizedInput.megaMenuMujer.section2?.collectionIds) {
+            sanitizedInput.megaMenuMujer.section2.collectionIds = sanitizedInput.megaMenuMujer.section2.collectionIds.filter(id => !fixedIds.has(id));
+          }
+        }
+
         await db.collection('settings').doc('general').set({
-          ...input,
+          ...sanitizedInput,
           updatedAt: new Date(),
         }, { merge: true });
 
@@ -1233,8 +1404,10 @@ export const server = {
         const bucketName = import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || 'f3-flexformfitness.firebasestorage.app';
         const bucket = admin.storage().bucket(bucketName);
         
-        const pathPrefix = folder.endsWith('/') ? folder : `${folder}/`;
-        const file = bucket.file(`${pathPrefix}${fileName}`);
+        // Path Traversal Guard: sanitize folder and fileName
+        const cleanFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '').replace(/^\/+|\/+$/g, '') || 'products';
+        const cleanFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-60) || 'upload.webp';
+        const file = bucket.file(`${cleanFolder}/${cleanFileName}`);
 
         const downloadToken = randomUUID();
 
@@ -2147,8 +2320,17 @@ export const server = {
       name: z.string().optional(),
       userId: z.string().optional(),
     }),
-    handler: async (input) => {
+    handler: async (input, context) => {
       try {
+        const ip = context.clientAddress || '127.0.0.1';
+        const rateLimit = await checkRateLimit('email', ip);
+        if (!rateLimit.success) {
+          throw new ActionError({
+            code: 'TOO_MANY_REQUESTS',
+            message: 'Demasiadas solicitudes. Por favor, intenta de nuevo más tarde.',
+          });
+        }
+
         const consentData = {
           email: input.email.toLowerCase().trim(),
           name: input.name || '',
@@ -2156,7 +2338,16 @@ export const server = {
           updatedAt: new Date(),
         };
 
+        // IDOR Guard: only update customer profile if the caller is the authenticated owner
         if (input.userId) {
+          const user = context.locals.user;
+          if (!user || user.uid !== input.userId) {
+            throw new ActionError({
+              code: 'FORBIDDEN',
+              message: 'No tienes permiso para actualizar este perfil de usuario.',
+            });
+          }
+
           await db.collection('customers').doc(input.userId).set({
             email: input.email.toLowerCase().trim(),
             name: input.name || '',

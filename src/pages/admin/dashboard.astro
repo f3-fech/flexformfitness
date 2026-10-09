@@ -49,8 +49,8 @@ const menCollection = collections.find((c) => c.slug === 'hombre');
 const womenCollection = collections.find((c) => c.slug === 'mujer');
 
 const getProductGender = (productId: string): string => {
-  const isMen = menCollection?.productIds?.includes(productId);
-  const isWomen = womenCollection?.productIds?.includes(productId);
+  const isMen = collections.some(c => (c.parentCategory === 'Hombre' || (!c.parentCategory && (c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men')))) && c.slug !== 'hombre' && (c.productIds || []).includes(productId)) || !!menCollection?.productIds?.includes(productId);
+  const isWomen = collections.some(c => (c.parentCategory === 'Mujer' || (!c.parentCategory && (c.slug.includes('mujer') || c.title.toLowerCase().includes('mujer') || c.title.toLowerCase().includes('women')))) && c.slug !== 'mujer' && (c.productIds || []).includes(productId)) || !!womenCollection?.productIds?.includes(productId);
   if (isMen && isWomen) return 'unisex';
   if (isMen) return 'hombre';
   if (isWomen) return 'mujer';
@@ -58,19 +58,19 @@ const getProductGender = (productId: string): string => {
 };
 
 // Fetch custom categories list from settings
-let rawCategories: string[] = ['Hombre', 'Mujer'];
+let rawCategories: string[] = ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'];
 try {
   const catDoc = await db.collection('settings').doc('collectionCategories').get();
   if (catDoc.exists) {
-    rawCategories = catDoc.data()?.categories || ['Hombre', 'Mujer'];
+    rawCategories = catDoc.data()?.categories || ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'];
   }
 } catch (error) {
   console.error('Error fetching collection categories:', error);
 }
 
-// Normalize and remove case-insensitive duplicates, keeping Hombre and Mujer at the top
-const categoriesList: string[] = ['Hombre', 'Mujer'];
-const seen = new Set<string>(['hombre', 'mujer']);
+// Normalize and remove case-insensitive duplicates, keeping Hombre, Mujer, Portada and F3 Synergies at the top
+const categoriesList: string[] = ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'];
+const seen = new Set<string>(['hombre', 'mujer', 'portada', 'f3 synergies', 'f3 sinergies']);
 
 for (const cat of rawCategories) {
   const trimmed = cat.trim();
@@ -93,12 +93,17 @@ for (const catName of categoriesList) {
     if (c.parentCategory) {
       return c.parentCategory === catName;
     }
+
+    if (c.isSynergy) {
+      return catName === 'F3 Synergies';
+    }
     
     const isMen = c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men');
     const isWomen = c.slug.includes('mujer') || c.title.toLowerCase().includes('mujer') || c.title.toLowerCase().includes('women');
     
     if (isMen) return catName === 'Hombre';
     if (isWomen) return catName === 'Mujer';
+    if (c.showOnIndex) return catName === 'Portada';
     return catName === 'General';
   });
 
@@ -422,6 +427,10 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                   if (c.parentCategory) {
                     return c.parentCategory === catName;
                   }
+
+                  if (c.isSynergy) {
+                    return catName === 'F3 Synergies';
+                  }
                   
                   // Default assignment based on keywords if no category is assigned yet
                   const isMen = c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men');
@@ -432,6 +441,9 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                   }
                   if (isWomen) {
                     return catName === 'Mujer';
+                  }
+                  if (c.showOnIndex) {
+                    return catName === 'Portada';
                   }
                   
                   // Otherwise defaults to General
@@ -454,7 +466,7 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                   >
                     <div class="flex justify-between items-center border-b border-slate-200/60 pb-2 select-none">
                       <div class="flex items-center gap-2.5">
-                        <span class={`w-1.5 h-1.5 rounded-full ${catName === 'Hombre' ? 'bg-blue-500' : catName === 'Mujer' ? 'bg-rose-500' : 'bg-slate-400'}`}></span>
+                        <span class={`w-1.5 h-1.5 rounded-full ${catName === 'Hombre' ? 'bg-blue-500' : catName === 'Mujer' ? 'bg-rose-500' : catName === 'Portada' ? 'bg-amber-500' : catName === 'F3 Synergies' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                         <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest">
                           {catName}
                           <span class="text-[9px] text-slate-400 font-mono font-normal normal-case ml-1.5 select-none">
@@ -490,7 +502,7 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                         )}
                       </div>
                       
-                      {catName !== 'Hombre' && catName !== 'Mujer' && catName !== 'General' && (
+                      {catName !== 'Hombre' && catName !== 'Mujer' && catName !== 'Portada' && catName !== 'F3 Synergies' && catName !== 'General' && (
                         <button 
                           type="button" 
                           class="text-[9px] font-black text-rose-655 hover:text-rose-700 uppercase tracking-wider transition-colors delete-category-btn" 
@@ -538,14 +550,14 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                           
                           <span class="mt-2.5 text-[11px] font-bold text-slate-800 group-hover:text-amber-600 transition-colors line-clamp-1 max-w-[110px] leading-tight flex items-center gap-1 justify-center">
                             {col.title}
-                            {col.isSynergy && (
+                            {(col.isSynergy || col.parentCategory === 'F3 Synergies') && (
                               <span class="px-1 py-0.2 rounded bg-slate-900 text-white text-[7px] font-black shadow-3xs" title="Colección F3 Synergies">
                                 SYN
                               </span>
                             )}
-                            {col.showOnIndex && (
-                              <span class="px-1 py-0.2 rounded bg-rose-600 text-white text-[7px] font-black shadow-3xs" title={`Portada #${col.indexOrder || 0}`}>
-                                #{col.indexOrder || 0}
+                            {(col.showOnIndex || col.parentCategory === 'Portada') && (
+                              <span class="px-1 py-0.2 rounded bg-rose-600 text-white text-[7px] font-black shadow-3xs" title={`Portada #${col.indexOrder ?? 0}`}>
+                                #{col.indexOrder ?? 0}
                               </span>
                             )}
                           </span>

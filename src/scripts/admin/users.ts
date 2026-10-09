@@ -1,6 +1,6 @@
 import { actions } from 'astro:actions';
 import { state } from './state';
-import { toggleModal } from './utils';
+import { toggleModal, escapeHtml } from './utils';
 import { renderOrderDetails } from './orders';
 
 // Elements
@@ -62,17 +62,17 @@ export async function loadUsersList(lastVisibleId: string | null = null) {
            </span>`;
 
       return `
-        <tr class="user-row hover:bg-slate-50/50 transition-colors cursor-pointer" data-uid="${user.uid}">
+        <tr class="user-row hover:bg-slate-50/50 transition-colors cursor-pointer" data-uid="${escapeHtml(user.uid)}">
           <td class="py-4 px-5">
-            <div class="font-bold text-slate-900">${user.name}</div>
-            <div class="text-slate-400 text-3xs font-mono">${user.email}</div>
-            <div class="text-slate-300 text-4xs font-mono">UID: ${user.uid}</div>
+            <div class="font-bold text-slate-900">${escapeHtml(user.name)}</div>
+            <div class="text-slate-400 text-3xs font-mono">${escapeHtml(user.email)}</div>
+            <div class="text-slate-300 text-4xs font-mono">UID: ${escapeHtml(user.uid)}</div>
           </td>
           <td class="py-4 px-5 text-slate-500 font-medium">
-            ${updatedAtDate}
+            ${escapeHtml(updatedAtDate)}
           </td>
           <td class="py-4 px-5 text-slate-500 font-medium">
-            ${user.phone || '<span class="text-slate-300">Ninguno</span>'}
+            ${user.phone ? escapeHtml(user.phone) : '<span class="text-slate-300">Ninguno</span>'}
           </td>
           <td class="py-4 px-5">
             ${marketingConsentBadge}
@@ -108,10 +108,10 @@ export function renderUserDetails(user: any, orders: any[]) {
     ? `
       <div class="bg-slate-50 p-4.5 rounded-2xl border border-slate-150 flex flex-col gap-1.5 shadow-2xs">
         <span class="text-3xs font-bold uppercase tracking-widest text-slate-400">Dirección de Envío Principal</span>
-        <span class="font-bold text-slate-800">${user.name}</span>
-        <span class="text-slate-655 text-slate-600">${address.line1} ${address.line2 ? `, ${address.line2}` : ''}</span>
-        <span class="text-slate-655 text-slate-600">${address.postal_code} ${address.city}, ${address.state}</span>
-        <span class="text-slate-655 text-slate-600 font-semibold uppercase tracking-wider">${address.country}</span>
+        <span class="font-bold text-slate-800">${escapeHtml(user.name)}</span>
+        <span class="text-slate-655 text-slate-600">${escapeHtml(address.line1)} ${address.line2 ? `, ${escapeHtml(address.line2)}` : ''}</span>
+        <span class="text-slate-655 text-slate-600">${escapeHtml(address.postal_code)} ${escapeHtml(address.city)}, ${escapeHtml(address.state)}</span>
+        <span class="text-slate-655 text-slate-600 font-semibold uppercase tracking-wider">${escapeHtml(address.country)}</span>
       </div>
     `
     : `
@@ -182,15 +182,15 @@ export function renderUserDetails(user: any, orders: any[]) {
           <div class="flex flex-col gap-3.5">
             <div class="flex flex-col gap-1 border-b border-slate-200/50 pb-2 text-slate-700">
               <span class="text-slate-400 text-3xs font-bold uppercase tracking-wider font-mono">Nombre completo</span>
-              <span class="font-bold text-slate-900 text-xs">${user.name}</span>
+              <span class="font-bold text-slate-900 text-xs">${escapeHtml(user.name)}</span>
             </div>
             <div class="flex flex-col gap-1 border-b border-slate-200/50 pb-2 text-slate-700">
               <span class="text-slate-400 text-3xs font-bold uppercase tracking-wider font-mono">Correo electrónico</span>
-              <span class="font-bold font-mono text-slate-900 text-xs break-all">${user.email}</span>
+              <span class="font-bold font-mono text-slate-900 text-xs break-all">${escapeHtml(user.email)}</span>
             </div>
             <div class="flex flex-col gap-1 border-b border-slate-200/50 pb-2 text-slate-700">
               <span class="text-slate-400 text-3xs font-bold uppercase tracking-wider font-mono">Teléfono</span>
-              <span class="font-bold text-slate-900 text-xs">${user.phone || 'Ninguno'}</span>
+              <span class="font-bold text-slate-900 text-xs">${user.phone ? escapeHtml(user.phone) : 'Ninguno'}</span>
             </div>
             <div class="flex flex-col gap-1 border-b border-slate-200/50 pb-2 text-slate-700">
               <span class="text-slate-400 text-3xs font-bold uppercase tracking-wider font-mono">Última actualización</span>

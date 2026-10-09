@@ -4,7 +4,7 @@ import type { Product, ProductCollection } from '../types';
 import { getGeneralSettings } from '../lib/settings';
 import { useTranslations } from '../lib/i18n';
 import { getColorHex, isLightColor } from '../lib/utils';
-import { optimizeProduct } from '../lib/cdn';
+import { optimizeProduct, optimizeStorageUrl } from '../lib/cdn';
 
 let collections: ProductCollection[] = [];
 try {
@@ -87,7 +87,7 @@ const s2Collections = s2Ids
   ? s2Ids.map(id => collections.find(c => c.id === id)).filter(Boolean) as ProductCollection[]
   : collections.slice(5);
 
-const p1Image = megaMenu?.promo1?.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600";
+const p1Image = optimizeStorageUrl(megaMenu?.promo1?.imageUrl) || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600";
 const p1Title = megaMenu?.promo1?.title 
   ? (isEn ? (megaMenu.promo1.titleEn || megaMenu.promo1.title) : megaMenu.promo1.title) 
   : (isEn ? "Men's Collection" : "Colección Hombre");
@@ -97,7 +97,7 @@ const p1Subtitle = megaMenu?.promo1?.subtitle
 const p1RawLink = megaMenu?.promo1?.linkUrl || 'hombre';
 const p1Link = p1RawLink.startsWith('/') ? p1RawLink : `/${lang}/colecciones/${p1RawLink}`;
 
-const p2Image = megaMenu?.promo2?.imageUrl || "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=600";
+const p2Image = optimizeStorageUrl(megaMenu?.promo2?.imageUrl) || "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=600";
 const p2Title = megaMenu?.promo2?.title 
   ? (isEn ? (megaMenu.promo2.titleEn || megaMenu.promo2.title) : megaMenu.promo2.title) 
   : (isEn ? "Women's Collection" : "Colección Mujer");
@@ -133,13 +133,13 @@ const m2Collections = megaMenuHombre?.section2?.collectionIds
   ? (megaMenuHombre.section2.collectionIds.map(id => collections.find(c => c.id === id)).filter(Boolean) as ProductCollection[])
   : [];
 
-const mP1Image = megaMenuHombre?.promo1?.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600";
+const mP1Image = optimizeStorageUrl(megaMenuHombre?.promo1?.imageUrl) || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600";
 const mP1Title = megaMenuHombre?.promo1?.title ? (isEn ? (megaMenuHombre.promo1.titleEn || megaMenuHombre.promo1.title) : megaMenuHombre.promo1.title) : (isEn ? "Men's Collection" : "Colección Hombre");
 const mP1Subtitle = megaMenuHombre?.promo1?.subtitle ? (isEn ? (megaMenuHombre.promo1.subtitleEn || megaMenuHombre.promo1.subtitle) : megaMenuHombre.promo1.subtitle) : (isEn ? "Explore New" : "Explorar Novedades");
 const mP1RawLink = megaMenuHombre?.promo1?.linkUrl || 'hombre';
 const mP1Link = mP1RawLink.startsWith('/') ? mP1RawLink : `/${lang}/colecciones/${mP1RawLink}`;
 
-const mP2Image = megaMenuHombre?.promo2?.imageUrl || "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600";
+const mP2Image = optimizeStorageUrl(megaMenuHombre?.promo2?.imageUrl) || "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600";
 const mP2Title = megaMenuHombre?.promo2?.title ? (isEn ? (megaMenuHombre.promo2.titleEn || megaMenuHombre.promo2.title) : megaMenuHombre.promo2.title) : (isEn ? "New Drops" : "Nuevos Drops");
 const mP2Subtitle = megaMenuHombre?.promo2?.subtitle ? (isEn ? (megaMenuHombre.promo2.subtitleEn || megaMenuHombre.promo2.subtitle) : megaMenuHombre.promo2.subtitle) : (isEn ? "Limited Edition" : "Edición Limitada");
 const mP2RawLink = megaMenuHombre?.promo2?.linkUrl || 'hombre';
@@ -155,13 +155,13 @@ const w2Collections = megaMenuMujer?.section2?.collectionIds
   ? (megaMenuMujer.section2.collectionIds.map(id => collections.find(c => c.id === id)).filter(Boolean) as ProductCollection[])
   : [];
 
-const wP1Image = megaMenuMujer?.promo1?.imageUrl || "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=600";
+const wP1Image = optimizeStorageUrl(megaMenuMujer?.promo1?.imageUrl) || "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=600";
 const wP1Title = megaMenuMujer?.promo1?.title ? (isEn ? (megaMenuMujer.promo1.titleEn || megaMenuMujer.promo1.title) : megaMenuMujer.promo1.title) : (isEn ? "Women's Collection" : "Colección Mujer");
 const wP1Subtitle = megaMenuMujer?.promo1?.subtitle ? (isEn ? (megaMenuMujer.promo1.subtitleEn || megaMenuMujer.promo1.subtitle) : megaMenuMujer.promo1.subtitle) : (isEn ? "Explore New" : "Explorar Novedades");
 const wP1RawLink = megaMenuMujer?.promo1?.linkUrl || 'mujer';
 const wP1Link = wP1RawLink.startsWith('/') ? wP1RawLink : `/${lang}/colecciones/${wP1RawLink}`;
 
-const wP2Image = megaMenuMujer?.promo2?.imageUrl || "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600";
+const wP2Image = optimizeStorageUrl(megaMenuMujer?.promo2?.imageUrl) || "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600";
 const wP2Title = megaMenuMujer?.promo2?.title ? (isEn ? (megaMenuMujer.promo2.titleEn || megaMenuMujer.promo2.title) : megaMenuMujer.promo2.title) : (isEn ? "New Drops" : "Nuevos Drops");
 const wP2Subtitle = megaMenuMujer?.promo2?.subtitle ? (isEn ? (megaMenuMujer.promo2.subtitleEn || megaMenuMujer.promo2.subtitle) : megaMenuMujer.promo2.subtitle) : (isEn ? "Limited Edition" : "Edición Limitada");
 const wP2RawLink = megaMenuMujer?.promo2?.linkUrl || 'mujer';

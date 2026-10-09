@@ -33,6 +33,25 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
       return new Response(JSON.stringify({ error: 'Cart is empty or invalid.' }), { status: 400 });
     }
 
+    // Input Validation Guard: Ensure valid productId and positive integer quantity (1-100)
+    for (const item of items) {
+      if (
+        !item ||
+        typeof item !== 'object' ||
+        typeof item.productId !== 'string' ||
+        !item.productId.trim() ||
+        typeof item.quantity !== 'number' ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity <= 0 ||
+        item.quantity > 100
+      ) {
+        return new Response(
+          JSON.stringify({ error: 'Formato de artículo o cantidad inválida en el carrito.' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     const sanitizedItems: any[] = [];

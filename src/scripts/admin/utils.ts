@@ -82,7 +82,21 @@ export function showToast(message: string, type: 'success' | 'error' = 'success'
   }, 3000);
 }
 
+/**
+ * Safely escapes HTML special characters to prevent Cross-Site Scripting (XSS).
+ */
+export function escapeHtml(str: any): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Convert Blob to Base64 string
+
 export async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

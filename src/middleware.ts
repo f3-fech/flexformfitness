@@ -67,6 +67,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return context.redirect('/admin/login', 302);
     }
 
+    if (!user.email_verified) {
+      console.warn(`Unauthorized access attempt to ${url.pathname} from IP: ${context.clientAddress}: Email not verified: ${user.email}`);
+      return context.redirect('/admin/login?error=unauthorized', 302);
+    }
+
     const superAdminEmail = (import.meta.env.SUPERADMIN_EMAIL || process.env.SUPERADMIN_EMAIL || 'admin@flexform.com').trim().toLowerCase();
     let isAdmin = user.email.trim().toLowerCase() === superAdminEmail;
 

@@ -837,7 +837,7 @@ const subCollectionsMujer = collections.filter((c) => {
                     <button type="button" class="dropdown-option-item text-left px-3.5 py-2 hover:bg-slate-50 text-2xs font-extrabold uppercase text-slate-700 transition-colors cursor-pointer" data-value="">
                       -- Sin categoría --
                     </button>
-                    {collections.map(c => {
+                    {collections.filter(c => c.slug !== 'hombre' && c.slug !== 'mujer').map(c => {
                       const isSelected = settings.megaMenu?.promo1?.linkUrl === c.slug || settings.megaMenu?.promo1?.linkUrl?.endsWith(`/${c.slug}`);
                       return (
                         <button 
@@ -959,7 +959,7 @@ const subCollectionsMujer = collections.filter((c) => {
                     <button type="button" class="dropdown-option-item text-left px-3.5 py-2 hover:bg-slate-50 text-2xs font-extrabold uppercase text-slate-700 transition-colors cursor-pointer" data-value="">
                       -- Sin categoría --
                     </button>
-                    {collections.map(c => {
+                    {collections.filter(c => c.slug !== 'hombre' && c.slug !== 'mujer').map(c => {
                       const isSelected = settings.megaMenu?.promo2?.linkUrl === c.slug || settings.megaMenu?.promo2?.linkUrl?.endsWith(`/${c.slug}`);
                       return (
                         <button 
@@ -989,7 +989,7 @@ const subCollectionsMujer = collections.filter((c) => {
           data-mm-mujer={JSON.stringify(settings.megaMenuMujer || null)}
           data-mm-sub-hombre={JSON.stringify(subCollectionsHombre.map(c => ({ id: c.id, title: c.title })))}
           data-mm-sub-mujer={JSON.stringify(subCollectionsMujer.map(c => ({ id: c.id, title: c.title })))}
-          data-all={JSON.stringify(collections.map(c => ({ id: c.id, title: c.title, slug: c.slug })))}
+          data-all={JSON.stringify(collections.filter(c => c.slug !== 'hombre' && c.slug !== 'mujer').map(c => ({ id: c.id, title: c.title, slug: c.slug })))}
           class="hidden"
         ></div>
 

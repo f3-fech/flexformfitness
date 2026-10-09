@@ -469,7 +469,7 @@ updatePublishButton();
 // --- 5. Megamenu Sortable & Addition Logic ---
 let s1SelectedIds: string[] = [];
 let s2SelectedIds: string[] = [];
-let allCollections: { id: string; title: string }[] = [];
+let allCollections: { id: string; title: string; slug?: string }[] = [];
 
 // Drag element helper
 function getSettingsDragAfterElement(container: HTMLElement, y: number) {
@@ -629,7 +629,7 @@ function renderMegamenuList(section: 1 | 2) {
   const availableContainer = document.getElementById(`megamenu-s${section}-available-list`);
   if (availableContainer) {
     availableContainer.innerHTML = '';
-    const availableCols = allCollections.filter(col => !selectedIds.includes(col.id));
+    const availableCols = allCollections.filter(col => col.slug !== 'hombre' && col.slug !== 'mujer' && !selectedIds.includes(col.id));
     if (availableCols.length === 0) {
       availableContainer.innerHTML = `
         <span class="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider select-none py-3 px-4 text-center">Todas las categorías añadidas</span>

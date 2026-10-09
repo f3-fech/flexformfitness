@@ -85,36 +85,31 @@ try {
     womenProductIds = womenColSnap.docs[0].data().productIds || [];
   }
 
-  // 2. Fetch collections explicitly marked to show on index
-  let collectionsSnap = await db.collection('collections')
-    .where('showOnIndex', '==', true)
-    .get();
+  // 2. Fetch collections marked to show on index or in Portada category (excluding fixed Hombre/Mujer)
+  const allColsSnap = await db.collection('collections').get();
+  let candidateCols = allColsSnap.docs
+    .map(doc => ({ id: doc.id, ...doc.data() } as any))
+    .filter(c => c.slug !== 'hombre' && c.slug !== 'mujer' && (c.showOnIndex === true || c.parentCategory === 'Portada'))
+    .sort((a, b) => (a.indexOrder ?? 0) - (b.indexOrder ?? 0));
 
   // Fallback to 'mas-vendidos' or 'best-sellers' if none is marked
-  if (collectionsSnap.empty) {
-    collectionsSnap = await db.collection('collections')
-      .where('slug', 'in', ['mas-vendidos', 'best-sellers'])
-      .limit(1)
-      .get();
+  if (candidateCols.length === 0) {
+    candidateCols = allColsSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as any))
+      .filter(c => c.slug === 'mas-vendidos' || c.slug === 'best-sellers');
   }
 
-  // Sort in-memory by indexOrder to avoid Firestore composite index requirement
-  const sortedDocs = [...collectionsSnap.docs].sort((a, b) => {
-    const orderA = a.data().indexOrder ?? 0;
-    const orderB = b.data().indexOrder ?? 0;
-    return orderA - orderB;
-  });
+  // Deduplication set to guarantee no product is displayed twice on the homepage
+  const seenHomeProductIds = new Set<string>();
 
-  for (const doc of sortedDocs) {
-    const colData = doc.data();
-    if (!colData) continue;
-
+  for (const colData of candidateCols) {
     const title = isEn ? (colData.title_en || colData.title) : colData.title;
-    const productIds: string[] = colData.productIds || [];
+    const rawProductIds: string[] = colData.productIds || [];
+    const uniqueProductIds = rawProductIds.filter(pid => !seenHomeProductIds.has(pid));
     let colProducts: Product[] = [];
 
-    if (productIds.length > 0) {
-      const targetIds = productIds.slice(0, 30);
+    if (uniqueProductIds.length > 0) {
+      const targetIds = uniqueProductIds.slice(0, 30);
       const productsSnap = await db.collection('products')
         .where('__name__', 'in', targetIds)
         .get();
@@ -123,11 +118,13 @@ try {
       colProducts = targetIds
         .map(id => unsortedProducts.find(p => p.id === id))
         .filter((p): p is Product => p !== undefined);
+
+      colProducts.forEach(p => seenHomeProductIds.add(p.id));
     }
 
     if (colProducts.length > 0) {
       homepageCollections.push({
-        id: doc.id,
+        id: colData.id,
         title,
         products: colProducts
       });

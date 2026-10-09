@@ -59,16 +59,56 @@ export interface RateLimitResult {
   reset: number;
 }
 
+// In-memory sliding window fallback when Upstash Redis is unconfigured or unavailable
+interface MemoryBucket {
+  count: number;
+  resetAt: number;
+}
+const memoryBuckets = new Map<string, MemoryBucket>();
+
+const MEMORY_LIMITS: Record<string, { max: number; windowMs: number }> = {
+  checkout: { max: 8, windowMs: 5 * 60 * 1000 },
+  auth: { max: 8, windowMs: 5 * 60 * 1000 },
+  email: { max: 4, windowMs: 10 * 60 * 1000 },
+  notifications: { max: 10, windowMs: 60 * 1000 },
+};
+
+function checkMemoryRateLimit(limiterName: string, identifier: string): RateLimitResult {
+  const config = MEMORY_LIMITS[limiterName] || { max: 10, windowMs: 60 * 1000 };
+  const key = `${limiterName}:${identifier}`;
+  const now = Date.now();
+
+  // Periodic pruning if cache exceeds 1000 items
+  if (memoryBuckets.size > 1000) {
+    for (const [k, v] of memoryBuckets.entries()) {
+      if (now > v.resetAt) memoryBuckets.delete(k);
+    }
+  }
+
+  const bucket = memoryBuckets.get(key);
+  if (!bucket || now > bucket.resetAt) {
+    memoryBuckets.set(key, { count: 1, resetAt: now + config.windowMs });
+    return { success: true, limit: config.max, remaining: config.max - 1, reset: now + config.windowMs };
+  }
+
+  bucket.count += 1;
+  if (bucket.count > config.max) {
+    return { success: false, limit: config.max, remaining: 0, reset: bucket.resetAt };
+  }
+
+  return { success: true, limit: config.max, remaining: config.max - bucket.count, reset: bucket.resetAt };
+}
+
 /**
  * Checks if a given identifier exceeds the specified rate limit.
- * Fail-open design: if Upstash Redis fails or is unconfigured, it returns success=true.
+ * Uses Upstash Redis when configured, with an in-memory fallback to avoid total exposure.
  */
 export async function checkRateLimit(
   limiterName: 'checkout' | 'auth' | 'email' | 'notifications',
   identifier: string
 ): Promise<RateLimitResult> {
   if (!isConfigured) {
-    return { success: true, limit: 0, remaining: 0, reset: 0 };
+    return checkMemoryRateLimit(limiterName, identifier);
   }
 
   let limiter;
@@ -88,7 +128,7 @@ export async function checkRateLimit(
   }
 
   if (!limiter) {
-    return { success: true, limit: 0, remaining: 0, reset: 0 };
+    return checkMemoryRateLimit(limiterName, identifier);
   }
 
   try {
@@ -101,7 +141,8 @@ export async function checkRateLimit(
     };
   } catch (error) {
     console.error(`[Rate Limiting] Error querying Upstash Redis for limiter "${limiterName}":`, error);
-    // Fail-open to not block real users if Upstash has an outage
-    return { success: true, limit: 0, remaining: 0, reset: 0 };
+    // Fallback to in-memory rate limiting during Redis outage
+    return checkMemoryRateLimit(limiterName, identifier);
   }
 }
+
