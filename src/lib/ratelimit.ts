@@ -11,6 +11,7 @@ let checkoutLimiter: any = null;
 let authLimiter: any = null;
 let emailLimiter: any = null;
 let notificationsLimiter: any = null;
+let imageProxyLimiter: any = null;
 
 if (isConfigured) {
   try {
@@ -42,6 +43,12 @@ if (isConfigured) {
       limiter: Ratelimit.slidingWindow(4, '1 m'), // 4 requests per 1 minute
       prefix: '@upstash/ratelimit/notifications',
     });
+
+    imageProxyLimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, '1 m'), // 30 requests per 1 minute
+      prefix: '@upstash/ratelimit/image-proxy',
+    });
   } catch (err) {
     console.error('[Rate Limiting] Error initializing Upstash Redis clients:', err);
   }
@@ -71,6 +78,7 @@ const MEMORY_LIMITS: Record<string, { max: number; windowMs: number }> = {
   auth: { max: 8, windowMs: 5 * 60 * 1000 },
   email: { max: 4, windowMs: 10 * 60 * 1000 },
   notifications: { max: 10, windowMs: 60 * 1000 },
+  imageProxy: { max: 35, windowMs: 60 * 1000 },
 };
 
 function checkMemoryRateLimit(limiterName: string, identifier: string): RateLimitResult {
@@ -104,7 +112,7 @@ function checkMemoryRateLimit(limiterName: string, identifier: string): RateLimi
  * Uses Upstash Redis when configured, with an in-memory fallback to avoid total exposure.
  */
 export async function checkRateLimit(
-  limiterName: 'checkout' | 'auth' | 'email' | 'notifications',
+  limiterName: 'checkout' | 'auth' | 'email' | 'notifications' | 'imageProxy',
   identifier: string
 ): Promise<RateLimitResult> {
   if (!isConfigured) {
@@ -124,6 +132,9 @@ export async function checkRateLimit(
       break;
     case 'notifications':
       limiter = notificationsLimiter;
+      break;
+    case 'imageProxy':
+      limiter = imageProxyLimiter;
       break;
   }
 

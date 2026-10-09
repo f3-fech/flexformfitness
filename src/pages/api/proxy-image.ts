@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { checkRateLimit } from '../../lib/ratelimit';
 
 export const prerender = false;
 
@@ -27,6 +28,24 @@ function isForbiddenHost(hostname: string): boolean {
 }
 
 export const GET: APIRoute = async ({ request }) => {
+  // Rate limiting protection per IP
+  const clientIp = request.headers.get('cf-connecting-ip') ||
+                   request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+                   request.headers.get('x-real-ip') ||
+                   '127.0.0.1';
+
+  const rateLimit = await checkRateLimit('imageProxy', clientIp);
+  if (!rateLimit.success) {
+    return new Response('Demasiadas solicitudes de imágenes. Por favor, espera un momento.', {
+      status: 429,
+      headers: {
+        'Retry-After': String(Math.ceil((rateLimit.reset - Date.now()) / 1000)),
+        'X-RateLimit-Limit': String(rateLimit.limit),
+        'X-RateLimit-Remaining': String(rateLimit.remaining),
+      },
+    });
+  }
+
   const urlParams = new URL(request.url).searchParams;
   const imageUrl = urlParams.get('url');
 

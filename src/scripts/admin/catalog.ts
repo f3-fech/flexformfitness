@@ -4091,6 +4091,38 @@ function recalculatePositions() {
         currentFolderCategories[id] = catName;
         currentFolderOrders[id] = idx;
       }
+
+      let portadaBadge = folder.querySelector('.portada-order-badge') as HTMLElement | null;
+      let synergyBadge = folder.querySelector('.synergy-order-badge') as HTMLElement | null;
+      const titleWrapper = folder.querySelector('.folder-title-wrapper');
+
+      if (catName === 'Portada') {
+        if (!portadaBadge && titleWrapper) {
+          portadaBadge = document.createElement('span');
+          portadaBadge.className = 'portada-order-badge px-1.5 h-5 min-w-[20px] rounded-full bg-rose-600 text-white text-[10px] font-black font-mono flex items-center justify-center shrink-0 shadow-xs border border-rose-500/40 select-none leading-none tracking-tight';
+          titleWrapper.appendChild(portadaBadge);
+        }
+        if (portadaBadge) {
+          portadaBadge.textContent = `#${idx}`;
+          portadaBadge.style.display = 'inline-flex';
+        }
+      } else if (portadaBadge) {
+        portadaBadge.style.display = 'none';
+      }
+
+      if (catName === 'F3 Synergies') {
+        if (!synergyBadge && titleWrapper) {
+          synergyBadge = document.createElement('span');
+          synergyBadge.className = 'synergy-order-badge w-5 h-5 rounded-full bg-slate-950 text-white text-[10.5px] font-black flex items-center justify-center shrink-0 shadow-xs border border-slate-750 select-none leading-none';
+          synergyBadge.textContent = 'S';
+          titleWrapper.appendChild(synergyBadge);
+        }
+        if (synergyBadge) {
+          synergyBadge.style.display = 'inline-flex';
+        }
+      } else if (synergyBadge) {
+        synergyBadge.style.display = 'none';
+      }
     });
 
     const placeholder = gridContainer?.querySelector('.empty-placeholder') as HTMLElement;

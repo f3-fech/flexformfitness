@@ -515,58 +515,75 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                     </div>
 
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 min-h-[90px] p-2 bg-white/45 rounded-xl border border-dashed border-slate-200/50">
-                      {colInCat.map((col) => (
-                        <div 
-                          class="collection-folder draggable-folder group relative flex flex-col items-center justify-center p-3 rounded-xl border border-transparent hover:border-slate-200 hover:bg-white cursor-grab active:cursor-grabbing transition-all duration-200 select-none text-center bg-white shadow-3xs"
-                          data-id={col.id}
-                          data-collection-slug={col.slug}
-                          data-collection-json={JSON.stringify(col)}
-                          data-title={col.title.toLowerCase()}
-                          data-slug={col.slug.toLowerCase()}
-                          draggable="true"
-                        >
-                          <a
-                            href={`/es/colecciones/${col.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="view-collection-link absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-all z-20 cursor-pointer shadow-3xs opacity-75 hover:opacity-100"
-                            title={`Ver colección "${col.title}" en la tienda`}
-                            onclick="event.stopPropagation();"
-                          >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                            </svg>
-                          </a>
+                      {colInCat.map((col, colIdx) => {
+                        const isPortada = catName === 'Portada' || col.showOnIndex || col.parentCategory === 'Portada';
+                        const isSynergy = catName === 'F3 Synergies' || col.isSynergy || col.parentCategory === 'F3 Synergies';
+                        const orderNum = col.indexOrder ?? colIdx;
 
-                          <div class="w-14 h-10 relative flex items-end justify-center shrink-0">
-                            <div class="absolute inset-0 bg-amber-500 rounded-lg shadow-sm border border-amber-600"></div>
-                            <div class="absolute -top-0.5 left-1.5 w-5 h-1 bg-amber-600 rounded-t"></div>
-                            <div class="absolute inset-0 bg-amber-400 rounded-lg origin-bottom transform group-hover:-rotate-x-12 transition-transform duration-300 shadow-sm border border-amber-300"></div>
-                            <div class="w-8 h-6 bg-white border border-slate-200 absolute -top-1.5 left-2.5 rotate-3 rounded group-hover:-translate-y-1 transition-transform flex items-center justify-center text-[9px] font-black text-slate-800 font-mono shadow-sm">
-                              {col.productIds ? col.productIds.length : 0}
+                        return (
+                          <div 
+                            class="collection-folder draggable-folder group relative flex flex-col items-center justify-center p-3 pt-3.5 rounded-xl border border-transparent hover:border-slate-200 hover:bg-white cursor-grab active:cursor-grabbing transition-all duration-200 select-none text-center bg-white shadow-3xs"
+                            data-id={col.id}
+                            data-collection-slug={col.slug}
+                            data-collection-json={JSON.stringify(col)}
+                            data-title={col.title.toLowerCase()}
+                            data-slug={col.slug.toLowerCase()}
+                            draggable="true"
+                          >
+                            <a
+                              href={`/es/colecciones/${col.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="view-collection-link absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-all z-20 cursor-pointer shadow-3xs opacity-75 hover:opacity-100"
+                              title={`Ver colección "${col.title}" en la tienda`}
+                              onclick="event.stopPropagation();"
+                            >
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                              </svg>
+                            </a>
+
+                            <div class="w-14 h-10 relative flex items-end justify-center shrink-0">
+                              <div class="absolute inset-0 bg-amber-500 rounded-lg shadow-sm border border-amber-600"></div>
+                              <div class="absolute -top-0.5 left-1.5 w-5 h-1 bg-amber-600 rounded-t"></div>
+                              <div class="absolute inset-0 bg-amber-400 rounded-lg origin-bottom transform group-hover:-rotate-x-12 transition-transform duration-300 shadow-sm border border-amber-300"></div>
+                              <div class="w-8 h-6 bg-white border border-slate-200 absolute -top-1.5 left-2.5 rotate-3 rounded group-hover:-translate-y-1 transition-transform flex items-center justify-center text-[9px] font-black text-slate-800 font-mono shadow-sm">
+                                {col.productIds ? col.productIds.length : 0}
+                              </div>
                             </div>
+                            
+                            <div class="folder-title-wrapper mt-2.5 flex items-center justify-center gap-1.5 max-w-[125px] w-full px-1">
+                              <span 
+                                class="text-[11px] font-bold text-slate-800 group-hover:text-amber-600 transition-colors truncate" 
+                                title={col.title}
+                              >
+                                {col.title}
+                              </span>
+                              {isSynergy && (
+                                <span 
+                                  class="synergy-order-badge w-5 h-5 rounded-full bg-slate-950 text-white text-[10.5px] font-black flex items-center justify-center shrink-0 shadow-xs border border-slate-750 select-none leading-none" 
+                                  title="Colección F3 Synergies"
+                                >
+                                  S
+                                </span>
+                              )}
+                              {isPortada && (
+                                <span 
+                                  class="portada-order-badge px-1.5 h-5 min-w-[20px] rounded-full bg-rose-600 text-white text-[10px] font-black font-mono flex items-center justify-center shrink-0 shadow-xs border border-rose-500/40 select-none leading-none tracking-tight" 
+                                  title={`Posición en Portada: #${orderNum}`}
+                                >
+                                  #{orderNum}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <span class="text-[8px] text-slate-400 font-mono truncate max-w-[95px] block mt-0.5">
+                              /{col.slug}
+                            </span>
                           </div>
-                          
-                          <span class="mt-2.5 text-[11px] font-bold text-slate-800 group-hover:text-amber-600 transition-colors line-clamp-1 max-w-[110px] leading-tight flex items-center gap-1 justify-center">
-                            {col.title}
-                            {(col.isSynergy || col.parentCategory === 'F3 Synergies') && (
-                              <span class="px-1 py-0.2 rounded bg-slate-900 text-white text-[7px] font-black shadow-3xs" title="Colección F3 Synergies">
-                                SYN
-                              </span>
-                            )}
-                            {(col.showOnIndex || col.parentCategory === 'Portada') && (
-                              <span class="px-1 py-0.2 rounded bg-rose-600 text-white text-[7px] font-black shadow-3xs" title={`Portada #${col.indexOrder ?? 0}`}>
-                                #{col.indexOrder ?? 0}
-                              </span>
-                            )}
-                          </span>
-                          
-                          <span class="text-[8px] text-slate-400 font-mono truncate max-w-[90px]">
-                            /{col.slug}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                       {colInCat.length === 0 && (
                         <div class="col-span-full py-6 flex items-center justify-center text-slate-400 text-[10px] font-bold uppercase tracking-wider select-none empty-placeholder">
                           Arrastra carpetas aquí
