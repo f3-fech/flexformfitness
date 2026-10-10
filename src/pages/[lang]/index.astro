@@ -164,8 +164,8 @@ try {
 const rawHeroSlides = settings.heroSlides || [];
 const heroSlides = rawHeroSlides.map((slide) => ({
   ...slide,
-  desktopUrl: slide.desktopType === 'video' ? slide.desktopUrl : optimizeStorageUrl(slide.desktopUrl),
-  mobileUrl: slide.mobileType === 'video' ? slide.mobileUrl : optimizeStorageUrl(slide.mobileUrl),
+  desktopUrl: optimizeStorageUrl(slide.desktopUrl),
+  mobileUrl: optimizeStorageUrl(slide.mobileUrl),
 }));
 
 const firstSlide = heroSlides[0];
