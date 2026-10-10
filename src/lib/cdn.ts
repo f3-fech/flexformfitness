@@ -8,6 +8,11 @@ export const FIREBASE_STORAGE_DOMAIN = 'firebasestorage.googleapis.com';
 export function optimizeStorageUrl(url: string | null | undefined): string {
   if (!url || typeof url !== 'string') return '';
   if (!url.includes(FIREBASE_STORAGE_DOMAIN)) return url;
+  // Excluir videos: el streaming de video se sirve directo desde Google Firebase Storage
+  const lower = url.toLowerCase();
+  if (lower.includes('.webm') || lower.includes('.mp4') || lower.includes('.mov') || lower.includes('/videos%2f') || lower.includes('/videos/')) {
+    return url;
+  }
   return url.replace(FIREBASE_STORAGE_DOMAIN, CDN_DOMAIN);
 }
 
