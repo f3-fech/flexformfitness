@@ -164,8 +164,8 @@ try {
 const rawHeroSlides = settings.heroSlides || [];
 const heroSlides = rawHeroSlides.map((slide) => ({
   ...slide,
-  desktopUrl: optimizeStorageUrl(slide.desktopUrl),
-  mobileUrl: optimizeStorageUrl(slide.mobileUrl),
+  desktopUrl: slide.desktopType === 'video' ? slide.desktopUrl : optimizeStorageUrl(slide.desktopUrl),
+  mobileUrl: slide.mobileType === 'video' ? slide.mobileUrl : optimizeStorageUrl(slide.mobileUrl),
 }));
 
 const firstSlide = heroSlides[0];
@@ -271,12 +271,14 @@ const storeJsonLd = {
               ) : (
                 <div class="hidden min-[900px]:block absolute inset-0 bg-slate-950">
                   <video
+                    autoplay
                     muted
                     playsinline
+                    webkit-playsinline
                     preload={isFirst ? "auto" : "none"}
                     class="w-full h-full object-cover object-center hero-video-desktop"
                   >
-                    <source src={slide.desktopUrl} type="video/mp4" />
+                    <source src={slide.desktopUrl} type={slide.desktopUrl?.includes('.webm') ? 'video/webm' : 'video/mp4'} />
                   </video>
                 </div>
               )}
@@ -296,12 +298,14 @@ const storeJsonLd = {
               ) : (
                 <div class="block min-[900px]:hidden absolute inset-0 bg-slate-950">
                   <video
+                    autoplay
                     muted
                     playsinline
+                    webkit-playsinline
                     preload={isFirst ? "auto" : "none"}
                     class="w-full h-full object-cover object-center hero-video-mobile"
                   >
-                    <source src={slide.mobileUrl} type="video/mp4" />
+                    <source src={slide.mobileUrl} type={slide.mobileUrl?.includes('.webm') ? 'video/webm' : 'video/mp4'} />
                   </video>
                 </div>
               )}
@@ -386,7 +390,13 @@ const storeJsonLd = {
                 const isMobileScreen = window.innerWidth < 900;
                 
                 if ((isMobileVideo && isMobileScreen) || (isDesktopVideo && !isMobileScreen)) {
-                  video.currentTime = 0;
+                  video.muted = true;
+                  video.defaultMuted = true;
+                  try {
+                    if (video.currentTime !== 0) {
+                      video.currentTime = 0;
+                    }
+                  } catch (e) {}
                   video.play()
                     .then(() => { /* playing */ })
                     .catch(err => {

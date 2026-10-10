@@ -8,6 +8,12 @@ export const FIREBASE_STORAGE_DOMAIN = 'firebasestorage.googleapis.com';
 export function optimizeStorageUrl(url: string | null | undefined): string {
   if (!url || typeof url !== 'string') return '';
   if (!url.includes(FIREBASE_STORAGE_DOMAIN)) return url;
+  // Excluir videos: los proxies con archivos pesados y HTTP/3 (QUIC) fallan en redes móviles (ERR_QUIC_PROTOCOL_ERROR).
+  // Firebase Storage cuenta con la CDN nativa de Google que maneja streaming de video sin errores de protocolo.
+  const lower = url.toLowerCase();
+  if (lower.includes('.webm') || lower.includes('.mp4') || lower.includes('.mov') || lower.includes('/videos%2f') || lower.includes('/videos/')) {
+    return url;
+  }
   return url.replace(FIREBASE_STORAGE_DOMAIN, CDN_DOMAIN);
 }
 
