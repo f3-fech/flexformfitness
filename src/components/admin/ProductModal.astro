@@ -71,12 +71,17 @@ const { products = [], collections, savedColors = [] } = Astro.props;
               </div>
             </div>
 
-            <!-- SECTION: GENDER SELECTION (MANDATORY) -->
+            <!-- SECTION: GENDER SELECTION (OPTIONAL) -->
             <div class="border-t border-slate-200 pt-4 flex flex-col gap-3">
-              <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                Género Destinatario <span class="text-rose-600 font-black">*</span>
-              </h4>
-              <div class="grid grid-cols-3 gap-2.5">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  Género Destinatario
+                </h4>
+                <button type="button" id="btn-clear-product-gender" class="text-[10px] font-bold text-slate-400 hover:text-rose-600 transition-colors uppercase tracking-wider px-2 py-0.5 rounded hover:bg-rose-50 cursor-pointer">
+                  Desmarcar
+                </button>
+              </div>
+              <div class="grid grid-cols-2 gap-2.5">
                 <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
                   <input type="radio" name="product-gender-assoc" value="hombre" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
                   <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Hombre</span>
@@ -86,13 +91,8 @@ const { products = [], collections, savedColors = [] } = Astro.props;
                   <input type="radio" name="product-gender-assoc" value="mujer" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
                   <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Mujer</span>
                 </label>
-
-                <label class="flex items-center justify-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer transition-all select-none text-center">
-                  <input type="radio" name="product-gender-assoc" value="unisex" class="w-3.5 h-3.5 text-rose-650 border-slate-300 focus:ring-rose-500 cursor-pointer" />
-                  <span class="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Unisex</span>
-                </label>
               </div>
-              <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Indica de manera obligatoria a qué género va dirigido el producto.</p>
+              <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Opcional: Si el producto está enfocado a un género, márcalo aquí o en sus colecciones (puedes hacer clic de nuevo o usar "Desmarcar").</p>
             </div>
 
             <!-- SECTION: COLLECTIONS CHECKBOXES -->

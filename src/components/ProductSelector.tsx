@@ -98,8 +98,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ product, lang 
     }
   }
 
-  const currentPrice = selectedVariant ? selectedVariant.price : product.price;
-  const currentStock = selectedVariant ? selectedVariant.stock : product.stock;
+  const currentPrice = selectedVariant?.price ?? product?.price ?? 0;
+  const currentStock = selectedVariant?.stock ?? product?.stock ?? 0;
   const currentSku = selectedVariant ? selectedVariant.sku : 'BASE';
   const isOutOfStock = currentStock <= 0;
 

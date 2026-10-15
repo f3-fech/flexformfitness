@@ -53,17 +53,94 @@ const getUniqueColors = (product: Product): SwatchColor[] => {
   return Array.from(colorMap.values());
 };
 
-const minProducts = allProducts.map((p) => ({
-  id: p.id,
-  title: p.title,
-  title_en: p.title_en || '',
-  description: p.description,
-  description_en: p.description_en || '',
-  slug: p.slug,
-  price: p.price,
-  images: p.images || [],
-  stock: p.stock || 0,
-  uniqueColors: getUniqueColors(p)
+const getProductType = (title: string): string => {
+  const t = title.toLowerCase();
+  if (t.includes('tirante') || t.includes('sin manga') || t.includes('tank')) return 'Tirantes';
+  if (t.includes('camiseta') || t.includes('t-shirt') || t.includes('tee')) return 'Camisetas';
+  if (t.includes('sudadera') || t.includes('hoodie')) return 'Sudaderas';
+  if (t.includes('legging') || t.includes('malla')) return 'Leggings';
+  if (t.includes('top')) return 'Tops Deportivos';
+  if (t.includes('pantalón') || t.includes('pantalon') || t.includes('short')) return 'Pantalones';
+  return 'Otras prendas';
+};
+
+const getProductFit = (title: string): string => {
+  const t = title.toLowerCase();
+  if (t.includes('superoversize')) return 'Superoversized';
+  if (t.includes('oversize')) return 'Oversized';
+  if (t.includes('crop')) return 'Cropped';
+  if (t.includes('body fit') || t.includes('tight') || t.includes('slim')) return 'Body Fit';
+  return 'Regular Fit';
+};
+
+const getProductGender = (product: Product): string => {
+  const t = (product.title || '').toLowerCase();
+  if (t.includes('mujer') || t.includes('women')) return 'Mujer';
+  if (t.includes('hombre') || t.includes('men')) return 'Hombre';
+
+  const inMujer = collections.some(c => 
+    (c.slug.includes('mujer') || c.title.toLowerCase().includes('mujer') || c.parentCategory === 'Mujer') &&
+    c.productIds && c.productIds.includes(product.id)
+  );
+  if (inMujer) return 'Mujer';
+
+  return 'Hombre';
+};
+
+const getProductFeatures = (title: string): string[] => {
+  const t = title.toLowerCase();
+  const f: string[] = [];
+  if (t.includes('oversize') || t.includes('superoversize')) f.push('Oversized');
+  if (t.includes('tirante') || t.includes('sin manga')) f.push('Tirantes');
+  if (t.includes('crop')) f.push('Cropped');
+  if (t.includes('3/4')) f.push('Manga 3/4');
+  else if (t.includes('camiseta') && !t.includes('sin manga')) f.push('Manga Corta');
+  return f;
+};
+
+const getProductSizes = (product: Product): string[] => {
+  const sizeSet = new Set<string>();
+  (product.variants || []).forEach((v) => {
+    const parts = (v.name || '').split('/');
+    if (parts[1]) {
+      const s = parts[1].trim().toUpperCase();
+      if (s) sizeSet.add(s);
+    }
+  });
+  return Array.from(sizeSet);
+};
+
+const minProducts = allProducts.map((p) => {
+  const colIds = collections.filter((c) => c.productIds && c.productIds.includes(p.id)).map((c) => c.id);
+  const createdMs = p.createdAt?._seconds ? p.createdAt._seconds * 1000 : (p.createdAt ? new Date(p.createdAt).getTime() : 0);
+
+  return {
+    id: p.id,
+    title: p.title,
+    title_en: p.title_en || '',
+    description: p.description,
+    description_en: p.description_en || '',
+    slug: p.slug,
+    price: p.price,
+    images: p.images || [],
+    stock: p.stock || 0,
+    uniqueColors: getUniqueColors(p),
+    sizes: getProductSizes(p),
+    collectionIds: colIds,
+    productType: getProductType(p.title),
+    fit: getProductFit(p.title),
+    gender: getProductGender(p),
+    features: getProductFeatures(p.title),
+    createdAt: createdMs
+  };
+});
+
+const minCollections = collections.map((c) => ({
+  id: c.id,
+  title: c.title,
+  title_en: c.title_en || c.title,
+  slug: c.slug,
+  count: c.productIds?.length || 0
 }));
 
 const user = Astro.locals.user;
@@ -177,7 +254,7 @@ const cleanTitle = (title: string): string => {
 
 <!-- Announcement Bar -->
 <div class="bg-slate-950 text-white py-2 px-3 text-center text-[9px] sm:text-[10px] md:text-xs font-bold tracking-wider sm:tracking-widest uppercase w-full">
-  {t('announcement.free_shipping')} ${((settings.freeShippingMin || 5000) / 100).toFixed(0)}
+  {t('announcement.free_shipping')} <span id="announcement-free-shipping-amount">{((settings.freeShippingMin || 5000) / 100).toFixed(0)} €</span>
 </div>
 
 <!-- Header / Navbar (Full Width) -->
@@ -803,67 +880,454 @@ const cleanTitle = (title: string): string => {
   </div>
 </div>
 
-<!-- Full-screen Search Modal -->
+<!-- Full-screen Search & Catalog Modal -->
 <div id="search-modal" class="fixed inset-0 bg-white z-[100] w-screen h-screen min-h-screen flex flex-col opacity-0 pointer-events-none transition-all duration-300 overflow-y-auto">
   
-  <!-- Sticky Header Bar -->
-  <header class="w-full bg-white border-b border-slate-100 py-4 px-4 md:px-8 sticky top-0 z-[110] flex items-center justify-between">
-    <div class="w-full max-w-7xl mx-auto flex items-center gap-4">
-      <button type="button" id="close-search-modal" class="text-slate-700 hover:text-rose-600 transition-colors p-2 cursor-pointer focus:outline-none flex items-center" title={isEn ? "Back" : "Volver"}>
+  <!-- Sticky Header Bar (Search Input Bar) -->
+  <header class="w-full bg-white border-b border-slate-100 py-3.5 px-3 sm:px-6 md:px-8 sticky top-0 z-[120] flex items-center justify-between shadow-2xs">
+    <div class="w-full max-w-[1720px] mx-auto flex items-center gap-3 md:gap-4">
+      <button type="button" id="close-search-modal" class="text-slate-700 hover:text-rose-600 transition-colors p-2 cursor-pointer focus:outline-none flex items-center shrink-0" title={isEn ? "Back" : "Volver"}>
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
       </button>
-      <input
-        type="text"
-        id="search-modal-input"
-        placeholder={isEn ? "What are you looking for?" : "¿Qué estás buscando?"}
-        class="w-full bg-transparent text-slate-900 text-base md:text-xl font-extrabold placeholder-slate-400 focus:outline-none"
-      />
-      <button type="button" id="search-modal-clear" class="text-slate-400 hover:text-slate-905 text-xl font-bold p-2 hidden cursor-pointer leading-none" title={isEn ? "Clear Search" : "Limpiar búsqueda"}>
-        ×
+
+      <div class="flex-1 relative flex items-center">
+        <svg class="w-5 h-5 text-slate-400 absolute left-3 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          id="search-modal-input"
+          placeholder={isEn ? "What are you looking for?" : "¿Qué estás buscando?"}
+          class="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-rose-600 rounded-full py-2.5 pl-10 pr-10 text-slate-900 text-sm sm:text-base font-bold placeholder-slate-400 focus:outline-none transition-colors"
+        />
+        <button type="button" id="search-modal-clear" class="absolute right-3 text-slate-400 hover:text-slate-800 text-xl font-bold w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-200 hidden cursor-pointer leading-none" title={isEn ? "Clear Search" : "Limpiar búsqueda"}>
+          ×
+        </button>
+      </div>
+
+      <button type="button" id="close-search-modal-text" class="hidden sm:block text-xs font-black uppercase tracking-wider text-slate-600 hover:text-rose-600 px-2 py-1 transition-colors cursor-pointer">
+        {isEn ? "Close" : "Cerrar"}
       </button>
     </div>
   </header>
 
+  <!-- Mobile Toolbar Sub-header (Shown on mobile / tablet < 1024px) -->
+  <div class="w-full bg-white border-b border-slate-200 sticky top-[61px] sm:top-[69px] z-[110] flex min-[1024px]:hidden items-stretch text-center font-bold text-xs uppercase tracking-wider text-slate-800 select-none shadow-2xs">
+    <!-- Clasificar (Sort) button -->
+    <button type="button" id="mobile-sort-btn" class="flex-1 py-3 px-2 flex items-center justify-center gap-2 hover:bg-slate-50 border-r border-slate-200 cursor-pointer active:bg-slate-100 transition-colors">
+      <span>{isEn ? "Sort" : "Clasificar"}</span>
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+      </svg>
+    </button>
+
+    <!-- Products Count in Center -->
+    <div id="mobile-products-count" class="flex-1 py-3 px-2 flex items-center justify-center text-slate-500 font-bold border-r border-slate-200 select-none">
+      0 {isEn ? "products" : "productos"}
+    </div>
+
+    <!-- Filtrar (Filter) button -->
+    <button type="button" id="mobile-filter-btn" class="flex-1 py-3 px-2 flex items-center justify-center gap-2 hover:bg-slate-50 cursor-pointer active:bg-slate-100 transition-colors">
+      <span>{isEn ? "Filter" : "Filtrar"}</span>
+      <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+      <span id="mobile-filter-badge" class="min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black inline-flex items-center justify-center hidden">0</span>
+    </button>
+  </div>
+
   <!-- Modal Main Content Area -->
-  <main class="flex-grow w-full overflow-y-auto bg-slate-50/20 px-2 sm:px-4 md:px-8 py-10">
-    <div class="w-full max-w-7xl mx-auto flex flex-col gap-6">
+  <main class="flex-grow w-full bg-white px-2 sm:px-4 md:px-8 py-6">
+    <div class="w-full max-w-[1720px] mx-auto flex flex-col min-[1024px]:flex-row gap-8">
       
-      <!-- Initial Placeholder / Prompt -->
-      <div id="search-modal-prompt" class="flex flex-col items-center justify-center py-24 text-slate-400 gap-4 text-center">
-        <svg class="w-12 h-12 text-slate-350 animate-pulse" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <div class="flex flex-col gap-1">
-          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">{isEn ? "Search catalog" : "Buscar en el catálogo"}</h3>
-          <p class="text-xs text-slate-450">{isEn ? "Type keywords to search products instantly." : "Escribe palabras clave para buscar productos al instante."}</p>
+      <!-- DESKTOP FILTER SIDEBAR (Hidden on mobile) -->
+      <aside class="w-64 xl:w-72 shrink-0 hidden min-[1024px]:flex flex-col gap-6 select-none pr-4 border-r border-slate-100">
+        <!-- Sidebar Title & Clear All -->
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+          <span class="text-xs font-black uppercase tracking-widest text-slate-900">
+            {isEn ? "FILTER & SORT" : "FILTRAR Y ORDENAR"}
+          </span>
+          <button type="button" class="btn-clear-all-filters text-2xs font-bold text-slate-500 hover:text-rose-600 underline cursor-pointer transition-colors">
+            {isEn ? "Clear all" : "Borrar todo"}
+          </button>
         </div>
-      </div>
 
-      <!-- Empty State -->
-      <div id="search-modal-empty" class="hidden flex flex-col items-center justify-center py-20 text-slate-400 gap-4 text-center bg-slate-50 rounded-3xl border border-slate-100 p-8 max-w-md mx-auto">
-        <svg class="w-12 h-12 text-slate-350" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <div class="flex flex-col gap-1">
-          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">{isEn ? "No results found" : "Sin resultados"}</h3>
-          <p class="text-xs text-slate-500">{isEn ? "We couldn't find matches. Double check spelling." : "No encontramos coincidencias. Revisa la ortografía."}</p>
-        </div>
-      </div>
+        <!-- Filter Accordions -->
+        <div class="flex flex-col divide-y divide-slate-100">
+          
+          <!-- Accordion 1: Ordenar Por (Open by default) -->
+          <div class="filter-acc-group py-3" data-acc="sort">
+            <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+              <span>{isEn ? "Sort By" : "Ordenar Por"}</span>
+              <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-acc-body flex flex-col gap-2.5 pt-3 text-xs text-slate-700">
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="radio" name="desktop-sort" value="price-asc" class="sort-radio accent-rose-600 w-3.5 h-3.5 cursor-pointer" />
+                <span>{isEn ? "Price: Low to High" : "Precio: de menor a mayor"}</span>
+              </label>
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="radio" name="desktop-sort" value="price-desc" class="sort-radio accent-rose-600 w-3.5 h-3.5 cursor-pointer" />
+                <span>{isEn ? "Price: High to Low" : "Precio: De mayor a menor"}</span>
+              </label>
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="radio" name="desktop-sort" value="relevance" checked class="sort-radio accent-rose-600 w-3.5 h-3.5 cursor-pointer" />
+                <span>{isEn ? "Relevance" : "Relevancia"}</span>
+              </label>
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="radio" name="desktop-sort" value="newest" class="sort-radio accent-rose-600 w-3.5 h-3.5 cursor-pointer" />
+                <span>{isEn ? "Newest" : "Más reciente"}</span>
+              </label>
+            </div>
+          </div>
 
-      <!-- Results Grid Container -->
-      <div id="search-modal-results" class="hidden flex flex-col gap-6 w-full animate-fade-in">
-        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-          <span id="search-modal-status" class="text-3xs text-slate-500 font-extrabold uppercase tracking-widest"></span>
+          <!-- Accordion 2: Tipo De Producto -->
+          <div class="filter-acc-group py-3" data-acc="types">
+            <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+              <span>{isEn ? "Product Type" : "Tipo De Producto"}</span>
+              <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-acc-body hidden flex flex-col gap-2.5 pt-3 text-xs text-slate-700">
+              {["Camisetas", "Tirantes", "Sudaderas", "Leggings", "Tops Deportivos", "Pantalones", "Otras prendas"].map((type) => (
+                <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                  <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-3.5 h-3.5 border-slate-300 cursor-pointer" data-group="types" data-value={type} />
+                  <span>{type}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Accordion 3: Tamaño -->
+          <div class="filter-acc-group py-3" data-acc="sizes">
+            <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+              <span>{isEn ? "Size" : "Tamaño"}</span>
+              <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-acc-body hidden pt-3">
+              <div class="grid grid-cols-4 gap-1.5">
+                {["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"].map((sz) => (
+                  <button
+                    type="button"
+                    class="filter-size-btn border border-slate-200 py-1.5 text-2xs font-extrabold uppercase rounded-md text-slate-700 hover:border-slate-950 hover:text-slate-950 cursor-pointer text-center transition-all"
+                    data-group="sizes"
+                    data-value={sz}
+                  >
+                    {sz}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion 4: Características -->
+          <div class="filter-acc-group py-3" data-acc="features">
+            <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+              <span>{isEn ? "Features" : "Características"}</span>
+              <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-acc-body hidden flex flex-col gap-2.5 pt-3 text-xs text-slate-700">
+              {["Oversized", "Tirantes", "Cropped", "Manga Corta", "Manga 3/4"].map((feat) => (
+                <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                  <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-3.5 h-3.5 border-slate-300 cursor-pointer" data-group="features" data-value={feat} />
+                  <span>{feat}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Accordion 5: Ajustar (Fit) -->
+          <div class="filter-acc-group py-3" data-acc="fits">
+            <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+              <span>{isEn ? "Fit" : "Ajustar"}</span>
+              <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-acc-body hidden flex flex-col gap-2.5 pt-3 text-xs text-slate-700">
+              {["Superoversized", "Oversized", "Cropped", "Body Fit", "Regular Fit"].map((fit) => (
+                <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                  <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-3.5 h-3.5 border-slate-300 cursor-pointer" data-group="fits" data-value={fit} />
+                  <span>{fit}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Accordion 6: Actividad / Género -->
+          <div class="filter-acc-group py-3" data-acc="genders">
+            <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+              <span>{isEn ? "Activity / Gender" : "Actividad"}</span>
+              <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-acc-body hidden flex flex-col gap-2.5 pt-3 text-xs text-slate-700">
+              {["Hombre", "Mujer"].map((g) => (
+                <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                  <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-3.5 h-3.5 border-slate-300 cursor-pointer" data-group="genders" data-value={g} />
+                  <span>{g}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Accordion 7: Colección -->
+          <div class="filter-acc-group py-3" data-acc="collections">
+            <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+              <span>{isEn ? "Collection" : "Colección"}</span>
+              <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-acc-body hidden flex flex-col gap-2.5 pt-3 text-xs text-slate-700 max-h-56 overflow-y-auto">
+              {minCollections.map((col) => (
+                <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                  <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-3.5 h-3.5 border-slate-300 cursor-pointer" data-group="collections" data-value={col.id} />
+                  <span class="truncate">{isEn ? (col.title_en || col.title) : col.title}</span>
+                  {col.count > 0 && <span class="text-3xs text-slate-400 font-mono">({col.count})</span>}
+                </label>
+              ))}
+            </div>
+          </div>
+
         </div>
-        <div id="search-modal-grid" class="grid grid-cols-2 md:grid-cols-4 gap-x-1 gap-y-12 sm:gap-x-1.5 sm:gap-y-16 md:gap-x-2 md:gap-y-20 w-full">
-          <!-- Dynamically populated exactly like product catalog grid -->
+      </aside>
+
+      <!-- RIGHT PRODUCT GRID & CONTENT AREA -->
+      <section class="flex-1 flex flex-col gap-5 min-w-0">
+        
+        <!-- Header Info Bar on Desktop (Product count + Active Filter Chips) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-3">
+            <span id="desktop-products-count" class="text-xs font-black uppercase tracking-wider text-slate-800">
+              0 {isEn ? "products" : "productos"}
+            </span>
+            <span class="text-slate-300 hidden sm:inline">|</span>
+            <div id="search-active-chips" class="flex flex-wrap items-center gap-1.5">
+              <!-- Dynamically populated with active filter tags -->
+            </div>
+          </div>
+
+          <button type="button" class="btn-clear-all-filters text-2xs font-bold text-slate-500 hover:text-rose-600 underline cursor-pointer hidden sm:block">
+            {isEn ? "Clear all" : "Borrar todo"}
+          </button>
         </div>
-      </div>
-      
+
+        <!-- Empty State -->
+        <div id="search-modal-empty" class="hidden flex-col items-center justify-center py-20 text-slate-400 gap-4 text-center bg-slate-50 rounded-2xl border border-slate-100 p-8 max-w-md mx-auto my-8">
+          <svg class="w-12 h-12 text-slate-350" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div class="flex flex-col gap-1">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">{isEn ? "No results found" : "Sin resultados"}</h3>
+            <p class="text-xs text-slate-500">{isEn ? "No products match your current filters. Try removing some filters." : "No encontramos productos con los filtros seleccionados."}</p>
+          </div>
+          <button type="button" class="btn-clear-all-filters px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-rose-600 transition-colors cursor-pointer mt-2">
+            {isEn ? "Clear filters & search" : "Borrar filtros y búsqueda"}
+          </button>
+        </div>
+
+        <!-- Products Grid Container (Preserves exact dimensions of cards) -->
+        <div id="search-modal-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-1 sm:gap-x-1.5 md:gap-x-2 gap-y-10 sm:gap-y-14 md:gap-y-16 w-full animate-fade-in">
+          <!-- Dynamically populated in batches to avoid CDN saturation -->
+        </div>
+
+        <!-- Infinite Loading Sentinel -->
+        <div id="search-infinite-sentinel" class="w-full py-8 flex items-center justify-center">
+          <div id="search-infinite-spinner" class="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider hidden">
+            <svg class="animate-spin h-5 w-5 text-rose-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{isEn ? "Loading more products..." : "Cargando más productos..."}</span>
+          </div>
+        </div>
+
+      </section>
+
     </div>
   </main>
+
+  <!-- Mobile Sort Bottom Sheet Modal -->
+  <div id="mobile-sort-drawer" class="fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-2xs opacity-0 pointer-events-none transition-opacity duration-300 flex items-end sm:items-center justify-center min-[1024px]:hidden">
+    <div id="mobile-sort-pane" class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl translate-y-full transition-transform duration-300 flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">{isEn ? "Sort by" : "Clasificar por"}</h3>
+        <button type="button" id="close-mobile-sort" class="text-slate-400 hover:text-slate-800 text-2xl font-bold p-1 leading-none cursor-pointer">×</button>
+      </div>
+      <div class="flex flex-col divide-y divide-slate-100 py-1" id="mobile-sort-options">
+        <label class="flex items-center justify-between py-3 cursor-pointer text-xs font-bold text-slate-800 uppercase tracking-wide">
+          <span>{isEn ? "Price: Low to High" : "Precio: de menor a mayor"}</span>
+          <input type="radio" name="mobile-sort" value="price-asc" class="sort-radio accent-rose-600 w-4 h-4 cursor-pointer" />
+        </label>
+        <label class="flex items-center justify-between py-3 cursor-pointer text-xs font-bold text-slate-800 uppercase tracking-wide">
+          <span>{isEn ? "Price: High to Low" : "Precio: De mayor a menor"}</span>
+          <input type="radio" name="mobile-sort" value="price-desc" class="sort-radio accent-rose-600 w-4 h-4 cursor-pointer" />
+        </label>
+        <label class="flex items-center justify-between py-3 cursor-pointer text-xs font-bold text-slate-800 uppercase tracking-wide">
+          <span>{isEn ? "Relevance" : "Relevancia"}</span>
+          <input type="radio" name="mobile-sort" value="relevance" checked class="sort-radio accent-rose-600 w-4 h-4 cursor-pointer" />
+        </label>
+        <label class="flex items-center justify-between py-3 cursor-pointer text-xs font-bold text-slate-800 uppercase tracking-wide">
+          <span>{isEn ? "Newest" : "Más reciente"}</span>
+          <input type="radio" name="mobile-sort" value="newest" class="sort-radio accent-rose-600 w-4 h-4 cursor-pointer" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Filter Full Drawer Modal -->
+  <div id="mobile-filter-drawer" class="fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-2xs opacity-0 pointer-events-none transition-opacity duration-300 flex justify-end min-[1024px]:hidden">
+    <div id="mobile-filter-pane" class="w-full sm:max-w-md h-full bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col">
+      <!-- Drawer Header -->
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">{isEn ? "Filter Products" : "Filtrar"}</h3>
+        <div class="flex items-center gap-3">
+          <button type="button" class="btn-clear-all-filters text-xs font-bold text-slate-500 hover:text-rose-600 underline cursor-pointer">
+            {isEn ? "Clear all" : "Borrar todo"}
+          </button>
+          <button type="button" id="close-mobile-filter" class="text-slate-400 hover:text-slate-800 text-2xl font-bold p-1 leading-none cursor-pointer">×</button>
+        </div>
+      </div>
+
+      <!-- Drawer Accordion Filters Container -->
+      <div class="flex-1 overflow-y-auto p-4 flex flex-col divide-y divide-slate-100" id="mobile-filter-accordions">
+        
+        <!-- Mobile Accordion: Tipo De Producto -->
+        <div class="filter-acc-group py-3" data-acc="types">
+          <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+            <span>{isEn ? "Product Type" : "Tipo De Producto"}</span>
+            <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="filter-acc-body hidden flex flex-col gap-3 pt-3 text-xs text-slate-700">
+            {["Camisetas", "Tirantes", "Sudaderas", "Leggings", "Tops Deportivos", "Pantalones", "Otras prendas"].map((type) => (
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-4 h-4 border-slate-300 cursor-pointer" data-group="types" data-value={type} />
+                <span>{type}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Mobile Accordion: Tamaño -->
+        <div class="filter-acc-group py-3" data-acc="sizes">
+          <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+            <span>{isEn ? "Size" : "Tamaño"}</span>
+            <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="filter-acc-body hidden pt-3">
+            <div class="grid grid-cols-4 gap-2">
+              {["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"].map((sz) => (
+                <button
+                  type="button"
+                  class="filter-size-btn border border-slate-200 py-2 text-xs font-extrabold uppercase rounded-lg text-slate-700 hover:border-slate-950 hover:text-slate-950 cursor-pointer text-center transition-all"
+                  data-group="sizes"
+                  data-value={sz}
+                >
+                  {sz}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Accordion: Características -->
+        <div class="filter-acc-group py-3" data-acc="features">
+          <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+            <span>{isEn ? "Features" : "Características"}</span>
+            <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="filter-acc-body hidden flex flex-col gap-3 pt-3 text-xs text-slate-700">
+            {["Oversized", "Tirantes", "Cropped", "Manga Corta", "Manga 3/4"].map((feat) => (
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-4 h-4 border-slate-300 cursor-pointer" data-group="features" data-value={feat} />
+                <span>{feat}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Mobile Accordion: Ajustar (Fit) -->
+        <div class="filter-acc-group py-3" data-acc="fits">
+          <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+            <span>{isEn ? "Fit" : "Ajustar"}</span>
+            <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="filter-acc-body hidden flex flex-col gap-3 pt-3 text-xs text-slate-700">
+            {["Superoversized", "Oversized", "Cropped", "Body Fit", "Regular Fit"].map((fit) => (
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-4 h-4 border-slate-300 cursor-pointer" data-group="fits" data-value={fit} />
+                <span>{fit}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Mobile Accordion: Actividad -->
+        <div class="filter-acc-group py-3" data-acc="genders">
+          <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+            <span>{isEn ? "Activity / Gender" : "Actividad"}</span>
+            <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="filter-acc-body hidden flex flex-col gap-3 pt-3 text-xs text-slate-700">
+            {["Hombre", "Mujer"].map((g) => (
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-4 h-4 border-slate-300 cursor-pointer" data-group="genders" data-value={g} />
+                <span>{g}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Mobile Accordion: Colección -->
+        <div class="filter-acc-group py-3" data-acc="collections">
+          <button type="button" class="filter-acc-btn w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900 hover:text-rose-600 cursor-pointer">
+            <span>{isEn ? "Collection" : "Colección"}</span>
+            <svg class="filter-acc-icon w-3.5 h-3.5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div class="filter-acc-body hidden flex flex-col gap-3 pt-3 text-xs text-slate-700 max-h-56 overflow-y-auto">
+            {minCollections.map((col) => (
+              <label class="flex items-center gap-2.5 cursor-pointer hover:text-slate-950">
+                <input type="checkbox" class="filter-cb accent-rose-600 rounded text-rose-600 w-4 h-4 border-slate-300 cursor-pointer" data-group="collections" data-value={col.id} />
+                <span class="truncate">{isEn ? (col.title_en || col.title) : col.title}</span>
+                {col.count > 0 && <span class="text-3xs text-slate-400 font-mono">({col.count})</span>}
+              </label>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mobile Apply Button Footer -->
+      <div class="p-4 border-t border-slate-200 bg-white shadow-lg">
+        <button type="button" id="apply-mobile-filter" class="w-full py-3.5 bg-slate-950 hover:bg-rose-600 text-white font-extrabold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-xs">
+          <span id="apply-mobile-filter-text">{isEn ? "View results" : "Ver resultados"}</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Footer Info -->
   <footer class="w-full bg-slate-900 text-slate-500 py-6 px-4 md:px-8 border-t border-slate-850 mt-auto flex justify-between items-center text-4xs font-extrabold tracking-widest uppercase select-none">
@@ -872,7 +1336,8 @@ const cleanTitle = (title: string): string => {
   </footer>
 </div>
 
-<script id="navbar-products-data" type="application/json" set:html={JSON.stringify(minProducts)}></script>
+<script id="navbar-products-data" is:inline type="application/json" set:html={JSON.stringify(minProducts)}></script>
+<script id="navbar-collections-data" is:inline type="application/json" set:html={JSON.stringify(minCollections)}></script>
 
 <script>
   import { cartStore } from '../stores/cart';
@@ -1134,25 +1599,80 @@ const cleanTitle = (title: string): string => {
   setupAccordion('mobile-women-trigger', 'mobile-women-list', 'mobile-women-arrow');
   setupAccordion('mobile-coll-trigger', 'mobile-coll-list', 'mobile-coll-arrow');
 
-  // Search Modal Client Logic
+  // Sync Announcement Bar with live settings from admin
+  (async function syncAnnouncementSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.freeShippingMin === 'number') {
+          const el = document.getElementById('announcement-free-shipping-amount');
+          if (el) {
+            el.textContent = `${(data.freeShippingMin / 100).toFixed(0)} €`;
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback to pre-rendered value
+    }
+  })();
+
+  // Search Modal & Catalog Filters Client Logic
   (function() {
     const searchModal = document.getElementById('search-modal');
     const searchInput = document.getElementById('search-modal-input') as HTMLInputElement;
     const closeBtn = document.getElementById('close-search-modal');
+    const closeTextBtn = document.getElementById('close-search-modal-text');
     const clearBtn = document.getElementById('search-modal-clear');
-    const promptState = document.getElementById('search-modal-prompt');
     const emptyState = document.getElementById('search-modal-empty');
-    const resultsContainer = document.getElementById('search-modal-results');
     const resultsGrid = document.getElementById('search-modal-grid');
-    const statusLabel = document.getElementById('search-modal-status');
+    const sentinel = document.getElementById('search-infinite-sentinel');
+    const sentinelSpinner = document.getElementById('search-infinite-spinner');
+
+    const desktopCountEl = document.getElementById('desktop-products-count');
+    const mobileCountEl = document.getElementById('mobile-products-count');
+    const mobileFilterBadge = document.getElementById('mobile-filter-badge');
+    const applyMobileFilterText = document.getElementById('apply-mobile-filter-text');
+    const activeChipsContainer = document.getElementById('search-active-chips');
+
+    // Mobile Drawers
+    const mobileSortBtn = document.getElementById('mobile-sort-btn');
+    const mobileSortDrawer = document.getElementById('mobile-sort-drawer');
+    const mobileSortPane = document.getElementById('mobile-sort-pane');
+    const closeMobileSortBtn = document.getElementById('close-mobile-sort');
+
+    const mobileFilterBtn = document.getElementById('mobile-filter-btn');
+    const mobileFilterDrawer = document.getElementById('mobile-filter-drawer');
+    const mobileFilterPane = document.getElementById('mobile-filter-pane');
+    const closeMobileFilterBtn = document.getElementById('close-mobile-filter');
+    const applyMobileFilterBtn = document.getElementById('apply-mobile-filter');
 
     const productsDataEl = document.getElementById('navbar-products-data');
-    const products = productsDataEl ? JSON.parse(productsDataEl.textContent || '[]') : [];
+    const collectionsDataEl = document.getElementById('navbar-collections-data');
+    const products: any[] = productsDataEl ? JSON.parse(productsDataEl.textContent || '[]') : [];
+    const collections: any[] = collectionsDataEl ? JSON.parse(collectionsDataEl.textContent || '[]') : [];
 
     const mobileSearchTrigger = document.getElementById('mobile-search-btn');
     const desktopSearchTrigger = document.getElementById('desktop-search-btn');
     const lang = getLang();
     const isEn = lang === 'en';
+
+    // State
+    const state = {
+      query: '',
+      sort: 'relevance',
+      types: new Set<string>(),
+      sizes: new Set<string>(),
+      features: new Set<string>(),
+      fits: new Set<string>(),
+      genders: new Set<string>(),
+      collections: new Set<string>(),
+      renderedCount: 0,
+      batchSize: 12,
+    };
+
+    let filteredCache: any[] = [];
+    let infiniteObserver: IntersectionObserver | null = null;
 
     function getObjectPosition(url: string | undefined): string {
       if (!url) return 'center';
@@ -1163,63 +1683,156 @@ const cleanTitle = (title: string): string => {
       return 'center';
     }
 
-    const openSearch = (e: Event) => {
-      e.preventDefault();
-      if (!searchModal || !searchInput) return;
+    // Filter and Sort core
+    function computeFilteredProducts(): any[] {
+      const q = state.query.toLowerCase().trim();
 
-      // Close mobile drawer if open
-      const mobileDrawer = document.getElementById('mobile-drawer');
-      const mobileDrawerPane = document.getElementById('mobile-drawer-pane');
-      if (mobileDrawer && mobileDrawerPane && !mobileDrawer.classList.contains('opacity-0')) {
-        mobileDrawer.classList.add('opacity-0', 'pointer-events-none');
-        mobileDrawer.classList.remove('opacity-100', 'pointer-events-auto');
-        mobileDrawerPane.classList.remove('translate-x-0');
-        mobileDrawerPane.classList.add('translate-x-[-100%]');
+      const filtered = products.filter((p) => {
+        // Text query
+        if (q) {
+          const title = (isEn ? (p.title_en || p.title) : p.title).toLowerCase();
+          const desc = (isEn ? (p.description_en || p.description) : p.description).toLowerCase();
+          const matchTitle = title.includes(q);
+          const matchDesc = desc.includes(q);
+          const matchType = (p.productType || '').toLowerCase().includes(q);
+          if (!matchTitle && !matchDesc && !matchType) return false;
+        }
+
+        // Type
+        if (state.types.size > 0 && !state.types.has(p.productType)) {
+          return false;
+        }
+
+        // Sizes
+        if (state.sizes.size > 0) {
+          const hasSize = (p.sizes || []).some((s: string) => state.sizes.has(s));
+          if (!hasSize) return false;
+        }
+
+        // Features
+        if (state.features.size > 0) {
+          const hasFeat = (p.features || []).some((f: string) => state.features.has(f));
+          if (!hasFeat) return false;
+        }
+
+        // Fits
+        if (state.fits.size > 0 && !state.fits.has(p.fit)) {
+          return false;
+        }
+
+        // Gender
+        if (state.genders.size > 0 && !state.genders.has(p.gender)) {
+          return false;
+        }
+
+        // Collections
+        if (state.collections.size > 0) {
+          const hasCol = (p.collectionIds || []).some((id: string) => state.collections.has(id));
+          if (!hasCol) return false;
+        }
+
+        return true;
+      });
+
+      // Sorting
+      if (state.sort === 'price-asc') {
+        filtered.sort((a, b) => a.price - b.price);
+      } else if (state.sort === 'price-desc') {
+        filtered.sort((a, b) => b.price - a.price);
+      } else if (state.sort === 'newest') {
+        filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       }
 
-      // Reset state
-      searchInput.value = '';
-      clearBtn?.classList.add('hidden');
-      promptState?.classList.remove('hidden');
-      emptyState?.classList.add('hidden');
-      resultsContainer?.classList.add('hidden');
-      if (resultsGrid) resultsGrid.innerHTML = '';
-      if (statusLabel) statusLabel.textContent = isEn ? '0 results' : '0 resultados';
+      return filtered;
+    }
 
-      // Open animations
-      searchModal.classList.remove('opacity-0', 'pointer-events-none');
-      searchModal.classList.add('opacity-100', 'pointer-events-auto');
-      document.body.style.overflow = 'hidden';
+    function renderProductCardHtml(p: any): string {
+      const imageList = p.images && p.images.length > 0 ? p.images : ['/images/default-product.jpg'];
+      const imagesSliderHtml = imageList.map((imgUrl: string, imgIdx: number) => `
+        <a
+          href="/${lang}/productos/${p.slug}"
+          class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+          data-index="${imgIdx}"
+          style="aspect-ratio: 2/3;"
+        >
+          <img
+            src="${imgUrl}"
+            alt="${isEn ? (p.title_en || p.title) : p.title} - Vista ${imgIdx + 1}"
+            class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
+            style="object-position: ${getObjectPosition(imgUrl)}"
+            loading="lazy"
+            onload="this.classList.remove('opacity-0')"
+          />
+        </a>
+      `).join('');
 
-      setTimeout(() => searchInput.focus(), 120);
-    };
+      const arrowsHtml = imageList.length > 1 ? `
+        <button
+          type="button"
+          class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+          title="${isEn ? 'Previous image' : 'Imagen anterior'}"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
+          title="${isEn ? 'Next image' : 'Siguiente imagen'}"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+      ` : '';
 
-    const closeSearch = () => {
-      if (!searchModal) return;
-      searchModal.classList.add('opacity-0', 'pointer-events-none');
-      searchModal.classList.remove('opacity-100', 'pointer-events-auto');
-      document.body.style.overflow = '';
-    };
+      const stockWarningHtml = p.stock <= 5 ? `
+        <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-rose-600 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10">
+          ${isEn ? 'LAST ITEMS' : 'ÚLTIMAS UNIDADES'}
+        </span>
+      ` : '';
 
-    mobileSearchTrigger?.addEventListener('click', openSearch);
-    desktopSearchTrigger?.addEventListener('click', openSearch);
-    closeBtn?.addEventListener('click', closeSearch);
-    
-    clearBtn?.addEventListener('click', () => {
-      searchInput.value = '';
-      searchInput.focus();
-      searchInput.dispatchEvent(new Event('input'));
-    });
+      const priceTagHtml = `
+        <span class="absolute bottom-1.5 right-1.5 sm:bottom-2.5 sm:right-2.5 px-1.5 py-0.5 sm:px-2.5 sm:py-1 bg-slate-950/85 backdrop-blur-xs text-white text-[10px] sm:text-xs font-extrabold font-mono rounded-none shadow-sm z-10 border border-white/10 select-none">
+          ${(p.price / 100).toFixed(2)} €
+        </span>
+      `;
 
-    searchModal?.addEventListener('click', (e) => {
-      if (e.target === searchModal) closeSearch();
-    });
+      return `
+        <div class="product-card group flex flex-col justify-start w-full">
+          <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
+            <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+              ${imagesSliderHtml}
+            </div>
+            ${arrowsHtml}
+            ${stockWarningHtml}
+            ${priceTagHtml}
+          </div>
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeSearch();
-    });
+          <div class="mt-1.5 pt-1.5 md:mt-2 md:pt-2 border-t border-slate-200 flex flex-col items-center gap-1 w-full text-center">
+            <a href="/${lang}/productos/${p.slug}" class="text-xs sm:text-sm md:text-base font-normal text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
+              ${isEn ? (p.title_en || p.title) : p.title}
+            </a>
+            
+            <div class="flex items-center gap-1.5 justify-center min-h-[20px] md:min-h-[24px] mt-0.5">
+              ${p.uniqueColors && p.uniqueColors.length > 0 ? p.uniqueColors.map((color: any) => `
+                <button 
+                  type="button"
+                  class="color-swatch-btn w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                  style="background-color: ${color.hex}"
+                  title="${color.name}"
+                  data-variant-image="${color.image || ''}"
+                ></button>
+              `).join('') : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     function setupCardInteractions(card: HTMLElement) {
+      if (!card || typeof card.querySelector !== 'function') return;
       const slider = card.querySelector('.product-images-slider') as HTMLDivElement;
       const arrowLeft = card.querySelector('.slider-arrow-left') as HTMLButtonElement;
       const arrowRight = card.querySelector('.slider-arrow-right') as HTMLButtonElement;
@@ -1266,138 +1879,372 @@ const cleanTitle = (title: string): string => {
       });
     }
 
-    searchInput?.addEventListener('input', () => {
-      const query = searchInput.value.trim().toLowerCase();
+    function updateActiveChips() {
+      if (!activeChipsContainer) return;
+      activeChipsContainer.innerHTML = '';
 
-      if (query === '') {
-        clearBtn?.classList.add('hidden');
-        promptState?.classList.remove('hidden');
-        emptyState?.classList.add('hidden');
-        resultsContainer?.classList.add('hidden');
-        if (resultsGrid) resultsGrid.innerHTML = '';
-        if (statusLabel) statusLabel.textContent = isEn ? '0 results' : '0 resultados';
+      const makeChip = (label: string, onRemove: () => void) => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-2xs font-extrabold uppercase transition-colors';
+        chip.innerHTML = `<span>${label}</span><button type="button" class="text-slate-400 hover:text-slate-900 font-black cursor-pointer leading-none">&times;</button>`;
+        chip.querySelector('button')?.addEventListener('click', onRemove);
+        activeChipsContainer.appendChild(chip);
+      };
+
+      state.types.forEach((t) => {
+        makeChip(t, () => {
+          state.types.delete(t);
+          syncCheckboxes('types', t, false);
+          applyFilterChanges();
+        });
+      });
+
+      state.sizes.forEach((s) => {
+        makeChip(s, () => {
+          state.sizes.delete(s);
+          syncSizeButtons(s, false);
+          applyFilterChanges();
+        });
+      });
+
+      state.features.forEach((f) => {
+        makeChip(f, () => {
+          state.features.delete(f);
+          syncCheckboxes('features', f, false);
+          applyFilterChanges();
+        });
+      });
+
+      state.fits.forEach((ft) => {
+        makeChip(ft, () => {
+          state.fits.delete(ft);
+          syncCheckboxes('fits', ft, false);
+          applyFilterChanges();
+        });
+      });
+
+      state.genders.forEach((g) => {
+        makeChip(g, () => {
+          state.genders.delete(g);
+          syncCheckboxes('genders', g, false);
+          applyFilterChanges();
+        });
+      });
+
+      state.collections.forEach((colId) => {
+        const c = collections.find((col) => col.id === colId);
+        const colTitle = c ? (isEn ? (c.title_en || c.title) : c.title) : colId;
+        makeChip(colTitle, () => {
+          state.collections.delete(colId);
+          syncCheckboxes('collections', colId, false);
+          applyFilterChanges();
+        });
+      });
+    }
+
+    function syncCheckboxes(group: string, value: string, checked: boolean) {
+      document.querySelectorAll<HTMLInputElement>(`.filter-cb[data-group="${group}"][data-value="${value}"]`).forEach((cb) => {
+        cb.checked = checked;
+      });
+    }
+
+    function syncSizeButtons(value: string, active: boolean) {
+      document.querySelectorAll<HTMLButtonElement>(`.filter-size-btn[data-value="${value}"]`).forEach((btn) => {
+        if (active) {
+          btn.classList.add('bg-slate-950', 'text-white', 'border-slate-950');
+          btn.classList.remove('text-slate-700', 'border-slate-200');
+        } else {
+          btn.classList.remove('bg-slate-950', 'text-white', 'border-slate-950');
+          btn.classList.add('text-slate-700', 'border-slate-200');
+        }
+      });
+    }
+
+    function renderBatch(isReset: boolean) {
+      if (!resultsGrid) return;
+
+      if (isReset) {
+        resultsGrid.innerHTML = '';
+        state.renderedCount = 0;
+      }
+
+      const total = filteredCache.length;
+      const countText = `${total} ${isEn ? (total === 1 ? 'product' : 'products') : (total === 1 ? 'producto' : 'productos')}`;
+      if (desktopCountEl) desktopCountEl.textContent = countText;
+      if (mobileCountEl) mobileCountEl.textContent = countText;
+      if (applyMobileFilterText) {
+        applyMobileFilterText.textContent = isEn ? `View ${total} products` : `Ver ${total} productos`;
+      }
+
+      // Update mobile badge
+      const activeFilterCount = state.types.size + state.sizes.size + state.features.size + state.fits.size + state.genders.size + state.collections.size;
+      if (mobileFilterBadge) {
+        if (activeFilterCount > 0) {
+          mobileFilterBadge.textContent = String(activeFilterCount);
+          mobileFilterBadge.classList.remove('hidden');
+        } else {
+          mobileFilterBadge.classList.add('hidden');
+        }
+      }
+
+      updateActiveChips();
+
+      if (total === 0) {
+        emptyState?.classList.remove('hidden');
+        emptyState?.classList.add('flex');
+        sentinel?.classList.add('hidden');
         return;
       }
 
-      clearBtn?.classList.remove('hidden');
+      emptyState?.classList.add('hidden');
+      emptyState?.classList.remove('flex');
 
-      const results = products.filter((p: any) => {
-        const titleText = isEn ? (p.title_en || p.title) : p.title;
-        return titleText.toLowerCase().includes(query);
-      });
+      const nextBatch = filteredCache.slice(state.renderedCount, state.renderedCount + state.batchSize);
+      if (nextBatch.length > 0) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = nextBatch.map(renderProductCardHtml).join('');
+        
+        Array.from(tempDiv.children).forEach((cardEl) => {
+          resultsGrid.appendChild(cardEl);
+          setupCardInteractions(cardEl as HTMLElement);
+        });
 
-      if (statusLabel) {
-        if (results.length === 1) {
-          statusLabel.textContent = isEn ? '1 product found' : '1 producto encontrado';
-        } else {
-          statusLabel.textContent = isEn 
-            ? `${results.length} products found` 
-            : `${results.length} productos encontrados`;
-        }
+        state.renderedCount += nextBatch.length;
       }
 
-      if (results.length === 0) {
-        promptState?.classList.add('hidden');
-        emptyState?.classList.remove('hidden');
-        resultsContainer?.classList.add('hidden');
-        if (resultsGrid) resultsGrid.innerHTML = '';
+      // Sentinel control
+      if (state.renderedCount < total) {
+        sentinel?.classList.remove('hidden');
+        sentinelSpinner?.classList.remove('hidden');
       } else {
-        promptState?.classList.add('hidden');
-        emptyState?.classList.add('hidden');
-        resultsContainer?.classList.remove('hidden');
+        sentinel?.classList.add('hidden');
+        sentinelSpinner?.classList.add('hidden');
+      }
+    }
 
-        if (resultsGrid) {
-          resultsGrid.innerHTML = results.map((p: any) => {
-            const imageList = p.images.length > 0 ? p.images : ['/images/default-product.jpg'];
-            const imagesSliderHtml = imageList.map((imgUrl: string, imgIdx: number) => `
-              <a
-                href="/${lang}/productos/${p.slug}"
-                class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
-                data-index="${imgIdx}"
-                style="aspect-ratio: 2/3;"
-              >
-                <img
-                  src="${imgUrl}"
-                  alt="${isEn ? (p.title_en || p.title) : p.title} - Vista ${imgIdx + 1}"
-                  class="w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300 opacity-0"
-                  style="object-position: ${getObjectPosition(imgUrl)}"
-                  loading="${imgIdx === 0 ? 'eager' : 'lazy'}"
-                  onload="this.classList.remove('opacity-0')"
-                />
-              </a>
-            `).join('');
+    function applyFilterChanges(resetPaging: boolean = true) {
+      filteredCache = computeFilteredProducts();
+      renderBatch(resetPaging);
+    }
 
-            const arrowsHtml = imageList.length > 1 ? `
-              <button
-                type="button"
-                class="slider-arrow-left absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
-                title="${isEn ? 'Previous image' : 'Imagen anterior'}"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="slider-arrow-right absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover/slider:opacity-100 transition-opacity active:scale-90 z-10 cursor-pointer hidden md:flex"
-                title="${isEn ? 'Next image' : 'Siguiente imagen'}"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-            ` : '';
+    // Initialize Infinite Scroll observer
+    if (sentinel) {
+      infiniteObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && state.renderedCount < filteredCache.length) {
+            renderBatch(false);
+          }
+        });
+      }, { rootMargin: '200px' });
+      infiniteObserver.observe(sentinel);
+    }
 
-            const stockWarningHtml = p.stock <= 5 ? `
-              <span class="absolute top-3 left-3 px-2 py-1 bg-rose-600 text-white text-[9px] font-bold uppercase tracking-wider z-10">
-                ${isEn ? 'LAST ITEMS' : 'ÚLTIMAS UNIDADES'}
-              </span>
-            ` : '';
+    // Modal open / close handlers
+    const openSearch = (e: Event) => {
+      e.preventDefault();
+      if (!searchModal) return;
 
-            const priceTagHtml = `
-              <span class="absolute bottom-1.5 right-1.5 sm:bottom-2.5 sm:right-2.5 px-1.5 py-0.5 sm:px-2.5 sm:py-1 bg-slate-950/85 backdrop-blur-xs text-white text-[10px] sm:text-xs font-extrabold font-mono rounded-none shadow-sm z-10 border border-white/10 select-none">
-                ${(p.price / 100).toFixed(2)} €
-              </span>
-            `;
+      // Close mobile navigation drawer if open
+      const mobileDrawer = document.getElementById('mobile-drawer');
+      const mobileDrawerPane = document.getElementById('mobile-drawer-pane');
+      if (mobileDrawer && mobileDrawerPane && !mobileDrawer.classList.contains('opacity-0')) {
+        mobileDrawer.classList.add('opacity-0', 'pointer-events-none');
+        mobileDrawer.classList.remove('opacity-100', 'pointer-events-auto');
+        mobileDrawerPane.classList.remove('translate-x-0');
+        mobileDrawerPane.classList.add('translate-x-[-100%]');
+      }
 
-            return `
-              <div class="product-card group flex flex-col justify-start w-full">
-                <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
-                  <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
-                    ${imagesSliderHtml}
-                  </div>
-                  ${arrowsHtml}
-                  ${stockWarningHtml}
-                  ${priceTagHtml}
-                </div>
+      // Open animations
+      searchModal.classList.remove('opacity-0', 'pointer-events-none');
+      searchModal.classList.add('opacity-100', 'pointer-events-auto');
+      document.body.style.overflow = 'hidden';
 
-                <div class="mt-1.5 pt-1.5 md:mt-2 md:pt-2 border-t border-slate-200 flex flex-col items-center gap-1 w-full text-center">
-                  <a href="/${lang}/productos/${p.slug}" class="text-xs sm:text-sm md:text-base font-normal text-slate-900 hover:text-rose-600 transition-colors line-clamp-2 h-[2.4rem] sm:h-[2.5rem] md:h-[2.75rem] flex items-center justify-center text-center leading-tight sm:leading-tight overflow-hidden">
-                    ${isEn ? (p.title_en || p.title) : p.title}
-                  </a>
-                  
-                  <div class="flex items-center gap-1.5 justify-center min-h-[20px] md:min-h-[24px] mt-0.5">
-                    ${p.uniqueColors && p.uniqueColors.length > 0 ? p.uniqueColors.map((color: any) => `
-                      <button 
-                        type="button"
-                        class="color-swatch-btn w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
-                        style="background-color: ${color.hex}"
-                        title="${color.name}"
-                        data-variant-image="${color.image || ''}"
-                      ></button>
-                    `).join('') : ''}
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('');
+      // Automatically compute and render products immediately on opening!
+      applyFilterChanges(true);
 
-          // Bind swatches and arrows events for all new cards
-          resultsGrid.querySelectorAll('.product-card').forEach((cardEl) => {
-            setupCardInteractions(cardEl as HTMLElement);
-          });
+      setTimeout(() => searchInput?.focus(), 120);
+    };
+
+    const closeSearch = () => {
+      if (!searchModal) return;
+      searchModal.classList.add('opacity-0', 'pointer-events-none');
+      searchModal.classList.remove('opacity-100', 'pointer-events-auto');
+      document.body.style.overflow = '';
+      closeMobileSort();
+      closeMobileFilter();
+    };
+
+    mobileSearchTrigger?.addEventListener('click', openSearch);
+    desktopSearchTrigger?.addEventListener('click', openSearch);
+    closeBtn?.addEventListener('click', closeSearch);
+    closeTextBtn?.addEventListener('click', closeSearch);
+
+    // Search input typing
+    searchInput?.addEventListener('input', () => {
+      state.query = searchInput.value;
+      if (state.query.trim()) {
+        clearBtn?.classList.remove('hidden');
+      } else {
+        clearBtn?.classList.add('hidden');
+      }
+      applyFilterChanges(true);
+    });
+
+    clearBtn?.addEventListener('click', () => {
+      searchInput.value = '';
+      state.query = '';
+      clearBtn.classList.add('hidden');
+      searchInput.focus();
+      applyFilterChanges(true);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !searchModal?.classList.contains('opacity-0')) {
+        closeSearch();
+      }
+    });
+
+    // Accordion expand / collapse
+    document.querySelectorAll('.filter-acc-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const group = btn.closest('.filter-acc-group');
+        const body = group?.querySelector('.filter-acc-body');
+        const icon = btn.querySelector('.filter-acc-icon');
+        if (body) {
+          const isHidden = body.classList.contains('hidden');
+          if (isHidden) {
+            body.classList.remove('hidden');
+            icon?.classList.add('rotate-180');
+          } else {
+            body.classList.add('hidden');
+            icon?.classList.remove('rotate-180');
+          }
+        }
+      });
+    });
+
+    // Checkbox event listener delegation
+    document.addEventListener('change', (e) => {
+      const target = e.target as HTMLElement;
+      if (target && target.classList.contains('filter-cb')) {
+        const cb = target as HTMLInputElement;
+        const group = cb.dataset.group as 'types' | 'features' | 'fits' | 'genders' | 'collections';
+        const val = cb.dataset.value || '';
+
+        if (group && state[group]) {
+          if (cb.checked) {
+            state[group].add(val);
+          } else {
+            state[group].delete(val);
+          }
+          syncCheckboxes(group, val, cb.checked);
+          applyFilterChanges(true);
         }
       }
+
+      // Sort radio buttons (desktop & mobile synced)
+      if (target && target.classList.contains('sort-radio')) {
+        const radio = target as HTMLInputElement;
+        state.sort = radio.value;
+        document.querySelectorAll<HTMLInputElement>(`.sort-radio[value="${radio.value}"]`).forEach((r) => {
+          r.checked = true;
+        });
+        applyFilterChanges(true);
+        if (radio.name === 'mobile-sort') {
+          closeMobileSort();
+        }
+      }
+    });
+
+    // Size buttons click handling (desktop & mobile)
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const sizeBtn = target.closest('.filter-size-btn') as HTMLButtonElement;
+      if (sizeBtn) {
+        const val = sizeBtn.dataset.value || '';
+        if (state.sizes.has(val)) {
+          state.sizes.delete(val);
+          syncSizeButtons(val, false);
+        } else {
+          state.sizes.add(val);
+          syncSizeButtons(val, true);
+        }
+        applyFilterChanges(true);
+      }
+    });
+
+    // Clear all filters handlers
+    const clearAllFilters = () => {
+      state.types.clear();
+      state.sizes.clear();
+      state.features.clear();
+      state.fits.clear();
+      state.genders.clear();
+      state.collections.clear();
+      state.sort = 'relevance';
+      state.query = '';
+      if (searchInput) searchInput.value = '';
+      clearBtn?.classList.add('hidden');
+
+      document.querySelectorAll<HTMLInputElement>('.filter-cb').forEach((cb) => (cb.checked = false));
+      document.querySelectorAll<HTMLButtonElement>('.filter-size-btn').forEach((btn) => {
+        btn.classList.remove('bg-slate-950', 'text-white', 'border-slate-950');
+        btn.classList.add('text-slate-700', 'border-slate-200');
+      });
+      document.querySelectorAll<HTMLInputElement>('.sort-radio[value="relevance"]').forEach((r) => (r.checked = true));
+
+      applyFilterChanges(true);
+    };
+
+    document.querySelectorAll('.btn-clear-all-filters').forEach((btn) => {
+      btn.addEventListener('click', clearAllFilters);
+    });
+
+    // Mobile Sort Drawer open/close
+    const openMobileSort = () => {
+      if (!mobileSortDrawer || !mobileSortPane) return;
+      mobileSortDrawer.classList.remove('opacity-0', 'pointer-events-none');
+      mobileSortDrawer.classList.add('opacity-100', 'pointer-events-auto');
+      mobileSortPane.classList.remove('translate-y-full');
+      mobileSortPane.classList.add('translate-y-0');
+    };
+
+    const closeMobileSort = () => {
+      if (!mobileSortDrawer || !mobileSortPane) return;
+      mobileSortPane.classList.remove('translate-y-0');
+      mobileSortPane.classList.add('translate-y-full');
+      mobileSortDrawer.classList.remove('opacity-100', 'pointer-events-auto');
+      mobileSortDrawer.classList.add('opacity-0', 'pointer-events-none');
+    };
+
+    mobileSortBtn?.addEventListener('click', openMobileSort);
+    closeMobileSortBtn?.addEventListener('click', closeMobileSort);
+    mobileSortDrawer?.addEventListener('click', (e) => {
+      if (e.target === mobileSortDrawer) closeMobileSort();
+    });
+
+    // Mobile Filter Drawer open/close
+    const openMobileFilter = () => {
+      if (!mobileFilterDrawer || !mobileFilterPane) return;
+      mobileFilterDrawer.classList.remove('opacity-0', 'pointer-events-none');
+      mobileFilterDrawer.classList.add('opacity-100', 'pointer-events-auto');
+      mobileFilterPane.classList.remove('translate-x-full');
+      mobileFilterPane.classList.add('translate-x-0');
+    };
+
+    const closeMobileFilter = () => {
+      if (!mobileFilterDrawer || !mobileFilterPane) return;
+      mobileFilterPane.classList.remove('translate-x-0');
+      mobileFilterPane.classList.add('translate-x-full');
+      mobileFilterDrawer.classList.remove('opacity-100', 'pointer-events-auto');
+      mobileFilterDrawer.classList.add('opacity-0', 'pointer-events-none');
+    };
+
+    mobileFilterBtn?.addEventListener('click', openMobileFilter);
+    closeMobileFilterBtn?.addEventListener('click', closeMobileFilter);
+    applyMobileFilterBtn?.addEventListener('click', closeMobileFilter);
+    mobileFilterDrawer?.addEventListener('click', (e) => {
+      if (e.target === mobileFilterDrawer) closeMobileFilter();
     });
   })();
 </script>

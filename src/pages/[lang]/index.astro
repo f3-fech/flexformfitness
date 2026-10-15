@@ -19,12 +19,6 @@ export function getStaticPaths() {
 const { lang } = Astro.params;
 const isEn = lang === 'en';
 
-const getGender = (title: string) => {
-  const t = title.toLowerCase();
-  if (t.includes('mujer') || t.includes('women')) return 'mujer';
-  if (t.includes('hombre') || t.includes('men')) return 'hombre';
-  return 'unisex';
-};
 
 const getObjectPosition = (url: string | undefined): string => {
   if (!url) return 'center';
@@ -223,7 +217,7 @@ const storeJsonLd = {
     <Navbar />
 
     <!-- Hero Image Carousel Section (Edge to Edge / Full Width) -->
-    <section class="w-full aspect-[4/5] min-[900px]:aspect-[8/3] relative overflow-hidden bg-slate-950">
+    <section class="w-full aspect-[1/1] min-[900px]:aspect-[8/3] relative overflow-hidden bg-slate-950">
       <!-- Carousel Slides -->
       <div class="absolute inset-0 w-full h-full">
         {heroSlides.map((slide, index) => {
@@ -316,7 +310,7 @@ const storeJsonLd = {
               )}
 
               {/* Centered Logo and Text Overlay with Centered Buttons */}
-              <div class={`absolute inset-0 flex flex-col items-center text-center px-4 z-10 ${slide.showTitleOverlay !== false ? 'justify-center' : 'justify-end pb-12 min-[900px]:pb-24'}`}>
+              <div class={`absolute inset-0 flex flex-col items-center text-center px-4 z-10 ${slide.showTitleOverlay !== false ? 'justify-center' : 'justify-end pb-8 sm:pb-12 min-[900px]:pb-24'}`}>
                 {slide.showTitleOverlay !== false && (
                   <div class="relative select-none pointer-events-none mb-3 sm:mb-5 min-[900px]:mb-8">
                     <!-- Massive Logo Overlay Text -->

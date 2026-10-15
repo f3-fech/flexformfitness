@@ -188,22 +188,47 @@ export function syncProductCollectionsRules() {
   });
 }
 
-// Global listener for gender radio buttons change
-document.querySelectorAll('input[name="product-gender-assoc"]').forEach((radio) => {
-  radio.addEventListener('change', () => {
-    const val = (radio as HTMLInputElement).value;
-    if (val === 'hombre') {
-      document.querySelectorAll<HTMLInputElement>('input[name="product-col-assoc"][data-category="Mujer"]:checked').forEach((cb) => {
-        cb.checked = false;
+// Global listener for gender radio buttons change and click-to-toggle
+document.querySelectorAll<HTMLInputElement>('input[name="product-gender-assoc"]').forEach((radio) => {
+  radio.addEventListener('pointerdown', () => {
+    radio.dataset.wasChecked = radio.checked ? 'true' : 'false';
+  });
+
+  radio.addEventListener('click', () => {
+    if (radio.dataset.wasChecked === 'true') {
+      radio.checked = false;
+      radio.dataset.wasChecked = 'false';
+    } else {
+      document.querySelectorAll<HTMLInputElement>('input[name="product-gender-assoc"]').forEach((el) => {
+        el.dataset.wasChecked = 'false';
       });
-    } else if (val === 'mujer') {
-      document.querySelectorAll<HTMLInputElement>('input[name="product-col-assoc"][data-category="Hombre"]:checked').forEach((cb) => {
-        cb.checked = false;
-      });
+      radio.dataset.wasChecked = 'true';
+      const val = radio.value;
+      if (val === 'hombre') {
+        document.querySelectorAll<HTMLInputElement>('input[name="product-col-assoc"][data-category="Mujer"]:checked').forEach((cb) => {
+          cb.checked = false;
+        });
+      } else if (val === 'mujer') {
+        document.querySelectorAll<HTMLInputElement>('input[name="product-col-assoc"][data-category="Hombre"]:checked').forEach((cb) => {
+          cb.checked = false;
+        });
+      }
     }
     syncProductCollectionsRules();
   });
 });
+
+// Clear gender button
+const clearGenderBtn = document.getElementById('btn-clear-product-gender');
+if (clearGenderBtn) {
+  clearGenderBtn.addEventListener('click', () => {
+    document.querySelectorAll<HTMLInputElement>('input[name="product-gender-assoc"]').forEach((r) => {
+      r.checked = false;
+      r.dataset.wasChecked = 'false';
+    });
+    syncProductCollectionsRules();
+  });
+}
 
 // --- 1. Product Collections Associations Render ---
 export function renderProductCollections(productId: string | null) {
@@ -229,10 +254,11 @@ export function renderProductCollections(productId: string | null) {
   }
 
   // Update gender radio buttons
-  const genderVal = (hasHombre && hasMujer) ? 'unisex' : hasHombre ? 'hombre' : hasMujer ? 'mujer' : '';
+  const genderVal = hasHombre ? 'hombre' : hasMujer ? 'mujer' : '';
   document.querySelectorAll('input[name="product-gender-assoc"]').forEach((radio) => {
     const rEl = radio as HTMLInputElement;
     rEl.checked = (rEl.value === genderVal);
+    rEl.dataset.wasChecked = (rEl.value === genderVal) ? 'true' : 'false';
   });
 
   if (dbCollections.length === 0) {
@@ -743,6 +769,53 @@ openNewProductModal?.addEventListener('click', () => {
 
 closeProductModal?.addEventListener('click', () => toggleModal(productModal, false));
 cancelProductModal?.addEventListener('click', () => toggleModal(productModal, false));
+
+// --- 5.1 Unclassified (Olvidados) Modal & Sidebar Filter ---
+const unclassifiedModal = document.getElementById('unclassified-modal') as HTMLDivElement | null;
+const openUnclassifiedModalBtn = document.getElementById('open-unclassified-modal-btn');
+const closeUnclassifiedModal = document.getElementById('close-unclassified-modal');
+const cancelUnclassifiedModal = document.getElementById('cancel-unclassified-modal');
+const filterSidebarFromModalBtn = document.getElementById('filter-sidebar-from-modal-btn');
+const catalogUnclassifiedBanner = document.getElementById('catalog-unclassified-banner');
+const clearUnclassifiedFilterBtn = document.getElementById('clear-unclassified-filter-btn');
+
+openUnclassifiedModalBtn?.addEventListener('click', () => {
+  if (unclassifiedModal) toggleModal(unclassifiedModal, true);
+});
+
+closeUnclassifiedModal?.addEventListener('click', () => {
+  if (unclassifiedModal) toggleModal(unclassifiedModal, false);
+});
+
+cancelUnclassifiedModal?.addEventListener('click', () => {
+  if (unclassifiedModal) toggleModal(unclassifiedModal, false);
+});
+
+function filterSidebarUnclassified(onlyUnclassified: boolean) {
+  const cards = document.querySelectorAll<HTMLElement>('.product-draggable');
+  cards.forEach((card) => {
+    const isUnclassified = card.dataset.isUnclassified === 'true';
+    if (onlyUnclassified) {
+      card.style.display = isUnclassified ? 'flex' : 'none';
+    } else {
+      card.style.display = 'flex';
+    }
+  });
+  if (catalogUnclassifiedBanner) {
+    catalogUnclassifiedBanner.classList.toggle('hidden', !onlyUnclassified);
+  }
+}
+
+filterSidebarFromModalBtn?.addEventListener('click', () => {
+  if (unclassifiedModal) toggleModal(unclassifiedModal, false);
+  filterSidebarUnclassified(true);
+  const container = document.getElementById('catalog-draggable-container');
+  container?.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+clearUnclassifiedFilterBtn?.addEventListener('click', () => {
+  filterSidebarUnclassified(false);
+});
 
 function getOriginalUrl(url: string | undefined): string {
   if (!url) return "";
@@ -2699,6 +2772,9 @@ addColorBranchBtn?.addEventListener('click', () => {
 // --- 11. Edit Product click handler ---
 document.querySelectorAll('.edit-product-btn').forEach((btn) => {
   btn.addEventListener('click', (e) => {
+    if (unclassifiedModal && !unclassifiedModal.classList.contains('hidden')) {
+      toggleModal(unclassifiedModal, false);
+    }
     const target = e.currentTarget as HTMLButtonElement;
     const productData = JSON.parse(target.dataset.product || '{}');
 
@@ -2775,16 +2851,7 @@ productForm?.addEventListener('submit', async (e) => {
   const originalBtnText = saveProductBtn.innerHTML;
   saveProductBtn.innerHTML = "<span>Guardando...</span>";
 
-  // Validate that the product has a gender category selected
-  const genderRadio = document.querySelector('input[name="product-gender-assoc"]:checked') as HTMLInputElement;
-  const genderVal = genderRadio ? genderRadio.value : '';
 
-  if (!genderVal) {
-    showToast("Error: Debe elegir obligatoriamente a qué género va dirigido el producto (Hombre, Mujer o Unisex).", "error");
-    saveProductBtn.disabled = false;
-    saveProductBtn.innerHTML = originalBtnText;
-    return;
-  }
 
   const idVal = (document.getElementById('form-product-id') as HTMLInputElement).value;
   const slugVal = (document.getElementById('form-slug') as HTMLInputElement).value;
@@ -3306,10 +3373,9 @@ export function populateFolderProducts(associatedIds: string[]) {
           <span class="px-1.5 py-0.5 text-[8px] font-black uppercase rounded tracking-wider border ${
             p.gender === 'hombre' ? 'bg-blue-50 text-blue-600 border-blue-100' :
             p.gender === 'mujer' ? 'bg-pink-50 text-pink-600 border-pink-100' :
-            p.gender === 'unisex' ? 'bg-purple-50 text-purple-600 border-purple-100' :
             'bg-slate-100 text-slate-500 border-slate-200'
           }">
-            ${p.gender === 'hombre' ? 'Hombre' : p.gender === 'mujer' ? 'Mujer' : p.gender === 'unisex' ? 'Unisex' : 'Sin género'}
+            ${p.gender === 'hombre' ? 'Hombre' : p.gender === 'mujer' ? 'Mujer' : 'Sin género'}
           </span>
           ${conflict ? `
             <span class="px-1.5 py-0.5 text-[8px] font-black uppercase rounded tracking-wider bg-amber-100 text-amber-800 border border-amber-300" title="Conflicto con ${conflict.collectionTitle}">
@@ -3383,10 +3449,9 @@ export function populateFolderProducts(associatedIds: string[]) {
             <span class="px-1.5 py-0.5 text-[8px] font-black uppercase rounded tracking-wider border ${
               p.gender === 'hombre' ? 'bg-blue-50 text-blue-600 border-blue-100' :
               p.gender === 'mujer' ? 'bg-pink-50 text-pink-600 border-pink-100' :
-              p.gender === 'unisex' ? 'bg-purple-50 text-purple-600 border-purple-100' :
               'bg-slate-100 text-slate-500 border-slate-200'
             }">
-              ${p.gender === 'hombre' ? 'Hombre' : p.gender === 'mujer' ? 'Mujer' : p.gender === 'unisex' ? 'Unisex' : 'Sin género'}
+              ${p.gender === 'hombre' ? 'Hombre' : p.gender === 'mujer' ? 'Mujer' : 'Sin género'}
             </span>
           </div>
           <span class="block text-xs font-bold text-slate-900 truncate leading-tight">${p.title}</span>

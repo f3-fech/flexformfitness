@@ -10,6 +10,7 @@ import SettingsTab from '../../components/admin/SettingsTab.astro';
 import CollectionModal from '../../components/admin/CollectionModal.astro';
 import ProductModal from '../../components/admin/ProductModal.astro';
 import OrderModals from '../../components/admin/OrderModals.astro';
+import UnclassifiedModal from '../../components/admin/UnclassifiedModal.astro';
 import { getObjectPosition } from '../../lib/utils';
 
 export const prerender = false; // Server-rendered to check auth and fetch live data
@@ -51,11 +52,14 @@ const womenCollection = collections.find((c) => c.slug === 'mujer');
 const getProductGender = (productId: string): string => {
   const isMen = collections.some(c => (c.parentCategory === 'Hombre' || (!c.parentCategory && (c.slug.includes('hombre') || c.title.toLowerCase().includes('hombre') || c.title.toLowerCase().includes('men')))) && c.slug !== 'hombre' && (c.productIds || []).includes(productId)) || !!menCollection?.productIds?.includes(productId);
   const isWomen = collections.some(c => (c.parentCategory === 'Mujer' || (!c.parentCategory && (c.slug.includes('mujer') || c.title.toLowerCase().includes('mujer') || c.title.toLowerCase().includes('women')))) && c.slug !== 'mujer' && (c.productIds || []).includes(productId)) || !!womenCollection?.productIds?.includes(productId);
-  if (isMen && isWomen) return 'unisex';
   if (isMen) return 'hombre';
   if (isWomen) return 'mujer';
   return 'sin género';
 };
+
+const unclassifiedProducts = products.filter(
+  (p) => !collections.some((c) => c.productIds && c.productIds.includes(p.id))
+);
 
 // Fetch custom categories list from settings
 let rawCategories: string[] = ['Hombre', 'Mujer', 'Portada', 'F3 Synergies'];
@@ -400,6 +404,21 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
               <div class="flex items-center gap-2">
                 <button
                   type="button"
+                  id="open-unclassified-modal-btn"
+                  title={`Productos sin clasificar / olvidados (${unclassifiedProducts.length})`}
+                  class="h-9 px-3 bg-amber-50 hover:bg-amber-100/90 text-amber-800 border border-amber-200/80 rounded-xl text-3xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 flex items-center gap-1.5 shadow-2xs select-none cursor-pointer group"
+                >
+                  <svg class="w-3.5 h-3.5 text-amber-600 shrink-0 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                  </svg>
+                  <span class="hidden sm:inline">Olvidados</span>
+                  <span id="unclassified-badge-count" class="px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded-md text-[9px] font-mono font-bold leading-none">
+                    {unclassifiedProducts.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
                   id="reorder-collections-btn"
                   class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-3xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 flex items-center gap-1.5 shadow-2xs select-none cursor-pointer"
                 >
@@ -612,10 +631,23 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
               <span class="text-2xs font-extrabold text-slate-400 uppercase tracking-widest">Catálogo de Artículos</span>
               <span class="text-[10px] text-slate-500 font-mono">{products.length} productos</span>
             </div>
+
+            <!-- Banner when filtering unclassified products -->
+            <div id="catalog-unclassified-banner" class="hidden p-2.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-amber-800 text-3xs font-bold uppercase tracking-wider animate-fade-in shrink-0">
+              <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>Filtrando: Solo Olvidados ({unclassifiedProducts.length})</span>
+              </span>
+              <button type="button" id="clear-unclassified-filter-btn" class="px-2 py-0.5 bg-white border border-amber-200 hover:bg-amber-100/60 rounded-lg text-amber-900 text-3xs font-black tracking-wider transition-all cursor-pointer">
+                Mostrar Todos
+              </button>
+            </div>
             
             <!-- Draggable Products List -->
             <div class="flex flex-col gap-2.5 overflow-y-auto pr-1 flex-grow" id="catalog-draggable-container">
-              {products.map((p) => (
+              {products.map((p) => {
+                const isUnclassified = !collections.some((c) => c.productIds && c.productIds.includes(p.id));
+                return (
                 <div
                   class="product-draggable bg-slate-50 hover:bg-slate-100/80 border border-slate-200 p-2.5 rounded-2xl flex items-center gap-3 cursor-grab active:cursor-grabbing select-none transition-all duration-200 group"
                   draggable="true"
@@ -624,6 +656,7 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                   data-image={p.images[0]}
                   data-sku={p.variants[0]?.sku || 'BASE'}
                   data-gender={getProductGender(p.id)}
+                  data-is-unclassified={isUnclassified ? 'true' : 'false'}
                 >
                   <!-- Drag Indicator -->
                   <div class="text-slate-400 group-hover:text-slate-650 cursor-grab shrink-0">
@@ -645,10 +678,9 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                       <span class={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded tracking-wider border ${
                         getProductGender(p.id) === 'hombre' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                         getProductGender(p.id) === 'mujer' ? 'bg-pink-50 text-pink-600 border-pink-100' :
-                        getProductGender(p.id) === 'unisex' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                         'bg-slate-100 text-slate-500 border-slate-200'
                       }`}>
-                        {getProductGender(p.id) === 'hombre' ? 'Hombre' : getProductGender(p.id) === 'mujer' ? 'Mujer' : getProductGender(p.id) === 'unisex' ? 'Unisex' : 'Sin género'}
+                        {getProductGender(p.id) === 'hombre' ? 'Hombre' : getProductGender(p.id) === 'mujer' ? 'Mujer' : 'Sin género'}
                       </span>
                     </div>
                     <span class="block text-xs font-bold text-slate-800 truncate leading-tight">
@@ -656,7 +688,8 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                     </span>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
           
@@ -1307,6 +1340,7 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
     <!-- MODALS SECTION -->
     <CollectionModal />
     <ProductModal products={products} collections={collections} savedColors={settings.savedColors || []} />
+    <UnclassifiedModal products={unclassifiedProducts} />
     <OrderModals />
 
     <script>

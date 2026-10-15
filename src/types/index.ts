@@ -65,6 +65,7 @@ export interface Order {
   shippingStatus: 'pending' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   trackingNumber: string | null;
   createdAt: any; // admin.firestore.Timestamp or Date
+  deliveredAt?: string | null; // ISO timestamp when product was delivered
   returnRequest?: {
     reason: string;
     images: string[];

@@ -16,6 +16,9 @@ export default defineConfig({
   adapter: vercel(),
   integrations: [tailwind(), react()],
   vite: {
+    optimizeDeps: {
+      include: ['react', 'react-dom'],
+    },
     resolve: {
       dedupe: ['react', 'react-dom'],
     },

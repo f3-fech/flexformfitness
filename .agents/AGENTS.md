@@ -58,4 +58,12 @@ El proyecto combina scripts ES Modules (ESM) y CommonJS (CJS). Respeta y utiliza
     npx tsc --noEmit
     ```
 
+---
+
+## 6. Futura Separación por Género en F3 Synergies (Roadmap)
+*   **Contexto:** En las colecciones de tipo *F3 Synergies*, convivirán productos tanto de hombre como de mujer dentro de una misma colección unificada.
+*   **Objetivo futuro:** Separar o filtrar los productos por género (Hombre / Mujer) dentro de la vista/página de Synergies.
+*   **Viabilidad técnica:** Totalmente viable. Para lograrlo limpiamente, cuando se implemente se guardará el campo `gender` (`'hombre' | 'mujer'`) directamente en el documento del producto en Firestore (a través del selector de género del modal de edición), permitiendo que la página de Synergies agrupe o filtre los productos por género sin depender exclusivamente de a qué subcolección pertenecen.
+
+
 

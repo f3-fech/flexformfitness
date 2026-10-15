@@ -109,13 +109,23 @@ const settings = await getGeneralSettings();
               <p>Once we receive and inspect the returned item(s) at our warehouse:</p>
               <ul class="list-disc pl-5 space-y-1.5">
                 <li>We will send you a notification confirming approval or rejection of the refund.</li>
-                <li>If approved, the refund will be processed automatically using your original payment method (Stripe / Credit Card) within <strong>14 calendar days</strong> (usually within 3-5 business days).</li>
-                <li>Initial standard delivery charges will be refunded in accordance with applicable consumer protection laws.</li>
+                <li>If approved, the refund will be processed automatically using your original payment method (Stripe / Credit Card) within <strong>14 calendar days</strong> (usually within 3-5 business days). We may withhold reimbursement until we have received the goods back or you have supplied evidence of having sent back the goods.</li>
+                <li>Initial standard delivery charges will be refunded in full in accordance with applicable consumer protection laws.</li>
               </ul>
             </section>
 
             <section class="space-y-3">
-              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Legal Warranty (3 Years)</h2>
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Legal Exceptions to the Right of Withdrawal</h2>
+              <p>Under Article 103 of Spanish Consumer Law (Royal Legislative Decree 1/2007), the right of withdrawal does not apply to:</p>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li>Goods made to consumer specifications or clearly personalized.</li>
+                <li>Sealed goods which are not suitable for return due to health protection or hygiene reasons and were unsealed after delivery (e.g. underwear or garments where hygiene seals have been removed).</li>
+                <li>Goods that after delivery have suffered wear or damage beyond normal handling necessary to establish their nature and characteristics.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">7. Legal Warranty (3 Years)</h2>
               <p>All items sold are covered by a <strong>3-year statutory warranty</strong> against manufacturing faults or non-conformity. In case of defective products, you have the right to free repair, replacement, or a complete refund.</p>
             </section>
           </>
@@ -124,14 +134,14 @@ const settings = await getGeneralSettings();
           <>
             <section class="space-y-3">
               <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">1. Derecho Legal de Desistimiento (14 Días Naturales)</h2>
-              <p>Conforme al Real Decreto Legislativo 1/2007, de 16 de noviembre, de la Ley General para la Defensa de los Consumidores y Usuarios, dispones de un plazo de <strong>14 días naturales</strong> a contar desde la recepción del pedido para desistir de la compra sin necesidad de justificación.</p>
+              <p>Conforme al Real Decreto Legislativo 1/2007, de 16 de noviembre, de la Ley General para la Defensa de los Consumidores y Usuarios, dispones de un plazo de <strong>14 días naturales</strong> a contar desde el día en que tú (o un tercero indicado por ti, distinto del transportista) recibas físicamente el producto, para ejercer tu derecho de desistimiento <strong>sin necesidad de justificar tu decisión</strong> y sin penalización de ninguna clase.</p>
             </section>
 
             <section class="space-y-3">
               <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">2. Condiciones para Aceptar la Devolución</h2>
               <p>Para poder procesar la devolución o cambio de un producto, es imprescindible cumplir los siguientes requisitos:</p>
               <ul class="list-disc pl-5 space-y-1.5">
-                <li>El producto debe estar nuevo, sin usar, sin manchas ni olores y en perfecto estado de conservación.</li>
+                <li>El producto debe estar nuevo, sin usar, sin manchas ni olores y en perfecto estado de conservación (únicamente probado para verificar talla como en una tienda física).</li>
                 <li>Debe conservar todas sus etiquetas originales intactas y colocadas en la prenda.</li>
                 <li>Debe enviarse en su embalaje original o en una caja protectora equivalente que garantice que no sufra daños durante el transporte.</li>
               </ul>
@@ -141,15 +151,15 @@ const settings = await getGeneralSettings();
               <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">3. ¿Cómo Solicitar una Devolución o Cambio?</h2>
               <p>El proceso es rápido y sencillo a través de cualquiera de estas dos vías:</p>
               <ol class="list-decimal pl-5 space-y-2">
-                <li><strong>Desde tu Área de Cliente:</strong> Accede a <a href={`/${lang}/mi-cuenta`} class="text-rose-600 underline font-semibold">Mi Cuenta</a>, entra en el detalle del pedido correspondiente y haz clic en el botón <em>"Solicitar Devolución"</em>.</li>
-                <li><strong>Por Email / Formulario:</strong> Contáctanos a través de nuestra página de <a href={`/${lang}/contacto`} class="text-rose-600 underline font-semibold">Contacto</a> indicando tu número de pedido y las prendas a devolver. Te responderemos en menos de 24-48 horas hábiles con las instrucciones de envío.</li>
+                <li><strong>Desde tu Área de Cliente:</strong> Accede a <a href={`/${lang}/mi-cuenta`} class="text-rose-600 underline font-semibold">Mi Cuenta</a>, entra en tu pedido y pulsa <em>"He recibido el producto"</em> tras la entrega. Una vez recibido, tendrás habilitado de inmediato el botón <em>"Solicitar Devolución"</em> durante el plazo legal de 14 días.</li>
+                <li><strong>Por Email / Formulario de Contacto:</strong> Contáctanos en nuestra página de <a href={`/${lang}/contacto`} class="text-rose-600 underline font-semibold">Contacto</a> indicando tu número de pedido y las prendas a devolver.</li>
               </ol>
             </section>
 
             <section class="space-y-3">
               <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">4. Gastos de Envío de la Devolución</h2>
               <ul class="list-disc pl-5 space-y-1.5">
-                <li><strong>Devoluciones voluntarias / Cambios de talla:</strong> Los costes directos del transporte para devolver el producto corren por cuenta del cliente.</li>
+                <li><strong>Devoluciones voluntarias / Cambios de talla:</strong> Conforme al artículo 108 de la Ley de Consumidores, los costes directos del transporte para devolver el paquete corren a cargo del comprador.</li>
                 <li><strong>Producto defectuoso o error en el envío:</strong> Si recibes un artículo con defecto de fábrica o distinto al solicitado, FlexForm Fitness asumirá el 100% de los costes de recogida y reenvío.</li>
               </ul>
             </section>
@@ -159,13 +169,23 @@ const settings = await getGeneralSettings();
               <p>Una vez recibido el paquete en nuestras instalaciones y verificado el estado de las prendas:</p>
               <ul class="list-disc pl-5 space-y-1.5">
                 <li>Te enviaremos un correo de confirmación de la aprobación del reembolso.</li>
-                <li>El abono se emitirá de forma automática a través del mismo método de pago utilizado en la compra (tarjeta vía Stripe) en un plazo máximo de <strong>14 días naturales</strong> (habitualmente reflejado en tu extracto bancario en 2-4 días hábiles).</li>
+                <li>El abono se emitirá de forma automática a través del mismo método de pago utilizado en la compra (tarjeta vía Stripe) en un plazo máximo de <strong>14 días naturales</strong> desde que nos notificas el desistimiento. Podremos retener el reembolso hasta haber recibido los bienes o hasta que presentes una prueba de su devolución.</li>
                 <li>Se reembolsará el importe íntegro del producto y los gastos de envío ordinarios iniciales abonados en el pedido.</li>
               </ul>
             </section>
 
             <section class="space-y-3">
-              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Garantía Legal de 3 Años</h2>
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">6. Excepciones Legales al Derecho de Desistimiento</h2>
+              <p>De conformidad con el artículo 103 del Real Decreto Legislativo 1/2007, el derecho de desistimiento no será aplicable a:</p>
+              <ul class="list-disc pl-5 space-y-1.5">
+                <li>Bienes precintados que no sean aptos para ser devueltos por razones de protección de la salud o de higiene y que hayan sido desprecintados tras la entrega (tales como protectores higiénicos retirados en ropa de uso íntimo o baño).</li>
+                <li>Bienes confeccionados conforme a las especificaciones del consumidor o claramente personalizados.</li>
+                <li>Prendas o artículos que tras su entrega presenten signos de uso evidente que sobrepase la mera prueba estética o daños causados por el consumidor.</li>
+              </ul>
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="text-lg font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">7. Garantía Legal de 3 Años</h2>
               <p>Todos nuestros productos cuentan con una <strong>garantía legal de 3 años</strong> conforme a la legislación española vigente frente a faltas de conformidad o defectos de fabricación, garantizando la reparación, sustitución o reembolso total sin coste alguno para el consumidor.</p>
             </section>
           </>

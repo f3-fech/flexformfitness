@@ -227,6 +227,22 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
                   const dateString = date.toLocaleDateString(isEn ? 'en-US' : 'es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
                   const orderTotal = Number(order.totalAmount ?? order.amountTotal ?? order.total ?? 0) || 0;
                   
+                  const actualShippingStatus = order.shippingStatus || 'pending';
+                  const isDelivered = actualShippingStatus === 'delivered';
+                  const isShipped = actualShippingStatus === 'shipped';
+
+                  // Cálculo de los 14 días naturales desde la entrega física
+                  let isWithinReturnWindow = false;
+                  let daysRemaining = 0;
+                  if (isDelivered) {
+                    const deliveredDate = order.deliveredAt
+                      ? new Date(order.deliveredAt)
+                      : (order.updatedAt?.toDate ? order.updatedAt.toDate() : new Date(order.updatedAt || order.createdAt));
+                    const daysSinceDelivery = Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24));
+                    daysRemaining = Math.max(0, 14 - daysSinceDelivery);
+                    isWithinReturnWindow = daysSinceDelivery < 14;
+                  }
+
                   return (
                     <div class="border border-slate-150 rounded-2xl overflow-hidden shadow-2xs">
                       <!-- Order Header -->
@@ -267,37 +283,37 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
                         <!-- Delivery status & tracking -->
                         <div class="pt-3 border-t border-slate-100 flex flex-col gap-3">
                           <div class="flex flex-wrap justify-between items-center gap-2">
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
                               <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-wider">{isEn ? "STATUS:" : "ESTADO:"}</span>
-                              <span class={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase ${
-                                (order.shippingStatus || order.status) === 'shipped'
-                                  ? 'bg-blue-50 text-blue-700'
-                                  : (order.shippingStatus || order.status) === 'delivered' || (order.shippingStatus || order.status) === 'completed' || (order.shippingStatus || order.status) === 'paid'
-                                  ? 'bg-emerald-50 text-emerald-700'
-                                  : (order.shippingStatus || order.status) === 'returned'
-                                  ? 'bg-amber-50 text-amber-700'
-                                  : (order.shippingStatus || order.status) === 'cancelled'
-                                  ? 'bg-red-50 text-red-700'
-                                  : 'bg-yellow-50 text-yellow-700'
+                              <span class={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase border ${
+                                actualShippingStatus === 'shipped'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : actualShippingStatus === 'delivered'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : actualShippingStatus === 'returned'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : actualShippingStatus === 'cancelled'
+                                  ? 'bg-red-50 text-red-700 border-red-200'
+                                  : 'bg-yellow-50 text-yellow-700 border-yellow-200'
                               }`}>
-                                {(order.shippingStatus || order.status) === 'shipped' 
+                                {actualShippingStatus === 'shipped' 
                                   ? (isEn ? 'Shipped' : 'Enviado') 
-                                  : (order.shippingStatus || order.status) === 'delivered' || (order.shippingStatus || order.status) === 'completed' || (order.shippingStatus || order.status) === 'paid'
+                                  : actualShippingStatus === 'delivered'
                                   ? (isEn ? 'Delivered' : 'Entregado')
-                                  : (order.shippingStatus || order.status) === 'returned'
+                                  : actualShippingStatus === 'returned'
                                   ? (isEn ? 'Returned' : 'Devuelto')
-                                  : (order.shippingStatus || order.status) === 'cancelled'
+                                  : actualShippingStatus === 'cancelled'
                                   ? (isEn ? 'Cancelled' : 'Cancelado')
-                                  : (isEn ? 'Pending' : 'Pendiente')}
+                                  : (isEn ? 'In Preparation' : 'En preparación')}
                               </span>
                               
                               {order.returnRequest && (
-                                <span class={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase ${
+                                <span class={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase border ${
                                   order.returnRequest.status === 'pending'
-                                    ? 'bg-amber-500/10 border border-amber-500/20 text-amber-600'
+                                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-600'
                                     : order.returnRequest.status === 'approved'
-                                    ? 'bg-green-500/10 border border-green-500/20 text-green-600'
-                                    : 'bg-red-500/10 border border-red-500/20 text-red-600'
+                                    ? 'bg-green-500/10 border-green-500/20 text-green-600'
+                                    : 'bg-red-500/10 border-red-500/20 text-red-600'
                                 }`}>
                                   {isEn ? `Return: ${order.returnRequest.status}` : `Devolución: ${
                                     order.returnRequest.status === 'pending' ? 'Solicitada' :
@@ -307,15 +323,52 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
                               )}
                             </div>
 
-                            {!order.returnRequest && ((order.shippingStatus || order.status) === 'delivered' || (order.shippingStatus || order.status) === 'completed' || (order.shippingStatus || order.status) === 'paid') && (
-                              <button
-                                type="button"
-                                class="request-return-btn px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-3xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer active:scale-95 border-none"
-                                data-order-id={order.id}
-                              >
-                                {isEn ? "Request Return" : "Solicitar Devolución"}
-                              </button>
-                            )}
+                            <div class="flex flex-wrap items-center gap-2">
+                              {/* 1. Botón para confirmar que el producto ha llegado cuando está enviado */}
+                              {isShipped && (
+                                <button
+                                  type="button"
+                                  class="confirm-delivery-btn px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-3xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer active:scale-95 flex items-center gap-1 shadow-3xs"
+                                  data-order-id={order.id}
+                                  title={isEn ? "Click when you have received the order to enable returns" : "Pulsa al recibir el pedido para habilitar el periodo de devolución"}
+                                >
+                                  <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                  {isEn ? "Confirm Received" : "He recibido el producto"}
+                                </button>
+                              )}
+
+                              {/* 2. Si el producto ya fue entregado y no hay solicitud previa */}
+                              {isDelivered && !order.returnRequest && (
+                                isWithinReturnWindow ? (
+                                  <div class="flex items-center gap-2">
+                                    <span class="text-3xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                      {isEn ? `${daysRemaining}d to return` : `Quedan ${daysRemaining} días`}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      class="request-return-btn px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg text-3xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer active:scale-95 shadow-3xs"
+                                      data-order-id={order.id}
+                                    >
+                                      {isEn ? "Request Return" : "Solicitar Devolución"}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div class="flex items-center gap-2">
+                                    <span class="text-3xs text-slate-400 font-medium">
+                                      {isEn ? "Return window closed (14d)" : "Plazo de devolución cerrado (14d)"}
+                                    </span>
+                                    <a
+                                      href={`/${lang}/contacto?orderId=${encodeURIComponent(order.id)}`}
+                                      class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-3xs font-extrabold uppercase tracking-wider transition-colors inline-flex items-center gap-1 border border-slate-200"
+                                      title={isEn ? "Get assistance or file a warranty claim" : "Obtener asistencia o tramitar garantía"}
+                                    >
+                                      <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>
+                                      {isEn ? "Contact Support" : "Contactar con Soporte"}
+                                    </a>
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
 
                           {order.trackingNumber && (
@@ -479,11 +532,23 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
         <form id="return-form" class="p-6 flex flex-col gap-4 text-xs">
           <input type="hidden" id="return-order-id" />
 
+          <!-- Legal notice box -->
+          <div class="p-3 bg-rose-50/50 border border-rose-100 rounded-2xl flex flex-col gap-1 text-2xs text-slate-700 leading-relaxed">
+            <span class="font-extrabold text-rose-600 uppercase tracking-wider text-3xs">
+              {isEn ? "14-Day Statutory Right of Withdrawal" : "Derecho Legal de Desistimiento (14 Días)"}
+            </span>
+            <p>
+              {isEn 
+                ? "You have 14 calendar days from delivery to return your order without giving any reason. Products must be unworn with original tags attached. Direct return shipping costs are borne by the customer."
+                : "Dispones de 14 días naturales desde la entrega para devolver tu pedido sin dar ninguna explicación. Las prendas deben estar sin usar y con sus etiquetas. Los gastos directos de devolución corren por cuenta del cliente."}
+            </p>
+          </div>
+
           <div>
             <label for="return-reason" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-              {isEn ? "Reason for Return" : "Motivo de la Devolución"}
+              {isEn ? "Reason for Return (Optional)" : "Motivo de la Devolución (Opcional)"}
             </label>
-            <textarea id="return-reason" required rows="4" placeholder={isEn ? "Describe why you want to return the product(s)..." : "Describe el motivo de la devolución (producto defectuoso, talla incorrecta, etc.)..."} class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-semibold"></textarea>
+            <textarea id="return-reason" rows="3" placeholder={isEn ? "Optional: You don't need to explain, but it helps us improve (wrong size, not as expected, etc.)..." : "Opcional: Por ley no estás obligado a dar explicaciones, pero nos ayuda a mejorar (cambio de talla, etc.)..."} class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 font-semibold"></textarea>
           </div>
 
           <div>
@@ -793,6 +858,38 @@ const canonicalUrl = `${siteUrl}/${lang}/mi-cuenta`;
           if (returnFileInput) returnFileInput.value = '';
           if (returnImagesPreview) returnImagesPreview.innerHTML = '';
           toggleModal(returnModal, true);
+        });
+      });
+
+      // Bind confirm delivery buttons ("He recibido el producto")
+      document.querySelectorAll('.confirm-delivery-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const orderId = target.dataset.orderId || '';
+          if (!orderId) return;
+
+          const isEn = getIsEn();
+          const confirmMsg = isEn
+            ? 'Have you received this order physically? Confirming delivery starts your statutory 14-day return period.'
+            : '¿Confirmas que has recibido el producto? Al confirmar la entrega, se activará tu plazo legal de 14 días naturales para ejercer el derecho de devolución.';
+
+          if (!confirm(confirmMsg)) return;
+
+          target.disabled = true;
+          const originalHTML = target.innerHTML;
+          target.innerHTML = `<span>${isEn ? 'Confirming...' : 'Confirmando...'}</span>`;
+
+          try {
+            const { error } = await actions.confirmOrderDelivery({ orderId });
+            if (error) throw error;
+            alert(isEn ? 'Delivery confirmed! Your 14-day return window is now active.' : '¡Entrega confirmada! El plazo legal de 14 días para devoluciones ya está activo.');
+            window.location.reload();
+          } catch (err: any) {
+            console.error('Error confirming delivery:', err);
+            alert((isEn ? 'Error confirming delivery: ' : 'Error al confirmar la recepción: ') + (err.message || err.code));
+            target.disabled = false;
+            target.innerHTML = originalHTML;
+          }
         });
       });
 

@@ -375,12 +375,18 @@ export const server = {
 
         const order = orderSnap.data() as Order;
 
-        // Perform the Firestore write
-        await orderRef.update({
+        const updateData: any = {
           shippingStatus,
           trackingNumber,
           updatedAt: new Date(),
-        });
+        };
+
+        if (shippingStatus === 'delivered' && !order.deliveredAt) {
+          updateData.deliveredAt = new Date().toISOString();
+        }
+
+        // Perform the Firestore write
+        await orderRef.update(updateData);
 
         // Trigger shipping confirmation email via Resend if email is provided
         if (order.customerDetails.email && shippingStatus === 'shipped') {
@@ -450,12 +456,83 @@ export const server = {
     },
   }),
 
+  confirmOrderDelivery: defineAction({
+    accept: 'json',
+    input: z.object({
+      orderId: z.string().min(1),
+    }),
+    handler: async (input, context) => {
+      const user = context.locals.user;
+      if (!user) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'Debes iniciar sesión para confirmar la entrega del pedido.',
+        });
+      }
+
+      const { orderId } = input;
+
+      try {
+        const orderRef = db.collection('orders').doc(orderId);
+        const orderSnap = await orderRef.get();
+
+        if (!orderSnap.exists) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: 'Pedido no encontrado.',
+          });
+        }
+
+        const order = orderSnap.data();
+        if (!order) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: 'Pedido no encontrado.',
+          });
+        }
+
+        // Ensure this order belongs to the user
+        if (order.userId !== user.uid && order.customerDetails?.email !== user.email) {
+          throw new ActionError({
+            code: 'FORBIDDEN',
+            message: 'No tienes permiso para modificar este pedido.',
+          });
+        }
+
+        if (order.shippingStatus !== 'shipped' && order.shippingStatus !== 'delivered') {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'El pedido debe estar enviado para confirmar su entrega.',
+          });
+        }
+
+        const nowIso = new Date().toISOString();
+        const deliveredAt = order.deliveredAt || nowIso;
+
+        await orderRef.update({
+          shippingStatus: 'delivered',
+          deliveredAt,
+          updatedAt: new Date(),
+        });
+
+        return { success: true, deliveredAt };
+      } catch (error: any) {
+        console.error('Error confirming order delivery:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: error.message || 'Error al confirmar la recepción del pedido.',
+        });
+      }
+    },
+  }),
+
   requestOrderReturn: defineAction({
     accept: 'json',
     input: z.object({
       orderId: z.string().min(1),
-      reason: z.string().min(1),
-      images: z.array(z.string().url()),
+      reason: z.string().optional().default('Derecho legal de desistimiento (sin justificación)'),
+      images: z.array(z.string().url()).optional().default([]),
     }),
     handler: async (input, context) => {
       // Rate Limit Check
@@ -505,10 +582,45 @@ export const server = {
           });
         }
 
+        // Validar que el pedido conste como entregado
+        const isDelivered = order.shippingStatus === 'delivered' || !!order.deliveredAt;
+        if (!isDelivered) {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'Solo puedes tramitar la devolución una vez hayas recibido físicamente el producto.',
+          });
+        }
+
+        // Validar el plazo mínimo legal de 14 días naturales desde la recepción física
+        const deliveredTime = order.deliveredAt
+          ? new Date(order.deliveredAt).getTime()
+          : (order.updatedAt?.toDate ? order.updatedAt.toDate().getTime() : new Date(order.updatedAt || order.createdAt).getTime());
+
+        const diffMs = Date.now() - deliveredTime;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays >= 14) {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'El plazo legal de devolución de 14 días naturales ha finalizado. Por favor, contacta con nuestro servicio de atención al cliente para asistencia sobre tu pedido.',
+          });
+        }
+
+        if (order.returnRequest && order.returnRequest.status !== 'rejected') {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'Ya existe una solicitud de devolución en trámite para este pedido.',
+          });
+        }
+
+        const finalReason = reason && reason.trim().length > 0
+          ? reason.trim()
+          : 'Derecho legal de desistimiento (sin justificación)';
+
         await orderRef.update({
           returnRequest: {
-            reason,
-            images,
+            reason: finalReason,
+            images: images || [],
             status: 'pending',
             requestedAt: new Date().toISOString()
           },
