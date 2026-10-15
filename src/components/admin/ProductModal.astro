@@ -57,7 +57,26 @@ const { products = [], collections, savedColors = [] } = Astro.props;
 
             <div>
               <label for="form-description" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Descripción</label>
-              <textarea name="description" id="form-description" rows="5" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-semibold"></textarea>
+              <textarea name="description" id="form-description" rows="4" required class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-rose-600 leading-normal font-semibold"></textarea>
+            </div>
+
+            <!-- SECTION: DETALLES Y ESPECIFICACIONES TÉCNICAS (OPCIONAL) -->
+            <div class="border-t border-slate-200 pt-3 flex flex-col gap-2.5">
+              <span class="text-3xs font-bold text-slate-400 uppercase tracking-widest">Especificaciones de Producto (Opcional)</span>
+              <div class="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label for="form-material" class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Material</label>
+                  <input type="text" id="form-material" placeholder="Ej: 72% Poliamida, 21% Poliéster" class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:border-rose-600" />
+                </div>
+                <div>
+                  <label for="form-fabric-weight" class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Gramaje</label>
+                  <input type="text" id="form-fabric-weight" placeholder="Ej: 300 GSM" class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:border-rose-600" />
+                </div>
+                <div>
+                  <label for="form-fit" class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Corte / Ajuste</label>
+                  <input type="text" id="form-fit" placeholder="Ej: Compresión atlética" class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:border-rose-600" />
+                </div>
+              </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -68,6 +87,35 @@ const { products = [], collections, savedColors = [] } = Astro.props;
               <div>
                 <label for="form-stock" class="block text-3xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Stock General (Auto-calculado)</label>
                 <input type="number" name="stock" id="form-stock" readonly class="w-full px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed focus:outline-none font-mono" />
+              </div>
+            </div>
+
+            <!-- SECTION: SIZE CHART (TABLA DE MEDIDAS EN CM Y OPCIONAL IMAGEN) -->
+            <div class="border-t border-slate-200 pt-4 flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
+                  </svg>
+                  Tabla de Medidas (en cm)
+                </h4>
+                <button type="button" id="btn-clear-size-chart" class="text-[10px] font-bold text-slate-400 hover:text-rose-600 transition-colors uppercase tracking-wider px-2 py-0.5 rounded hover:bg-rose-50 cursor-pointer hidden">
+                  Eliminar Imagen
+                </button>
+              </div>
+
+              <!-- Medidas dinámicas autogeneradas en CM según las tallas del producto -->
+              <div class="flex flex-col gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Medidas por Talla (cm)</span>
+                  <span class="text-[9px] text-slate-400 font-mono">Autogenerado por variantes</span>
+                </div>
+                <p class="text-[9px] text-slate-400 font-medium">Introduce las medidas en centímetros de cada talla (Largo, Pecho, etc.).</p>
+                <div class="overflow-x-auto w-full mt-1">
+                  <table id="size-measurements-table" class="w-full text-xs text-center border-collapse">
+                    <!-- Filas y columnas generadas dinámicamente según las tallas del producto -->
+                  </table>
+                </div>
               </div>
             </div>
 

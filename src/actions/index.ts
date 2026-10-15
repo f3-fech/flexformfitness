@@ -41,6 +41,9 @@ const createProductSchema = z.object({
   images: z.array(z.string().url('Image must be a valid URL')).min(1, 'At least one image is required'),
   stock: z.number().int().nonnegative('General stock must be positive'),
   variants: z.array(variantSchema),
+  category: z.string().optional(),
+  category_en: z.string().optional(),
+  gender: z.enum(['hombre', 'mujer']).optional(),
   seo: seoSchema,
   seo_en: seoSchema.optional(),
 });
@@ -52,6 +55,9 @@ const updateProductSchema = z.object({
   slug: z.string().optional(),
   description: z.string().optional(),
   description_en: z.string().optional(),
+  category: z.string().optional(),
+  category_en: z.string().optional(),
+  gender: z.enum(['hombre', 'mujer']).optional(),
   price: z.number().int().nonnegative().optional(),
   images: z.array(z.string().url()).optional(),
   stock: z.number().int().nonnegative().optional(),
@@ -2003,6 +2009,8 @@ export const server = {
       abandonedBody: z.string(),
       shippedSubject: z.string(),
       shippedBody: z.string(),
+      restockSubject: z.string().optional(),
+      restockBody: z.string().optional(),
     }),
     handler: async (input, context) => {
       await checkAdminAuth(context);
@@ -2592,7 +2600,7 @@ export const server = {
             uid: doc.id,
             email: data.email || '',
             name: data.name || 'Cliente sin nombre',
-            phone: data.phone || null,
+            phone: decrypt(data.phone) || null,
             updatedAt: data.updatedAt?.toDate()?.toISOString() || null,
             marketingConsent: data.marketingConsent ?? false,
           };
@@ -2630,7 +2638,7 @@ export const server = {
             uid: doc.id,
             email: data.email || '',
             name: data.name || 'Cliente sin nombre',
-            phone: data.phone || null,
+            phone: decrypt(data.phone) || null,
             updatedAt: data.updatedAt?.toDate()?.toISOString() || null,
             marketingConsent: data.marketingConsent ?? false,
           };
@@ -3020,5 +3028,187 @@ export const server = {
         });
       }
     }
+  }),
+
+  subscribeRestockNotification: defineAction({
+    accept: 'json',
+    input: z.object({
+      email: z.string().email('Email no válido'),
+      productId: z.string().min(1, 'Product ID requerido'),
+      productSlug: z.string().optional(),
+      productTitle: z.string().min(1, 'Product Title requerido'),
+      size: z.string().optional(),
+      variant: z.string().optional(),
+      lang: z.string().optional(),
+    }),
+    handler: async (input, context) => {
+      try {
+        const ip = context.clientAddress || '127.0.0.1';
+        const rateLimit = await checkRateLimit('notifications', ip);
+        if (!rateLimit.success) {
+          throw new ActionError({
+            code: 'TOO_MANY_REQUESTS',
+            message: 'Demasiadas solicitudes. Por favor, intenta de nuevo más tarde.',
+          });
+        }
+
+        const docRef = await db.collection('restock_notifications').add({
+          email: input.email.toLowerCase().trim(),
+          productId: input.productId,
+          productSlug: input.productSlug || '',
+          productTitle: input.productTitle,
+          size: input.size ? input.size.toUpperCase().trim() : '',
+          variant: input.variant || '',
+          lang: input.lang || 'es',
+          notified: false,
+          notifiedAt: null,
+          createdAt: new Date(),
+        });
+
+        return { success: true, id: docRef.id };
+      } catch (error: any) {
+        console.error('Error in subscribeRestockNotification action:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al guardar la solicitud de aviso.',
+        });
+      }
+    },
+  }),
+
+  getRestockNotifications: defineAction({
+    accept: 'json',
+    input: z.object({
+      limit: z.number().default(50),
+      lastVisibleId: z.string().optional(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        let query = db.collection('restock_notifications').orderBy('createdAt', 'desc') as any;
+        if (input.lastVisibleId) {
+          const lastDoc = await db.collection('restock_notifications').doc(input.lastVisibleId).get();
+          if (lastDoc.exists) {
+            query = query.startAfter(lastDoc);
+          }
+        }
+
+        const snap = await query.limit(input.limit + 1).get();
+        const docs = snap.docs;
+        const hasMore = docs.length > input.limit;
+        const items = hasMore ? docs.slice(0, input.limit) : docs;
+
+        const notifications = items.map((doc: any) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            email: data.email || '',
+            productId: data.productId || '',
+            productSlug: data.productSlug || '',
+            productTitle: data.productTitle || '',
+            size: data.size || '',
+            variant: data.variant || '',
+            lang: data.lang || 'es',
+            notified: Boolean(data.notified),
+            notifiedAt: data.notifiedAt?.toDate ? data.notifiedAt.toDate().toISOString() : data.notifiedAt,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+          };
+        });
+
+        const nextVisibleId = hasMore && items.length > 0 ? items[items.length - 1].id : null;
+
+        return {
+          success: true,
+          notifications,
+          nextVisibleId,
+          hasMore,
+        };
+      } catch (error: any) {
+        console.error('Error in getRestockNotifications action:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al obtener avisos de reposición.',
+        });
+      }
+    },
+  }),
+
+  sendRestockEmail: defineAction({
+    accept: 'json',
+    input: z.object({
+      notificationId: z.string(),
+    }),
+    handler: async (input, context) => {
+      await checkAdminAuth(context);
+      try {
+        const notifDoc = await db.collection('restock_notifications').doc(input.notificationId).get();
+        if (!notifDoc.exists) {
+          throw new ActionError({
+            code: 'NOT_FOUND',
+            message: 'Aviso de reposición no encontrado.',
+          });
+        }
+        const data = notifDoc.data()!;
+        const email = data.email;
+        const productTitle = data.productTitle || 'Producto';
+        const size = data.size || '';
+        const variant = data.variant || '';
+        const lang = data.lang || 'es';
+
+        // Resolve product slug (fetch from products collection if not saved on notification)
+        let productSlug = data.productSlug;
+        if (!productSlug && data.productId) {
+          try {
+            const prodDoc = await db.collection('products').doc(data.productId).get();
+            if (prodDoc.exists) {
+              productSlug = prodDoc.data()?.slug;
+            }
+          } catch (err) {
+            console.error('Error fetching product for restock slug:', err);
+          }
+        }
+        const finalSlug = productSlug || data.productId;
+
+        const emailSettings = await getEmailSettings();
+        const siteUrl = process.env.PUBLIC_SITE_URL || import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
+        const productUrl = `${siteUrl}/${lang}/productos/${finalSlug}`;
+
+        let subject = emailSettings.restockSubject || '¡{{productTitle}} ya vuelve a estar disponible! 🎉 - FlexForm Fitness';
+        subject = subject
+          .replace(/{{productTitle}}/g, productTitle)
+          .replace(/{{productSize}}/g, size)
+          .replace(/{{customerEmail}}/g, email);
+
+        let html = emailSettings.restockBody || '';
+        html = html
+          .replace(/{{productTitle}}/g, productTitle)
+          .replace(/{{productSize}}/g, size)
+          .replace(/{{productVariant}}/g, variant)
+          .replace(/{{productUrl}}/g, productUrl)
+          .replace(/{{customerEmail}}/g, email);
+
+        await sendEmail({
+          to: email,
+          subject,
+          html,
+        });
+
+        await notifDoc.ref.update({
+          notified: true,
+          notifiedAt: new Date(),
+        });
+
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error in sendRestockEmail action:', error);
+        if (error instanceof ActionError) throw error;
+        throw new ActionError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Error al enviar el correo de reposición.',
+        });
+      }
+    },
   }),
 };

@@ -808,6 +808,16 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
               </svg>
               Carritos Abandonados
             </button>
+            <button
+              type="button"
+              id="subtab-restock-btn"
+              class="w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+              </svg>
+              Avisos de Reposición
+            </button>
           </div>
 
           <!-- Right Side: Forms and Lists -->
@@ -1058,6 +1068,86 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                 </div>
               </div>
 
+              <!-- Restock / Back in Stock Template -->
+              <div class="border-t border-slate-100 pt-4 flex flex-col gap-4">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-rose-600">4. Renovación de Stock (Reposición de Producto)</h4>
+                
+                <div class="flex flex-col gap-1">
+                  <label for="email-restock-subject" class="block font-semibold text-slate-500 uppercase tracking-wider text-3xs">Asunto del Correo</label>
+                  <input
+                    type="text"
+                    id="email-restock-subject"
+                    name="restockSubject"
+                    value={emailSettings.restockSubject}
+                    class="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:outline-none focus:border-rose-600 focus:bg-white w-full"
+                    required
+                  />
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <label class="block font-semibold text-slate-500 uppercase tracking-wider text-3xs">Cuerpo del Correo</label>
+                  
+                  <!-- Editor Container -->
+                  <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs bg-white">
+                    <!-- Tab Selector & Toolbar -->
+                    <div class="flex flex-wrap items-center justify-between bg-slate-50 border-b border-slate-200 p-2 gap-2">
+                      <!-- Editor Modes -->
+                      <div class="flex bg-slate-200/80 p-0.5 rounded-lg text-4xs font-bold uppercase tracking-wider">
+                        <button type="button" id="btn-mode-visual-restock" class="px-3 py-1.5 rounded-md bg-white text-rose-600 shadow-3xs transition-all focus:outline-none">Vista Visual</button>
+                        <button type="button" id="btn-mode-html-restock" class="px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-900 transition-all focus:outline-none">Código HTML</button>
+                      </div>
+                      
+                      <!-- Visual Toolbar (Only shown in Visual Mode) -->
+                      <div id="toolbar-visual-restock" class="flex items-center gap-1">
+                        <button type="button" data-cmd="bold" data-target="iframe-editor-restock" title="Negrita" class="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3.75h4.5a3.75 3.75 0 1 1 0 7.5h-4.5M6.75 11.25h6a3.75 3.75 0 1 1 0 7.5h-6v-15Z"></path></svg>
+                        </button>
+                        <button type="button" data-cmd="italic" data-target="iframe-editor-restock" title="Cursiva" class="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 4.5h3m-6 15h6m-1.5-15-3 15"></path></svg>
+                        </button>
+                        <button type="button" data-cmd="underline" data-target="iframe-editor-restock" title="Subrayado" class="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75v1.5a5.25 5.25 0 1 1-10.5 0v-1.5m1.5 10.5h7.5"></path></svg>
+                        </button>
+                        <span class="w-px h-4 bg-slate-300 mx-1"></span>
+                        <button type="button" data-cmd="justifyLeft" data-target="iframe-editor-restock" title="Alinear izquierda" class="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"></path></svg>
+                        </button>
+                        <button type="button" data-cmd="justifyCenter" data-target="iframe-editor-restock" title="Centrar" class="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path></svg>
+                        </button>
+                        <button type="button" data-cmd="insertUnorderedList" data-target="iframe-editor-restock" title="Lista" class="p-1.5 rounded hover:bg-slate-200 text-slate-600 hover:text-slate-950 transition-colors focus:outline-none">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-3.75 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"></path></svg>
+                        </button>
+                        <span class="w-px h-4 bg-slate-300 mx-1"></span>
+                        <button type="button" id="btn-insert-var-restock" title="Insertar Variable" class="p-1.5 rounded hover:bg-rose-100 text-rose-600 font-bold text-3xs uppercase tracking-wider flex items-center gap-1 transition-all focus:outline-none">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path></svg>
+                          <span>Var</span>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Visual Work Area -->
+                    <div id="container-visual-restock" class="w-full h-[700px] relative">
+                      <iframe id="iframe-editor-restock" class="w-full h-full border-none bg-white"></iframe>
+                    </div>
+                    
+                    <!-- HTML Code Area (Hidden by default) -->
+                    <div id="container-html-restock" class="w-full hidden">
+                      <textarea
+                        id="email-restock-body"
+                        name="restockBody"
+                        rows="35"
+                        class="px-4 py-3 border-none text-slate-900 text-xs font-mono focus:outline-none w-full block bg-slate-900 text-rose-300"
+                        required
+                      >{emailSettings.restockBody}</textarea>
+                    </div>
+                  </div>
+                  <span class="text-3xs text-slate-400 leading-normal">
+                    Variables dinámicas: <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{productTitle}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{productSize}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{productVariant}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{productUrl}}"}</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-rose-600 font-bold font-mono">{"{{customerEmail}}"}</code>
+                  </span>
+                </div>
+              </div>
+
               <div class="flex justify-end gap-3 mt-2">
                 <button
                   type="button"
@@ -1117,6 +1207,57 @@ const returnedOrdersCount = orders.filter((o) => o.shippingStatus === 'returned'
                   <button
                     type="button"
                     id="carts-next-btn"
+                    disabled
+                    class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-slate-100 text-slate-700 text-3xs font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUBTAB: RESTOCK NOTIFICATIONS LIST -->
+            <div id="form-sub-restock" class="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm flex flex-col gap-6 w-full hidden">
+              <div>
+                <h3 class="text-base font-extrabold text-slate-900 uppercase tracking-wider mb-1">Avisos de Reposición Solicitados</h3>
+                <p class="text-xs text-slate-400">Usuarios que han solicitado aviso cuando un producto vuelva a tener stock disponible.</p>
+              </div>
+
+              <div class="overflow-x-auto w-full border border-slate-100 rounded-2xl">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase tracking-wider font-extrabold text-3xs">
+                      <th class="py-4 px-5">Email del Usuario</th>
+                      <th class="py-4 px-5">Producto</th>
+                      <th class="py-4 px-5">Talla</th>
+                      <th class="py-4 px-5">Fecha Solicitud</th>
+                      <th class="py-4 px-5">Estado</th>
+                      <th class="py-4 px-5 text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="restock-table-body" class="divide-y divide-slate-50 text-slate-700">
+                    <tr>
+                      <td colspan="6" class="py-8 text-center text-slate-400 font-medium">Cargando avisos de reposición...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pagination Buttons -->
+              <div class="flex justify-between items-center mt-2">
+                <span class="text-3xs text-slate-400 font-bold uppercase tracking-wider" id="restock-page-info">Página 1</span>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    id="restock-prev-btn"
+                    disabled
+                    class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-slate-100 text-slate-700 text-3xs font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    id="restock-next-btn"
                     disabled
                     class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-slate-100 text-slate-700 text-3xs font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed"
                   >

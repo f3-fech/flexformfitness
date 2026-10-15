@@ -16,35 +16,37 @@ const isEn = lang === 'en';
 
 const t = {
   es: {
+    tag: "ATENCIÓN AL CLIENTE",
     title: "Contacto",
-    subtitle: "¿Tienes alguna duda o problema con tu pedido? Escríbenos y te responderemos lo antes posible.",
+    subtitle: "¿Tienes alguna duda sobre tallas, pedidos o envíos? Escríbenos y te responderemos a la mayor brevedad.",
     nameLabel: "Nombre Completo",
     namePlaceholder: "Ej: Javier García",
     emailLabel: "Correo Electrónico",
     emailPlaceholder: "tu@email.com",
-    messageLabel: "Mensaje / Consulta",
-    messagePlaceholder: "Escribe aquí tu consulta detallada...",
+    messageLabel: "Mensaje o Consulta",
+    messagePlaceholder: "¿En qué podemos ayudarte?",
     submitBtn: "Enviar Mensaje",
     sendingBtn: "Enviando...",
-    successTitle: "¡Mensaje Enviado!",
-    successMsg: "Hemos recibido tu consulta correctamente. Nuestro equipo de soporte te responderá en tu correo electrónico lo antes posible.",
+    successTitle: "Mensaje Recibido",
+    successMsg: "Hemos recibido tu consulta. Nuestro equipo te responderá directamente a tu correo electrónico lo antes posible.",
     backToShop: "Volver a la tienda",
     seoTitle: "Contacto | FLEX FORM FITNESS",
     seoDesc: "Ponte en contacto con el equipo de soporte de FLEX FORM FITNESS para resolver dudas o problemas con tu pedido."
   },
   en: {
-    title: "Contact Us",
-    subtitle: "Have any questions or issues with your order? Write to us and we will reply as soon as possible.",
+    tag: "CUSTOMER SUPPORT",
+    title: "Contact",
+    subtitle: "Have a question about sizing, orders, or shipping? Write to us and we will reply as soon as possible.",
     nameLabel: "Full Name",
     namePlaceholder: "e.g. John Doe",
     emailLabel: "Email Address",
     emailPlaceholder: "you@example.com",
-    messageLabel: "Message / Inquiry",
-    messagePlaceholder: "Write your detailed inquiry here...",
+    messageLabel: "Message or Inquiry",
+    messagePlaceholder: "How can we help you?",
     submitBtn: "Send Message",
     sendingBtn: "Sending...",
-    successTitle: "Message Sent!",
-    successMsg: "We have received your inquiry. Our support team will get back to you at your email address as soon as possible.",
+    successTitle: "Message Received",
+    successMsg: "We have received your message. Our team will get back to you directly via email as soon as possible.",
     backToShop: "Back to Shop",
     seoTitle: "Contact Us | FLEX FORM FITNESS",
     seoDesc: "Get in touch with the FLEX FORM FITNESS support team to resolve queries or order issues."
@@ -70,70 +72,70 @@ const texts = isEn ? t.en : t.es;
   <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-between w-full overflow-x-hidden">
     <Navbar />
 
-    <!-- Main Content Container with background glow effects -->
-    <main class="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24 flex-grow w-full flex items-center justify-center">
-      <!-- Glow background circles -->
-      <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-pink-500/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
-      <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
-
+    <!-- Main Content Container (Minimalist, Architectural Canvas) -->
+    <main class="max-w-2xl mx-auto px-4 sm:px-6 py-12 sm:py-20 flex-grow w-full flex items-center justify-center">
       <div class="w-full">
-        <!-- Contact Form Card -->
-        <div id="contact-card" class="bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-2xl rounded-3xl p-8 sm:p-10 max-w-xl w-full mx-auto transition-all duration-500 relative overflow-hidden">
+        <!-- Contact Card -->
+        <div id="contact-card" class="bg-white border border-slate-200 p-8 sm:p-12 rounded-none transition-all duration-300 relative">
           
           <!-- Inner Form State -->
           <div id="form-container" class="transition-opacity duration-300">
-            <div class="text-center mb-8">
-              <h1 class="text-3xl font-black italic tracking-tight text-slate-900 uppercase">
+            <!-- Minimalist Header -->
+            <div class="mb-8 border-b border-slate-100 pb-6">
+              <span class="text-[10px] font-mono font-bold uppercase tracking-[0.24em] text-slate-400 block mb-2">
+                {texts.tag}
+              </span>
+              <h1 class="text-xl sm:text-2xl font-bold uppercase tracking-[0.16em] text-slate-950">
                 {texts.title}
               </h1>
-              <p class="text-xs sm:text-sm text-slate-500 mt-2 font-medium">
+              <p class="text-xs sm:text-sm text-slate-500 mt-2 font-normal leading-relaxed">
                 {texts.subtitle}
               </p>
             </div>
 
             <!-- Form -->
-            <form id="contact-form" class="flex flex-col gap-5">
+            <form id="contact-form" class="flex flex-col gap-6">
               <!-- Name Input -->
               <div>
-                <label for="name" class="block text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">{texts.nameLabel}</label>
+                <label for="name" class="block text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 mb-2">{texts.nameLabel}</label>
                 <input
                   type="text"
                   id="name"
                   name="name"
                   required
                   placeholder={texts.namePlaceholder}
-                  class="w-full px-4 py-3 rounded-xl bg-slate-100/50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-sm"
+                  class="w-full px-4 py-3 rounded-none bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-slate-950 text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors font-medium text-xs sm:text-sm"
                 />
               </div>
 
               <!-- Email Input -->
               <div>
-                <label for="email" class="block text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">{texts.emailLabel}</label>
+                <label for="email" class="block text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 mb-2">{texts.emailLabel}</label>
                 <input
                   type="email"
                   id="email"
                   name="email"
                   required
                   placeholder={texts.emailPlaceholder}
-                  class="w-full px-4 py-3 rounded-xl bg-slate-100/50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-sm"
+                  class="w-full px-4 py-3 rounded-none bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-slate-950 text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors font-medium text-xs sm:text-sm"
                 />
               </div>
 
               <!-- Message Textarea -->
               <div>
-                <label for="message" class="block text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">{texts.messageLabel}</label>
+                <label for="message" class="block text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 mb-2">{texts.messageLabel}</label>
                 <textarea
                   id="message"
                   name="message"
                   required
                   rows="5"
                   placeholder={texts.messagePlaceholder}
-                  class="w-full px-4 py-3 rounded-xl bg-slate-100/50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-sm resize-none"
+                  class="w-full px-4 py-3 rounded-none bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-slate-950 text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors font-medium text-xs sm:text-sm resize-none"
                 ></textarea>
               </div>
 
               <!-- Error Alert -->
-              <div id="error-alert" class="hidden bg-rose-50 border border-rose-100 text-rose-700 px-4 py-3.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <div id="error-alert" class="hidden bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-none text-xs font-medium flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 shrink-0">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                 </svg>
@@ -144,7 +146,7 @@ const texts = isEn ? t.en : t.es;
               <button
                 type="submit"
                 id="submit-btn"
-                class="w-full mt-2 py-4 bg-slate-950 text-white rounded-xl text-xs sm:text-sm font-bold uppercase tracking-widest hover:bg-rose-600 active:scale-98 transition-all shadow-lg hover:shadow-rose-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                class="w-full mt-2 py-4 bg-slate-950 text-white rounded-none text-xs font-bold uppercase tracking-[0.2em] hover:bg-rose-600 transition-colors flex items-center justify-center gap-2 cursor-pointer select-none"
               >
                 <span>{texts.submitBtn}</span>
               </button>
@@ -152,25 +154,26 @@ const texts = isEn ? t.en : t.es;
           </div>
 
           <!-- Success State (Hidden initially) -->
-          <div id="success-container" class="hidden flex flex-col items-center text-center py-6 transition-all duration-500 scale-95 opacity-0">
-            <!-- Icon with pulse ring -->
-            <div class="relative w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mb-6">
-              <div class="absolute inset-0 bg-rose-100 rounded-full animate-ping opacity-20"></div>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-10 h-10 text-rose-600">
+          <div id="success-container" class="hidden flex flex-col items-center text-center py-10 transition-all duration-300 opacity-0">
+            <div class="w-14 h-14 bg-slate-950 text-white rounded-none flex items-center justify-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
 
-            <h2 class="text-2xl font-black italic tracking-tight text-slate-900 uppercase">
+            <span class="text-[10px] font-mono font-bold uppercase tracking-[0.24em] text-slate-400 block mb-1">
+              FLEX FORM FITNESS
+            </span>
+            <h2 class="text-xl sm:text-2xl font-bold uppercase tracking-[0.16em] text-slate-950">
               {texts.successTitle}
             </h2>
-            <p class="text-xs sm:text-sm text-slate-500 mt-3 font-medium max-w-sm leading-relaxed">
+            <p class="text-xs sm:text-sm text-slate-500 mt-3 font-normal max-w-sm leading-relaxed">
               {texts.successMsg}
             </p>
 
             <a
               href={`/${lang}`}
-              class="mt-8 px-8 py-3.5 bg-slate-950 text-white border border-slate-950 font-bold uppercase tracking-widest hover:bg-rose-600 hover:border-rose-600 transition-all duration-300 text-xs shadow-lg active:scale-95 cursor-pointer rounded-xl"
+              class="mt-8 px-8 py-3.5 bg-slate-950 text-white rounded-none font-bold uppercase tracking-[0.18em] hover:bg-rose-600 transition-colors text-xs cursor-pointer select-none"
             >
               {texts.backToShop}
             </a>
@@ -181,7 +184,7 @@ const texts = isEn ? t.en : t.es;
     </main>
 
     <!-- Simple generic footer aligned to privacy pages -->
-    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-sm text-slate-400">
+    <footer class="bg-white border-t border-slate-100 py-8 px-6 text-center text-xs text-slate-400 font-mono">
       <p>&copy; {new Date().getFullYear()} FLEX FORM FITNESS. {isEn ? "All rights reserved." : "Todos los derechos reservados."} {isEn ? "in collaboration with" : "en colaboración con"} <a href="https://javiphoto.es" target="_blank" class="hover:text-slate-700 underline transition-colors">javiphoto.es</a></p>
     </footer>
 
@@ -208,7 +211,7 @@ const texts = isEn ? t.en : t.es;
           const originalText = submitBtn.innerHTML;
           const isEn = window.location.pathname.startsWith('/en');
           submitBtn.innerHTML = `
-            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -242,8 +245,8 @@ const texts = isEn ? t.en : t.es;
               formContainer.style.display = 'none';
               successContainer.classList.remove('hidden');
               setTimeout(() => {
-                successContainer.classList.remove('opacity-0', 'scale-95');
-                successContainer.classList.add('opacity-100', 'scale-100');
+                successContainer.classList.remove('opacity-0');
+                successContainer.classList.add('opacity-100');
               }, 50);
             } else {
               throw new Error(isEn ? 'Failed to send message.' : 'Error al enviar el mensaje.');

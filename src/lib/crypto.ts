@@ -4,18 +4,67 @@ import type { Address } from '../types';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // 12 bytes standard for GCM
 
+import fs from 'fs';
+import path from 'path';
+
 /**
- * Returns a 32-byte Buffer key derived from the environment encryption secret or Firebase credentials.
+ * Returns a list of candidate encryption secrets from environment or .env file.
+ */
+function getCandidateSecrets(): string[] {
+  const secrets: (string | undefined)[] = [
+    (import.meta as any).env?.ENCRYPTION_SECRET,
+    process.env.ENCRYPTION_SECRET,
+    (import.meta as any).env?.FIREBASE_PRIVATE_KEY,
+    process.env.FIREBASE_PRIVATE_KEY,
+  ];
+
+  // Try reading .env file if available in process.cwd()
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const lines = content.split(/\r?\n/);
+      for (const line of lines) {
+        const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+        if (m) {
+          const k = m[1];
+          let v = m[2] || '';
+          if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+            v = v.slice(1, -1);
+          }
+          if (k === 'ENCRYPTION_SECRET' || k === 'FIREBASE_PRIVATE_KEY') {
+            secrets.push(v);
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore error reading .env
+  }
+
+  const result: string[] = [];
+  for (const s of secrets) {
+    if (s && typeof s === 'string') {
+      if (!result.includes(s)) result.push(s);
+      const replaced = s.replace(/\\n/g, '\n');
+      if (!result.includes(replaced)) result.push(replaced);
+    }
+  }
+
+  if (!result.includes('flexformfitness-dev-only-secret-key-local')) {
+    result.push('flexformfitness-dev-only-secret-key-local');
+  }
+
+  return result;
+}
+
+/**
+ * Returns a 32-byte Buffer key derived from the primary encryption secret.
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_SECRET || process.env.FIREBASE_PRIVATE_KEY;
-  if (!secret) {
-    if (process.env.NODE_ENV === 'production' || import.meta.env.PROD) {
-      throw new Error('[Crypto] FATAL: ENCRYPTION_SECRET or FIREBASE_PRIVATE_KEY must be defined in production environment.');
-    }
-    return crypto.createHash('sha256').update('flexformfitness-dev-only-secret-key-local').digest();
-  }
-  return crypto.createHash('sha256').update(secret).digest();
+  const candidates = getCandidateSecrets();
+  const primary = candidates[0] || 'flexformfitness-dev-only-secret-key-local';
+  return crypto.createHash('sha256').update(primary).digest();
 }
 
 /**
@@ -24,7 +73,7 @@ function getEncryptionKey(): Buffer {
  */
 export function encrypt(text: string | null | undefined): string {
   if (!text || typeof text !== 'string') return text as any;
-  if (text.startsWith('enc:')) return text; // Already encrypted
+  if (text.toLowerCase().startsWith('enc:')) return text; // Already encrypted
 
   try {
     const iv = crypto.randomBytes(IV_LENGTH);
@@ -45,7 +94,7 @@ export function encrypt(text: string | null | undefined): string {
  */
 export function decrypt(cipherText: string | null | undefined): string {
   if (!cipherText || typeof cipherText !== 'string') return cipherText as any;
-  if (!cipherText.startsWith('enc:')) return cipherText; // Plaintext fallback
+  if (!cipherText.toLowerCase().startsWith('enc:')) return cipherText; // Plaintext fallback
 
   try {
     const parts = cipherText.split(':');
@@ -55,12 +104,23 @@ export function decrypt(cipherText: string | null | undefined): string {
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
 
-    const decipher = crypto.createDecipheriv(ALGORITHM, getEncryptionKey(), iv);
-    decipher.setAuthTag(authTag);
+    const secrets = getCandidateSecrets();
+    for (const secret of secrets) {
+      try {
+        const key = crypto.createHash('sha256').update(secret).digest();
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        decipher.setAuthTag(authTag);
+        let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        if (decrypted) {
+          return decrypted;
+        }
+      } catch {
+        // Continue to try next candidate key
+      }
+    }
 
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    return cipherText;
   } catch (err) {
     console.error('[Crypto] Decryption failed:', err);
     return cipherText;

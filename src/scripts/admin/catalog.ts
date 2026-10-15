@@ -38,6 +38,92 @@ const productMediaProgressStatus = document.getElementById('product-media-progre
 const productMediaProgressPercent = document.getElementById('product-media-progress-percent') as HTMLSpanElement;
 const productMediaProgressBar = document.getElementById('product-media-progress-bar') as HTMLDivElement;
 
+// Product Specs Elements
+const materialInput = document.getElementById('form-material') as HTMLInputElement | null;
+const fabricWeightInput = document.getElementById('form-fabric-weight') as HTMLInputElement | null;
+const fitInput = document.getElementById('form-fit') as HTMLInputElement | null;
+const sizeMeasurementsTable = document.getElementById('size-measurements-table') as HTMLTableElement | null;
+
+let currentSizeMeasurements: Record<string, Record<string, string>> = {};
+
+function renderAdminSizeMeasurementsTable() {
+  if (!sizeMeasurementsTable) return;
+  const uniqueSizes: string[] = [];
+  document.querySelectorAll<HTMLInputElement>('#variant-tree-container .size-name').forEach((inp) => {
+    const val = inp.value.trim().toUpperCase();
+    if (val && !uniqueSizes.includes(val)) {
+      uniqueSizes.push(val);
+    }
+  });
+
+  if (uniqueSizes.length === 0) {
+    sizeMeasurementsTable.innerHTML = `
+      <tbody>
+        <tr>
+          <td class="py-2.5 text-slate-400 text-center font-mono text-[10px]">
+            Añade tallas a las variantes a la derecha para generar la tabla.
+          </td>
+        </tr>
+      </tbody>
+    `;
+    return;
+  }
+
+  const rows = [
+    { key: 'length', label: 'Largo (cm)' },
+    { key: 'chest', label: 'Pecho (cm)' },
+    { key: 'waist', label: 'Cintura (cm)' },
+  ];
+
+  let html = `
+    <thead>
+      <tr class="border-b border-slate-200 bg-slate-100/50">
+        <th class="py-1.5 px-2 text-left font-bold text-slate-700 text-[10px] uppercase tracking-wider">Medida (cm)</th>
+        ${uniqueSizes.map((s) => `<th class="py-1.5 px-1.5 font-bold uppercase text-[10px] text-slate-900 font-mono">${s}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100 font-mono">
+  `;
+
+  rows.forEach((r) => {
+    html += `
+      <tr>
+        <td class="py-1.5 px-2 text-left font-bold text-slate-700 text-[10px]">${r.label}</td>
+        ${uniqueSizes.map((s) => {
+          const val = currentSizeMeasurements[r.key]?.[s] ?? '';
+          return `
+            <td class="py-1 px-1">
+              <input 
+                type="text" 
+                class="size-measure-cell w-14 px-1 py-1 text-center font-mono text-xs border border-slate-200 rounded-md focus:border-rose-600 focus:outline-none bg-white text-slate-900" 
+                data-row="${r.key}" 
+                data-size="${s}" 
+                value="${val}" 
+                placeholder="cm" 
+              />
+            </td>
+          `;
+        }).join('')}
+      </tr>
+    `;
+  });
+
+  html += `</tbody>`;
+  sizeMeasurementsTable.innerHTML = html;
+
+  sizeMeasurementsTable.querySelectorAll<HTMLInputElement>('.size-measure-cell').forEach((input) => {
+    input.addEventListener('input', () => {
+      const rowKey = input.dataset.row;
+      const sizeKey = input.dataset.size;
+      if (!rowKey || !sizeKey) return;
+      if (!currentSizeMeasurements[rowKey]) {
+        currentSizeMeasurements[rowKey] = {};
+      }
+      currentSizeMeasurements[rowKey][sizeKey] = input.value.trim();
+    });
+  });
+}
+
 // Gallery Modal Elements
 const galleryModal = document.getElementById('gallery-modal') as HTMLDivElement;
 const closeGalleryModal = document.getElementById('close-gallery-modal') as HTMLButtonElement;
@@ -463,6 +549,9 @@ setupToolbarListeners('iframe-editor-abandoned', 'toolbar-visual-abandoned');
 initVisualEditor('iframe-editor-shipped', 'email-shipped-body');
 setupToolbarListeners('iframe-editor-shipped', 'toolbar-visual-shipped');
 
+initVisualEditor('iframe-editor-restock', 'email-restock-body');
+setupToolbarListeners('iframe-editor-restock', 'toolbar-visual-restock');
+
 // Insert variable button actions
 document.getElementById('btn-insert-var-order')?.addEventListener('click', (e) => {
   e.preventDefault();
@@ -512,6 +601,22 @@ document.getElementById('btn-insert-var-shipped')?.addEventListener('click', (e)
   }
 });
 
+document.getElementById('btn-insert-var-restock')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const vars = ['productTitle', 'productSize', 'productVariant', 'productUrl', 'customerEmail'];
+  const choice = prompt(`Escribe el número de la variable a insertar:\n\n` + vars.map((v, i) => `${i + 1}. ${v}`).join('\n'));
+  if (choice) {
+    const idx = parseInt(choice) - 1;
+    if (idx >= 0 && idx < vars.length) {
+      insertVariableAtCursor('iframe-editor-restock', vars[idx]);
+      const iframe = document.getElementById('iframe-editor-restock') as HTMLIFrameElement;
+      iframe.contentDocument?.body.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      alert('Número de variable inválido.');
+    }
+  }
+});
+
 // Mode toggles helpers
 function setupModeToggles(visualBtnId: string, htmlBtnId: string, visualContId: string, htmlContId: string, toolbarId: string, iframeId: string, textareaId: string) {
   const visualBtn = document.getElementById(visualBtnId);
@@ -543,6 +648,7 @@ function setupModeToggles(visualBtnId: string, htmlBtnId: string, visualContId: 
 setupModeToggles('btn-mode-visual-order', 'btn-mode-html-order', 'container-visual-order', 'container-html-order', 'toolbar-visual-order', 'iframe-editor-order', 'email-order-body');
 setupModeToggles('btn-mode-visual-abandoned', 'btn-mode-html-abandoned', 'container-visual-abandoned', 'container-html-abandoned', 'toolbar-visual-abandoned', 'iframe-editor-abandoned', 'email-abandoned-body');
 setupModeToggles('btn-mode-visual-shipped', 'btn-mode-html-shipped', 'container-visual-shipped', 'container-html-shipped', 'toolbar-visual-shipped', 'iframe-editor-shipped', 'email-shipped-body');
+setupModeToggles('btn-mode-visual-restock', 'btn-mode-html-restock', 'container-visual-restock', 'container-html-restock', 'toolbar-visual-restock', 'iframe-editor-restock', 'email-restock-body');
 
 // --- 3. Collection WYSIWYG Editors Setup ---
 function setupCollectionLinkBtn(btnId: string, iframeId: string) {
@@ -753,6 +859,12 @@ openNewProductModal?.addEventListener('click', () => {
   state.product.images = [];
   renderProductMedia();
 
+
+  if (materialInput) materialInput.value = '';
+  if (fabricWeightInput) fabricWeightInput.value = '';
+  if (fitInput) fitInput.value = '';
+  currentSizeMeasurements = {};
+
   variantTreeContainer.innerHTML = '';
   const firstSavedColor = getStoreColors()[0];
   const initialColorName = firstSavedColor?.name || 'Negro';
@@ -763,6 +875,7 @@ openNewProductModal?.addEventListener('click', () => {
     { size: 'm', sku: '', price: '', stock: '10' }
   ]);
   updateGeneralStockSum();
+  renderAdminSizeMeasurementsTable();
   renderProductCollections(null);
   toggleModal(productModal, true);
 });
@@ -2717,6 +2830,7 @@ function addColorBranch(colorName = '', colorHex = '#0f172a', imageUrl = '', siz
     card.remove();
     updateAllSKUs();
     updateGeneralStockSum();
+    renderAdminSizeMeasurementsTable();
   });
 
   function setupSizeRow(rowEl: HTMLTableRowElement) {
@@ -2725,11 +2839,13 @@ function addColorBranch(colorName = '', colorHex = '#0f172a', imageUrl = '', siz
     const sizeNameInput = rowEl.querySelector('.size-name') as HTMLInputElement;
     sizeNameInput?.addEventListener('input', () => {
       updateSKUsForBranch(card);
+      renderAdminSizeMeasurementsTable();
     });
     
     rowEl.querySelector('.remove-size-row-btn')?.addEventListener('click', () => {
       rowEl.remove();
       updateGeneralStockSum();
+      renderAdminSizeMeasurementsTable();
     });
   }
 
@@ -2744,6 +2860,7 @@ function addColorBranch(colorName = '', colorHex = '#0f172a', imageUrl = '', siz
     setupSizeRow(sizeRowEl);
     updateSKUsForBranch(card);
     updateGeneralStockSum();
+    renderAdminSizeMeasurementsTable();
   });
 
   if (sizes.length > 0) {
@@ -2762,11 +2879,14 @@ function addColorBranch(colorName = '', colorHex = '#0f172a', imageUrl = '', siz
     setupSizeRow(sizeRowEl);
     updateSKUsForBranch(card);
   }
+
+  renderAdminSizeMeasurementsTable();
 }
 
 addColorBranchBtn?.addEventListener('click', () => {
   addColorBranch();
   updateGeneralStockSum();
+  renderAdminSizeMeasurementsTable();
 });
 
 // --- 11. Edit Product click handler ---
@@ -2805,6 +2925,12 @@ document.querySelectorAll('.edit-product-btn').forEach((btn) => {
     state.product.images = productData.images ? [...productData.images] : [];
     renderProductMedia();
 
+    if (materialInput) materialInput.value = productData.specs?.material || '';
+    if (fabricWeightInput) fabricWeightInput.value = productData.specs?.fabricWeight || '';
+    if (fitInput) fitInput.value = productData.specs?.fit || '';
+
+    currentSizeMeasurements = productData.sizeMeasurements ? JSON.parse(JSON.stringify(productData.sizeMeasurements)) : {};
+
     variantTreeContainer.innerHTML = '';
     if (productData.variants && productData.variants.length > 0) {
       const tree: Record<string, { image: string, colorHex: string, sizes: any[] }> = {};
@@ -2839,6 +2965,7 @@ document.querySelectorAll('.edit-product-btn').forEach((btn) => {
     }
     
     updateGeneralStockSum();
+    renderAdminSizeMeasurementsTable();
     renderProductCollections(productData.id);
     toggleModal(productModal, true);
   });
@@ -2901,6 +3028,12 @@ productForm?.addEventListener('submit', async (e) => {
     stock: stockVal,
     images: imagesVal,
     variants: variantsVal,
+    sizeMeasurements: Object.keys(currentSizeMeasurements).length > 0 ? currentSizeMeasurements : null,
+    specs: {
+      material: materialInput?.value.trim() || undefined,
+      fabricWeight: fabricWeightInput?.value.trim() || undefined,
+      fit: fitInput?.value.trim() || undefined,
+    },
     seo: {
       title: `${state.product.translations.title} | FLEX FORM FITNESS`,
       description: state.product.translations.description.substring(0, 150),

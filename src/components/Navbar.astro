@@ -940,10 +940,10 @@ const cleanTitle = (title: string): string => {
 
   <!-- Modal Main Content Area -->
   <main class="flex-grow w-full bg-white px-2 sm:px-4 md:px-8 py-6">
-    <div class="w-full max-w-[1720px] mx-auto flex flex-col min-[1024px]:flex-row gap-8">
+    <div class="w-full max-w-[1720px] mx-auto flex flex-col min-[1024px]:flex-row gap-8 items-start">
       
       <!-- DESKTOP FILTER SIDEBAR (Hidden on mobile) -->
-      <aside class="w-64 xl:w-72 shrink-0 hidden min-[1024px]:flex flex-col gap-6 select-none pr-4 border-r border-slate-100">
+      <aside class="search-filter-sidebar w-64 xl:w-72 shrink-0 hidden min-[1024px]:flex flex-col gap-6 select-none pr-4 border-r border-slate-100 min-[1024px]:sticky min-[1024px]:top-[88px] min-[1024px]:self-start min-[1024px]:max-h-[calc(100vh-104px)] min-[1024px]:overflow-y-auto min-[1024px]:z-30">
         <!-- Sidebar Title & Clear All -->
         <div class="flex items-center justify-between pb-3 border-b border-slate-200">
           <span class="text-xs font-black uppercase tracking-widest text-slate-900">
@@ -1476,8 +1476,8 @@ const cleanTitle = (title: string): string => {
   });
 
   // Update cart count badge in navbar dynamically
-  cartStore.subscribe((cart) => {
-    const count = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+  const updateCartBadge = (cart: Record<string, any>) => {
+    const count = Object.values(cart).reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
     const badge = document.getElementById('cart-badge');
     if (badge) {
       badge.textContent = String(count);
@@ -1487,6 +1487,14 @@ const cleanTitle = (title: string): string => {
         badge.classList.remove('hidden');
       }
     }
+  };
+
+  cartStore.subscribe((cart) => {
+    updateCartBadge(cart);
+  });
+
+  window.addEventListener('pageshow', () => {
+    updateCartBadge(cartStore.get());
   });
 
   // Control desktop dropdown behavior for mega menus
@@ -1787,10 +1795,22 @@ const cleanTitle = (title: string): string => {
         </button>
       ` : '';
 
-      const stockWarningHtml = p.stock <= 5 ? `
+      const isOutOfStock = (p.stock !== undefined && p.stock <= 0);
+      const stockWarningHtml = isOutOfStock ? `
+        <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-neutral-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 border border-white/10">
+          ${isEn ? 'SOLD OUT' : 'AGOTADO'}
+        </span>
+      ` : (p.stock <= 5 ? `
         <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-rose-600 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10">
           ${isEn ? 'LAST ITEMS' : 'ÚLTIMAS UNIDADES'}
         </span>
+      ` : '');
+
+      const outOfStockCrossHtml = isOutOfStock ? `
+        <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
+          <line x1="100" y1="0" x2="0" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
+        </svg>
       ` : '';
 
       const priceTagHtml = `
@@ -1802,10 +1822,11 @@ const cleanTitle = (title: string): string => {
       return `
         <div class="product-card group flex flex-col justify-start w-full">
           <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
-            <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+            <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none ${isOutOfStock ? 'saturate-[0.85]' : ''}" style="scrollbar-width: none; -ms-overflow-style: none;">
               ${imagesSliderHtml}
             </div>
             ${arrowsHtml}
+            ${outOfStockCrossHtml}
             ${stockWarningHtml}
             ${priceTagHtml}
           </div>
@@ -2248,3 +2269,35 @@ const cleanTitle = (title: string): string => {
     });
   })();
 </script>
+
+<style>
+  .search-filter-sidebar {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .search-filter-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .search-filter-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .search-filter-sidebar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 9999px;
+  }
+
+  .search-filter-sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
+
+  .search-filter-sidebar::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+</style>
+

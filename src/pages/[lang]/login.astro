@@ -1,5 +1,6 @@
 ---
 import SEO from '../../components/SEO.astro';
+import { getGeneralSettings } from '../../lib/settings';
 
 export const prerender = true; // Pre-rendered static shell, client-side dynamic login
 
@@ -12,6 +13,7 @@ export function getStaticPaths() {
 
 const { lang } = Astro.params;
 const isEn = lang === 'en';
+const settings = await getGeneralSettings();
 ---
 
 <!doctype html>
@@ -27,33 +29,34 @@ const isEn = lang === 'en';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;950&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-center py-6 sm:py-12 px-4 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
-      <!-- Logo -->
-      <a href={`/${lang}`} class="inline-flex flex-col group mb-6">
-        <span class="text-3xl font-black italic tracking-tighter text-slate-950 uppercase leading-none">
-          FLEX <span class="text-rose-600">FORM</span>
-        </span>
-        <span class="text-[10px] font-extrabold tracking-[0.25em] text-slate-400 uppercase leading-none mt-1">
-          FITNESS
-        </span>
-      </a>
-      <h2 class="text-2xl font-extrabold text-slate-950 tracking-tight">
-        {isEn ? "Welcome Back" : "Bienvenido de nuevo"}
-      </h2>
-      <p class="mt-1.5 text-sm text-slate-500">
-        {isEn ? "Or " : "O "}
-        <a href={`/${lang}/registro`} class="font-bold text-rose-600 hover:underline">
-          {isEn ? "create a new account" : "crea una cuenta nueva"}
-        </a>
-      </p>
-    </div>
-
-    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-white py-8 px-4 border border-slate-100 shadow-xl rounded-3xl sm:px-10">
+  <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-center py-10 px-4 sm:px-6">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+      <div class="bg-white border border-slate-200 p-8 sm:p-10 rounded-none shadow-none">
         
+        <!-- Header & Logo -->
+        <div class="text-center flex flex-col items-center mb-6">
+          <a href={`/${lang}`} class="inline-flex flex-col items-center group mb-4">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="FLEX FORM FITNESS" class="h-9 sm:h-11 w-auto object-contain" />
+            ) : (
+              <span class="text-2xl font-black italic tracking-tighter text-slate-950 uppercase leading-none">
+                FLEX <span class="text-rose-600">FORM</span>
+              </span>
+            )}
+          </a>
+          <h1 class="text-xs sm:text-[13px] font-bold tracking-[0.24em] uppercase text-slate-950">
+            {isEn ? "SIGN IN" : "INICIAR SESIÓN"}
+          </h1>
+          <p class="mt-2 text-xs text-slate-500 font-normal">
+            {isEn ? "Don't have an account yet?" : "¿Aún no tienes cuenta?"}{" "}
+            <a href={`/${lang}/registro`} class="text-slate-950 underline underline-offset-4 font-semibold hover:text-rose-600 transition-colors">
+              {isEn ? "Create one" : "Crea una"}
+            </a>
+          </p>
+        </div>
+
         <!-- Error notification box -->
-        <div id="error-box" class="hidden mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-xs font-semibold text-center leading-relaxed">
+        <div id="error-box" class="hidden mb-5 p-3 rounded-none bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium text-center leading-relaxed">
         </div>
 
         <!-- Google Auth Button -->
@@ -61,10 +64,10 @@ const isEn = lang === 'en';
           <button
             type="button"
             id="google-btn"
-            class="w-full inline-flex justify-center items-center py-3.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-bold text-slate-700 hover:text-slate-905 shadow-sm active:scale-98 transition-all duration-200 gap-3"
+            class="w-full inline-flex justify-center items-center py-3 px-4 rounded-none border border-slate-300 hover:border-black bg-white text-xs font-bold uppercase tracking-[0.16em] text-slate-900 transition-colors duration-150 gap-2.5 cursor-pointer select-none"
           >
             <!-- Google logo vector -->
-            <svg class="w-5 h-5" viewBox="0 0 24 24" width="24" height="24">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" width="24" height="24">
               <path fill="#EA4335" d="M12 5.04c1.74 0 3.3.6 4.53 1.78l3.39-3.39C17.84 1.54 15.11 1 12 1 7.24 1 3.2 3.73 1.24 7.72l3.96 3.07C6.18 7.73 8.84 5.04 12 5.04z" />
               <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.29 1.48-1.14 2.73-2.42 3.57l3.77 2.92c2.2-2.03 3.68-5.03 3.68-8.64z" />
               <path fill="#FBBC05" d="M5.2 13.91c-.24-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29L1.24 6.26C.44 7.98 0 9.89 0 11.9s.44 3.92 1.24 5.64l3.96-3.63z" />
@@ -75,60 +78,52 @@ const isEn = lang === 'en';
         </div>
 
         <!-- Separator -->
-        <div class="mt-6 relative">
-          <div class="absolute inset-0 flex items-center" aria-hidden="true">
-            <div class="w-full border-t border-slate-100"></div>
-          </div>
-          <div class="relative flex justify-center text-xs uppercase font-extrabold tracking-widest text-slate-400">
-            <span class="bg-white px-3">{isEn ? "or use your email" : "o usa tu correo"}</span>
-          </div>
+        <div class="my-6 relative flex items-center justify-center">
+          <div class="w-full border-t border-slate-200"></div>
+          <span class="bg-white px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-slate-400 absolute">
+            {isEn ? "OR WITH EMAIL" : "O CON TU CORREO"}
+          </span>
         </div>
 
         <!-- Credentials Form -->
-        <form id="login-form" class="mt-6 flex flex-col gap-5">
-          <div>
-            <label for="email" class="block text-2xs font-extrabold text-slate-400 uppercase tracking-widest">
+        <form id="login-form" class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label for="email" class="block text-[10px] font-bold text-slate-700 uppercase tracking-[0.16em]">
               {isEn ? "Email Address" : "Correo Electrónico"}
             </label>
-            <div class="mt-1.5">
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autocomplete="email"
-                required
-                placeholder="ejemplo@correo.com"
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white placeholder-slate-400 text-slate-900 focus:outline-none focus:border-rose-600 focus:ring-1 focus:ring-rose-600 transition-colors text-sm"
-              />
-            </div>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              placeholder="ejemplo@correo.com"
+              class="w-full px-3.5 py-2.5 rounded-none border border-slate-300 bg-white placeholder-slate-400 text-slate-900 focus:outline-none focus:border-black transition-colors text-xs font-sans"
+            />
           </div>
 
-          <div>
-            <label for="password" class="block text-2xs font-extrabold text-slate-400 uppercase tracking-widest">
+          <div class="flex flex-col gap-1.5">
+            <label for="password" class="block text-[10px] font-bold text-slate-700 uppercase tracking-[0.16em]">
               {isEn ? "Password" : "Contraseña"}
             </label>
-            <div class="mt-1.5">
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                required
-                placeholder="******"
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white placeholder-slate-400 text-slate-900 focus:outline-none focus:border-rose-600 focus:ring-1 focus:ring-rose-600 transition-colors text-sm"
-              />
-            </div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              placeholder="••••••••"
+              class="w-full px-3.5 py-2.5 rounded-none border border-slate-300 bg-white placeholder-slate-400 text-slate-900 focus:outline-none focus:border-black transition-colors text-xs font-sans"
+            />
           </div>
 
-          <div class="mt-2">
-            <button
-              type="submit"
-              id="submit-btn"
-              class="w-full py-3.5 px-4 rounded-xl bg-slate-950 hover:bg-rose-600 text-white font-bold text-sm tracking-wider uppercase transition-colors duration-200 shadow-md active:scale-98 flex items-center justify-center gap-2"
-            >
-              <span>{isEn ? "Sign In" : "Acceder"}</span>
-            </button>
-          </div>
+          <button
+            type="submit"
+            id="submit-btn"
+            class="w-full py-3.5 px-4 rounded-none bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs tracking-[0.2em] uppercase transition-colors duration-150 cursor-pointer shadow-none active:scale-[0.99] flex items-center justify-center gap-2 mt-2 select-none"
+          >
+            <span>{isEn ? "Sign In" : "Iniciar Sesión"}</span>
+          </button>
         </form>
 
       </div>

@@ -7,6 +7,8 @@ export interface EmailSettings {
   abandonedBody: string;
   shippedSubject: string;
   shippedBody: string;
+  restockSubject: string;
+  restockBody: string;
 }
 
 export const defaultEmailSettings: EmailSettings = {
@@ -57,6 +59,17 @@ export const defaultEmailSettings: EmailSettings = {
   
   <p style="color: #334155; line-height: 1.6;">Agradecemos tu confianza en FlexForm Fitness. Si tienes cualquier consulta, responde a este correo.</p>
 </div>`,
+  restockSubject: '¡{{productTitle}} ya vuelve a estar disponible! 🎉 - FlexForm Fitness',
+  restockBody: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+  <h1 style="color: #0f172a; margin-bottom: 20px;">¡Buenas noticias!</h1>
+  <p style="color: #334155; line-height: 1.6;">Nos pediste que te avisáramos y aquí lo tienes: <strong>{{productTitle}}</strong> (Talla: {{productSize}}) vuelve a estar disponible en tienda.</p>
+  
+  <div style="margin: 30px 0; text-align: center;">
+    <a href="{{productUrl}}" style="display: inline-block; padding: 12px 28px; background-color: #0f172a; color: #ffffff; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em;">Ver Producto y Comprar</a>
+  </div>
+  
+  <p style="color: #64748b; font-size: 12px; text-align: center;">Las unidades son muy limitadas. ¡Consigue la tuya antes de que se agoten de nuevo!</p>
+</div>`,
 };
 
 // In-memory cache for email settings
@@ -81,6 +94,8 @@ export async function getEmailSettings(forceRefresh = false): Promise<EmailSetti
         abandonedBody: data.abandonedBody || defaultEmailSettings.abandonedBody,
         shippedSubject: data.shippedSubject || defaultEmailSettings.shippedSubject,
         shippedBody: data.shippedBody || defaultEmailSettings.shippedBody,
+        restockSubject: data.restockSubject || defaultEmailSettings.restockSubject,
+        restockBody: data.restockBody || defaultEmailSettings.restockBody,
       };
       emailCacheTimestamp = now;
       return cachedEmailSettings;

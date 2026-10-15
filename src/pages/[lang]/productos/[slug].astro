@@ -19,7 +19,7 @@ export async function getStaticPaths() {
 
     return productsSnap.docs.flatMap((doc) => {
       const product = optimizeProduct({ id: doc.id, ...doc.data() } as Product);
-      return [
+      const paths = [
         {
           params: { lang: 'es', slug: product.slug },
           props: { product },
@@ -29,6 +29,22 @@ export async function getStaticPaths() {
           props: { product },
         }
       ];
+
+      // Fallback for doc.id if different from slug (e.g. from existing email links)
+      if (doc.id && doc.id !== product.slug) {
+        paths.push(
+          {
+            params: { lang: 'es', slug: doc.id },
+            props: { product },
+          },
+          {
+            params: { lang: 'en', slug: doc.id },
+            props: { product },
+          }
+        );
+      }
+
+      return paths;
     });
   } catch (error) {
     console.error('Error fetching static paths from Firestore for products:', error);
@@ -48,6 +64,12 @@ if (import.meta.env.DEV && Astro.params.slug) {
     const freshSnap = await db.collection('products').where('slug', '==', Astro.params.slug).limit(1).get();
     if (!freshSnap.empty) {
       product = optimizeProduct({ id: freshSnap.docs[0].id, ...freshSnap.docs[0].data() } as Product);
+    } else {
+      // Fallback: check if Astro.params.slug is the document ID
+      const docSnap = await db.collection('products').doc(Astro.params.slug).get();
+      if (docSnap.exists) {
+        product = optimizeProduct({ id: docSnap.id, ...docSnap.data() } as Product);
+      }
     }
   } catch (err) {
     console.error('Error fetching fresh product in DEV mode:', err);
@@ -60,8 +82,13 @@ if (!product) {
   return Astro.redirect('/404');
 }
 
-const { lang } = Astro.params;
+const { lang = 'es' } = Astro.params;
 const isEn = lang === 'en';
+
+// Redirect to canonical slug if accessed by document ID
+if (Astro.params.slug === product.id && product.slug && product.slug !== product.id) {
+  return Astro.redirect(`/${lang}/productos/${product.slug}`);
+}
 
 const getObjectPosition = (url: string | undefined): string => {
   if (!url) return 'center';
@@ -213,6 +240,27 @@ const productJsonLd = {
   },
   'offers': offersList.length === 1 ? offersList[0] : offersList,
 };
+
+// Dynamic sizes present in this product
+const productSizes: string[] = [];
+if (product.variants && product.variants.length > 0) {
+  product.variants.forEach((v) => {
+    const parts = v.name.split('/').map((p) => p.trim());
+    const sz = parts[1] || parts[0];
+    if (sz && !productSizes.includes(sz.toUpperCase())) {
+      productSizes.push(sz.toUpperCase());
+    }
+  });
+}
+
+const hasSpecs = Boolean(
+  product.specs && (product.specs.material || product.specs.fabricWeight || product.specs.fit)
+);
+
+const hasMeasurements = Boolean(
+  product.sizeMeasurements && Object.keys(product.sizeMeasurements).length > 0 && productSizes.length > 0
+);
+const hasSizeChart = Boolean(hasMeasurements);
 ---
 
 <!doctype html>
@@ -237,111 +285,194 @@ const productJsonLd = {
   <body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased">
     <Navbar />
 
-    <main class="max-w-7xl mx-auto px-6 py-12 lg:py-16">
-      <nav class="mb-8 text-sm font-medium text-slate-500 flex items-center gap-2">
-        <a href={`/${lang}`} class="hover:text-brand-600">{isEn ? "Shop" : "Tienda"}</a>
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-5 sm:py-6 lg:py-8">
+      <!-- Minimalist Breadcrumb -->
+      <nav class="mb-3.5 text-[10px] sm:text-[11px] font-medium tracking-[0.15em] text-slate-400 uppercase flex items-center gap-2 select-none">
+        <a href={`/${lang}`} class="hover:text-black transition-colors">{isEn ? "STORE" : "TIENDA"}</a>
         <span>/</span>
-        <span class="text-slate-900 font-semibold">{productTitle}</span>
+        <a href={`/${lang}#catalogo`} class="hover:text-black transition-colors">{isEn ? "COLLECTIONS" : "COLECCIONES"}</a>
+        <span>/</span>
+        <span class="text-slate-900 font-semibold truncate max-w-[280px]">{productTitle}</span>
       </nav>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-        <!-- Media Gallery -->
-        <div id="product-gallery" data-images={JSON.stringify(product.images)} class="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-5">
-          <!-- Thumbnails list (vertical on desktop, horizontal on mobile) -->
-          {product.images.length > 1 && (
-            <div class="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto shrink-0 w-full sm:w-[78px] max-h-[550px] pr-1.5 custom-scrollbar">
-              {product.images.map((img, idx) => (
-                <button
-                  type="button"
-                  data-index={idx}
-                  class={`thumbnail-btn w-14 h-[84px] sm:w-[68px] sm:h-[102px] aspect-[2/3] shrink-0 rounded-xl overflow-hidden bg-white border ${idx === 0 ? 'border-brand-600 ring-2 ring-brand-100 shadow-sm' : 'border-slate-200'} hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all duration-200 shadow-2xs`}
-                >
-                  <img src={img} alt={`${productTitle} vista ${idx + 1}`} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(img)}`} />
-                </button>
-              ))}
-            </div>
-          )}
-          
-          <!-- Main featured product image (large box, object-cover to occupy full space with rounded corners) -->
-          <div class="flex-grow aspect-[2/3] w-full max-w-[520px] rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm relative group" style="aspect-ratio: 2/3; overflow: hidden;">
-            <img
-              src={product.images[0]}
-              alt={productTitle}
-              class="w-full h-full object-cover transition-opacity duration-300 rounded-2xl opacity-0 cursor-zoom-in"
-              style={`object-position: ${getObjectPosition(product.images[0])}`}
-              id="main-product-image"
-              onload="this.classList.remove('opacity-0')"
-            />
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-14 items-start">
+        <!-- Left: Product Media Gallery (Image 3 Style) -->
+        <div id="product-gallery" data-images={JSON.stringify(product.images)} class="lg:col-span-7 flex flex-col w-full items-start">
+          <div class="product-gallery-wrapper w-full flex flex-col mx-auto lg:mx-0">
+            <!-- Main featured product image -->
+            <div class="aspect-[2/3] w-full bg-white border border-slate-200/80 relative overflow-hidden group select-none" style="aspect-ratio: 2/3;">
+              <img
+                src={product.images[0]}
+                alt={productTitle}
+                class="w-full h-full object-cover transition-opacity duration-300 opacity-0 cursor-zoom-in"
+                style={`object-position: ${getObjectPosition(product.images[0])}`}
+                id="main-product-image"
+                onload="this.classList.remove('opacity-0')"
+              />
 
-            <!-- Left and Right Arrows (Desktop only, hidden on mobile) -->
+              <!-- Desktop Hover Arrows -->
+              {product.images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    id="prev-image-btn"
+                    class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 text-slate-900 border border-slate-200 shadow-sm flex items-center justify-center transition-all duration-150 hover:bg-white active:scale-95 z-10 hidden sm:flex opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+                    aria-label={isEn ? "Previous image" : "Imagen anterior"}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    id="next-image-btn"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 text-slate-900 border border-slate-200 shadow-sm flex items-center justify-center transition-all duration-150 hover:bg-white active:scale-95 z-10 hidden sm:flex opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+                    aria-label={isEn ? "Next image" : "Siguiente imagen"}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+
+            <!-- Thumbnails Grid directly underneath (Image 3 Style) -->
             {product.images.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  id="prev-image-btn"
-                  class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-xs text-slate-800 border border-slate-200/50 shadow-md flex items-center justify-center transition-all duration-200 hover:bg-white hover:text-brand-600 active:scale-95 z-10 hidden sm:flex opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-                  aria-label={isEn ? "Previous image" : "Imagen anterior"}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  id="next-image-btn"
-                  class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-xs text-slate-800 border border-slate-200/50 shadow-md flex items-center justify-center transition-all duration-200 hover:bg-white hover:text-brand-600 active:scale-95 z-10 hidden sm:flex opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-                  aria-label={isEn ? "Next image" : "Siguiente imagen"}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-              </>
+              <div class="flex flex-wrap gap-2 mt-2.5 w-full">
+                {product.images.map((img, idx) => (
+                  <button
+                    type="button"
+                    data-index={idx}
+                    class={`thumbnail-btn aspect-[2/3] w-14 sm:w-16 overflow-hidden bg-slate-50 border ${idx === 0 ? 'border-slate-950 ring-1 ring-slate-950' : 'border-slate-200 hover:border-slate-400'} focus:outline-none transition-all duration-150 cursor-pointer rounded-none shrink-0`}
+                  >
+                    <img src={img} alt={`${productTitle} vista ${idx + 1}`} class="w-full h-full object-cover" style={`object-position: ${getObjectPosition(img)}`} />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </div>
 
-        <!-- Product Purchase Information -->
-        <div class="lg:col-span-5 flex flex-col gap-6">
-          <div>
-            <h1 class="text-4xl sm:text-4xl lg:text-5xl font-normal text-slate-950 tracking-tight leading-tight">
+        <!-- Right: Product Purchase Info (YoungLA Style - Image 3) -->
+        <div class="lg:col-span-5 flex flex-col gap-3.5 lg:sticky lg:top-24">
+          <!-- Minimalist Header & Titles -->
+          <div class="flex flex-col gap-1">
+            <h1 class="text-sm sm:text-base font-bold tracking-[0.16em] uppercase text-slate-950 leading-snug">
               {productTitle}
             </h1>
+            <p class="text-[11px] sm:text-xs font-semibold tracking-[0.18em] uppercase text-slate-500">
+              {isEn ? (product.category_en || 'F3 SYNERGIES') : (product.category || 'F3 SYNERGIES')}
+            </p>
+
+            <!-- Price -->
+            <div class="text-sm sm:text-base font-medium text-slate-950 mt-1">
+              {(product.price / 100).toFixed(2)} €
+            </div>
           </div>
 
-          <div class="prose prose-slate max-w-none text-slate-600 leading-relaxed">
-            <p>{productDescription}</p>
-          </div>
+          <div class="w-full h-px bg-slate-200/80 my-1"></div>
 
           <!-- Interactive Client Component Selector -->
           <ProductSelector product={product} lang={lang} client:load />
 
-          <!-- Extra details -->
-          <div class="border-t border-slate-200/80 pt-6 flex flex-col gap-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center text-brand-600">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124l-.09-1.09a1.125 1.125 0 0 0-1.09-1.125H16.12" />
-                </svg>
-              </div>
-              <div>
-                <h4 class="text-sm font-bold text-slate-800">{isEn ? "Fast Home Shipping" : "Envío Rápido a Domicilio"}</h4>
-                <p class="text-xs text-slate-500">{isEn ? "Receive your order in 2 to 5 business days with full tracking." : "Recibe tu pedido de 2 a 5 días hábiles con seguimiento completo."}</p>
-              </div>
-            </div>
+          <div class="w-full h-px bg-slate-200/80 my-2"></div>
 
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center text-brand-600">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0V10.5m-2.852 9h12.704a2.25 2.25 0 0 0 2.228-2.228V10.5A2.25 2.25 0 0 0 15 8.25H9a2.25 2.25 0 0 0-2.25 2.25v7.772a2.25 2.25 0 0 0 2.25 2.25Z" />
-                </svg>
+          <!-- Description & Real Specifications -->
+          <div class="flex flex-col gap-3 text-xs leading-relaxed text-slate-600">
+            {hasSpecs && (
+              <>
+                {product.specs?.material && (
+                  <div class="flex flex-col gap-0.5">
+                    <span class="font-bold text-slate-900 tracking-wider text-[11px] uppercase">
+                      {isEn ? "MATERIAL:" : "MATERIAL:"}
+                    </span>
+                    <span class="text-slate-600">{product.specs.material}</span>
+                  </div>
+                )}
+                {product.specs?.fabricWeight && (
+                  <div class="flex flex-col gap-0.5">
+                    <span class="font-bold text-slate-900 tracking-wider text-[11px] uppercase">
+                      {isEn ? "FABRIC WEIGHT:" : "GRAMAJE:"}
+                    </span>
+                    <span class="text-slate-600">{product.specs.fabricWeight}</span>
+                  </div>
+                )}
+                {product.specs?.fit && (
+                  <div class="flex flex-col gap-0.5">
+                    <span class="font-bold text-slate-900 tracking-wider text-[11px] uppercase">
+                      {isEn ? "FIT:" : "CORTE / AJUSTE:"}
+                    </span>
+                    <span class="text-slate-600">{product.specs.fit}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {productDescription && (
+              <div class="flex flex-col gap-0.5">
+                <span class="font-bold text-slate-900 tracking-wider text-[11px] uppercase">
+                  {isEn ? "DESCRIPTION:" : "DESCRIPCIÓN:"}
+                </span>
+                <p class="text-slate-600 leading-relaxed whitespace-pre-line">
+                  {productDescription}
+                </p>
               </div>
-              <div>
-                <h4 class="text-sm font-bold text-slate-800">{isEn ? "100% Safe Checkout" : "Pago Seguro Seguro 100%"}</h4>
-                <p class="text-xs text-slate-500">{isEn ? "Transactions processed and encrypted via Stripe." : "Transacciones procesadas y cifradas a través de Stripe."}</p>
-              </div>
+            )}
+          </div>          <!-- Dynamic Size Chart in CM (Only if product has measurements) -->
+          {hasSizeChart && (
+            <div class="border-t border-slate-200/80 pt-5 mt-2 flex flex-col gap-2.5" id="product-size-chart-section">
+              <h4 class="text-xs font-bold tracking-[0.16em] uppercase text-slate-900">
+                {isEn ? "SIZE CHART (CM)" : "GUÍA DE MEDIDAS (CM)"}
+              </h4>
+
+              {hasMeasurements && (
+                <div class="w-full border border-slate-200 bg-white p-4">
+                  <div class="text-[11px] font-bold text-center uppercase tracking-wider text-slate-900 mb-3 pb-1 border-b border-slate-900">
+                    {isEn ? `${product.title} Measurements (cm)` : `Medidas de la prenda (cm) - ${product.title}`}
+                  </div>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-[11px] text-center border-collapse">
+                      <thead>
+                        <tr class="font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200">
+                          <th class="py-1 px-2 text-left font-bold">{isEn ? "Measurement" : "Medida (cm)"}</th>
+                          {productSizes.map((sz) => (
+                            <th class="py-1 px-2 font-bold font-mono">{sz.toUpperCase()}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100 font-mono text-slate-700">
+                        {product.sizeMeasurements?.length && (
+                          <tr>
+                            <td class="py-1.5 px-2 text-left font-bold text-slate-900 font-sans">{isEn ? "Length (cm)" : "Largo (cm)"}</td>
+                            {productSizes.map((sz) => (
+                              <td class="py-1.5 px-2">{product.sizeMeasurements?.length?.[sz] || product.sizeMeasurements?.length?.[sz.toLowerCase()] || product.sizeMeasurements?.length?.[sz.toUpperCase()] || '-'}</td>
+                            ))}
+                          </tr>
+                        )}
+                        {product.sizeMeasurements?.chest && (
+                          <tr>
+                            <td class="py-1.5 px-2 text-left font-bold text-slate-900 font-sans">{isEn ? "Chest (cm)" : "Pecho (cm)"}</td>
+                            {productSizes.map((sz) => (
+                              <td class="py-1.5 px-2">{product.sizeMeasurements?.chest?.[sz] || product.sizeMeasurements?.chest?.[sz.toLowerCase()] || product.sizeMeasurements?.chest?.[sz.toUpperCase()] || '-'}</td>
+                            ))}
+                          </tr>
+                        )}
+                        {product.sizeMeasurements?.waist && (
+                          <tr>
+                            <td class="py-1.5 px-2 text-left font-bold text-slate-900 font-sans">{isEn ? "Waist (cm)" : "Cintura (cm)"}</td>
+                            {productSizes.map((sz) => (
+                              <td class="py-1.5 px-2">{product.sizeMeasurements?.waist?.[sz] || product.sizeMeasurements?.waist?.[sz.toLowerCase()] || product.sizeMeasurements?.waist?.[sz.toUpperCase()] || '-'}</td>
+                            ))}
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </main>
@@ -524,11 +655,11 @@ const productJsonLd = {
             currentIndex = matchedIndex;
             thumbnails.forEach((thumb, idx) => {
               if (idx === matchedIndex) {
-                thumb.classList.remove('border-slate-200');
-                thumb.classList.add('border-brand-600', 'ring-2', 'ring-brand-100', 'shadow-sm');
+                thumb.classList.remove('border-slate-200', 'hover:border-slate-400');
+                thumb.classList.add('border-slate-950', 'ring-1', 'ring-slate-950');
               } else {
-                thumb.classList.remove('border-brand-600', 'ring-2', 'ring-brand-100', 'shadow-sm');
-                thumb.classList.add('border-slate-200');
+                thumb.classList.remove('border-slate-950', 'ring-1', 'ring-slate-950');
+                thumb.classList.add('border-slate-200', 'hover:border-slate-400');
               }
             });
 
@@ -749,6 +880,20 @@ const productJsonLd = {
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
+      }
+
+      /* Responsive gallery sizing: on standard desktop displays (like 1920x1080), limit height to fit viewport */
+      @media (min-width: 1024px) {
+        .product-gallery-wrapper {
+          max-width: min(100%, calc((100vh - 15.5rem) * 2 / 3));
+        }
+      }
+
+      /* On larger/taller screens (> 1080p height, e.g. 1440p and 4K displays), let it expand fully */
+      @media (min-width: 1024px) and (min-height: 1100px) {
+        .product-gallery-wrapper {
+          max-width: 100%;
+        }
       }
     </style>
   </body>

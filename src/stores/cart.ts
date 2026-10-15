@@ -181,6 +181,43 @@ if (typeof window !== 'undefined') {
       syncTimeout = null;
     }, 400);
   });
+
+  // Function to re-sync cart from storage (used when restoring from bfcache or cross-tab storage events)
+  const syncCartFromStorage = () => {
+    try {
+      isSyncing = true;
+      if (currentUid) {
+        const cacheKey = `flexform_cart_cache_${currentUid}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          cartStore.set(JSON.parse(cached));
+          return;
+        }
+      }
+      const saved = localStorage.getItem('flexform_cart');
+      if (saved) {
+        cartStore.set(JSON.parse(saved));
+      } else {
+        cartStore.set({});
+      }
+    } catch (err) {
+      console.error('Error re-syncing cart from storage:', err);
+    } finally {
+      isSyncing = false;
+    }
+  };
+
+  // Re-sync cart whenever the page is shown or restored from Back-Forward Cache (bfcache)
+  window.addEventListener('pageshow', () => {
+    syncCartFromStorage();
+  });
+
+  // Re-sync across browser tabs or windows
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'flexform_cart') {
+      syncCartFromStorage();
+    }
+  });
 }
 
 /**

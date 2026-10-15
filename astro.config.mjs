@@ -17,7 +17,7 @@ export default defineConfig({
   integrations: [tailwind(), react()],
   vite: {
     optimizeDeps: {
-      include: ['react', 'react-dom'],
+      include: ['react', 'react-dom', '@nanostores/react', 'nanostores'],
     },
     resolve: {
       dedupe: ['react', 'react-dom'],

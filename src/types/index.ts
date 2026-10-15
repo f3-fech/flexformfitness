@@ -20,10 +20,20 @@ export interface Product {
   slug: string; // URL slug
   description: string;
   description_en?: string;
+  category?: string;
+  category_en?: string;
+  gender?: 'hombre' | 'mujer';
   price: number; // base price in cents
   images: string[];
   stock: number; // overall stock (or base item stock)
   variants: ProductVariant[];
+  sizeChartImage?: string | null;
+  sizeMeasurements?: Record<string, Record<string, string>> | null; // e.g. { length: { S: "68", M: "70" }, chest: { S: "48", M: "50" } } in cm
+  specs?: {
+    material?: string;
+    fabricWeight?: string;
+    fit?: string;
+  } | null;
   seo: ProductSEO;
   seo_en?: ProductSEO;
   createdAt: any; // admin.firestore.Timestamp or Date

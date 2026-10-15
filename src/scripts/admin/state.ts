@@ -19,6 +19,12 @@ export const state = {
     nextVisibleId: null as string | null,
     loaded: false,
   },
+  restock: {
+    currentPage: 1,
+    pageHistory: [] as string[],
+    nextVisibleId: null as string | null,
+    loaded: false,
+  },
   contacts: {
     currentPage: 1,
     pageHistory: [] as string[],

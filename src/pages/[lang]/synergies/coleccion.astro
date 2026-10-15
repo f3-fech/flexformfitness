@@ -375,7 +375,7 @@ const isComingSoon = true;
               >
                 <!-- Product Image Slider -->
                 <div class="relative aspect-[2/3] w-full bg-white border border-slate-100 overflow-hidden" style="aspect-ratio: 2/3;">
-                  <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none" style="scrollbar-width: none;">
+                  <div class={`product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none ${product.stock <= 0 ? 'saturate-[0.85]' : ''}`} style="scrollbar-width: none;">
                     {product.images.map((imgUrl, imgIdx) => (
                       <a
                         href={`/${lang}/productos/${product.slug}`}
@@ -393,10 +393,22 @@ const isComingSoon = true;
                     ))}
                   </div>
 
-                  <!-- Badge -->
-                  <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-slate-950 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 select-none">
-                    SURVIVOR × F3
-                  </span>
+                  {product.stock <= 0 && (
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
+                      <line x1="100" y1="0" x2="0" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
+                    </svg>
+                  )}
+
+                  {product.stock <= 0 ? (
+                    <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-neutral-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 border border-white/10">
+                      {isEn ? "SOLD OUT" : "AGOTADO"}
+                    </span>
+                  ) : (
+                    <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-slate-950 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 select-none">
+                      SURVIVOR × F3
+                    </span>
+                  )}
 
                   <!-- Price -->
                   <span class="absolute bottom-2 right-2 px-2 py-0.5 bg-slate-950/85 text-white text-[10px] sm:text-xs font-extrabold font-mono select-none">

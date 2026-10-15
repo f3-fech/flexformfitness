@@ -1,7 +1,7 @@
 import { state } from './state';
 import { loadOrdersList } from './orders';
 import { loadUsersList } from './users';
-import { loadAbandonedCarts } from './emails';
+import { loadAbandonedCarts, loadRestockNotifications } from './emails';
 import { loadContactsList } from './contacts';
 
 // Elements
@@ -37,8 +37,10 @@ const formSubCoupons = document.getElementById('form-sub-coupons') as HTMLDivEle
 
 const subtabTemplatesBtn = document.getElementById('subtab-templates-btn') as HTMLButtonElement;
 const subtabAbandonedBtn = document.getElementById('subtab-abandoned-btn') as HTMLButtonElement;
+const subtabRestockBtn = document.getElementById('subtab-restock-btn') as HTMLButtonElement;
 const formSubTemplates = document.getElementById('form-sub-templates') as HTMLFormElement;
 const formSubAbandoned = document.getElementById('form-sub-abandoned') as HTMLDivElement;
+const formSubRestock = document.getElementById('form-sub-restock') as HTMLDivElement;
 
 function deactivateAllTabs() {
   if (tabProductsBtn) tabProductsBtn.className = "pb-4 px-2 border-b-2 border-transparent text-slate-400 hover:text-slate-900 uppercase focus:outline-none transition-all";
@@ -144,9 +146,11 @@ export function activateSubtab(subtabName: string) {
 function deactivateAllEmailSubtabs() {
   if (subtabTemplatesBtn) subtabTemplatesBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
   if (subtabAbandonedBtn) subtabAbandonedBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
+  if (subtabRestockBtn) subtabRestockBtn.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none flex items-center gap-2.5";
 
   if (formSubTemplates) formSubTemplates.classList.add('hidden');
   if (formSubAbandoned) formSubAbandoned.classList.add('hidden');
+  if (formSubRestock) formSubRestock.classList.add('hidden');
 }
 
 export function activateEmailSubtab(subtabName: string) {
@@ -161,6 +165,12 @@ export function activateEmailSubtab(subtabName: string) {
     formSubAbandoned.classList.remove('hidden');
     if (!state.carts.loaded) {
       loadAbandonedCarts();
+    }
+  } else if (subtabName === 'restock' && subtabRestockBtn && formSubRestock) {
+    subtabRestockBtn.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2.5 bg-red-50 text-rose-600";
+    formSubRestock.classList.remove('hidden');
+    if (!state.restock.loaded) {
+      loadRestockNotifications();
     }
   }
 }
@@ -185,6 +195,7 @@ subtabCouponsBtn?.addEventListener('click', () => activateSubtab('coupons'));
 // Event Listeners for email subtab buttons
 subtabTemplatesBtn?.addEventListener('click', () => activateEmailSubtab('templates'));
 subtabAbandonedBtn?.addEventListener('click', () => activateEmailSubtab('abandoned'));
+subtabRestockBtn?.addEventListener('click', () => activateEmailSubtab('restock'));
 
 // Initial tab selections on startup
 const savedTab = localStorage.getItem('flexform_active_tab') || 'products';

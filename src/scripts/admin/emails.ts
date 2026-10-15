@@ -42,6 +42,8 @@ formSubTemplates?.addEventListener('submit', async (e) => {
   const abandonedBody = (document.getElementById('email-abandoned-body') as HTMLTextAreaElement).value;
   const shippedSubject = (document.getElementById('email-shipped-subject') as HTMLInputElement).value;
   const shippedBody = (document.getElementById('email-shipped-body') as HTMLTextAreaElement).value;
+  const restockSubject = (document.getElementById('email-restock-subject') as HTMLInputElement)?.value || '';
+  const restockBody = (document.getElementById('email-restock-body') as HTMLTextAreaElement)?.value || '';
 
   try {
     const { error } = await actions.updateEmailSettings({
@@ -50,7 +52,9 @@ formSubTemplates?.addEventListener('submit', async (e) => {
       abandonedSubject,
       abandonedBody,
       shippedSubject,
-      shippedBody
+      shippedBody,
+      restockSubject,
+      restockBody,
     });
     if (error) throw error;
     alert('Plantillas de correo guardadas con éxito.');
@@ -211,5 +215,159 @@ cartsNextBtn?.addEventListener('click', () => {
     state.carts.pageHistory.push(state.carts.nextVisibleId);
     state.carts.currentPage++;
     loadAbandonedCarts(state.carts.nextVisibleId);
+  }
+});
+
+// Elements for Restock Notifications
+const restockTableBody = document.getElementById('restock-table-body') as HTMLTableSectionElement | null;
+const restockPrevBtn = document.getElementById('restock-prev-btn') as HTMLButtonElement | null;
+const restockNextBtn = document.getElementById('restock-next-btn') as HTMLButtonElement | null;
+const restockPageInfo = document.getElementById('restock-page-info');
+
+export async function loadRestockNotifications(lastVisibleId: string | null = null) {
+  if (!restockTableBody) return;
+
+  if (restockPrevBtn) restockPrevBtn.disabled = true;
+  if (restockNextBtn) restockNextBtn.disabled = true;
+
+  restockTableBody.innerHTML = `
+    <tr>
+      <td colspan="6" class="py-8 text-center text-slate-400 font-medium">Cargando avisos de reposición...</td>
+    </tr>
+  `;
+
+  try {
+    const { data, error } = await actions.getRestockNotifications({
+      limit: 20,
+      lastVisibleId: lastVisibleId || undefined,
+    });
+    if (error) throw error;
+    state.restock.loaded = true;
+
+    const notifs = data?.notifications || [];
+    state.restock.nextVisibleId = data?.nextVisibleId || null;
+    const hasMore = data?.hasMore || false;
+
+    if (restockPageInfo) restockPageInfo.textContent = `Página ${state.restock.currentPage}`;
+    if (restockPrevBtn) restockPrevBtn.disabled = state.restock.currentPage === 1;
+    if (restockNextBtn) restockNextBtn.disabled = !hasMore;
+
+    if (notifs.length === 0) {
+      restockTableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-8 text-center text-slate-400 font-medium">No hay avisos de reposición registrados.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    restockTableBody.innerHTML = notifs.map((n: any) => {
+      const createdDate = n.createdAt ? new Date(n.createdAt).toLocaleString() : '-';
+      const notifiedDate = n.notifiedAt ? new Date(n.notifiedAt).toLocaleDateString() : '';
+
+      return `
+        <tr class="hover:bg-slate-50/50 transition-colors">
+          <td class="py-4 px-5">
+            <span class="font-bold text-slate-900">${n.email}</span>
+          </td>
+          <td class="py-4 px-5 font-semibold text-slate-800">
+            ${n.productTitle}
+          </td>
+          <td class="py-4 px-5">
+            <span class="inline-flex px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-900 font-mono font-bold text-3xs uppercase rounded-md">
+              ${n.size ? n.size.toUpperCase() : '-'}
+            </span>
+          </td>
+          <td class="py-4 px-5 text-slate-500 font-mono text-3xs">
+            ${createdDate}
+          </td>
+          <td class="py-4 px-5">
+            ${n.notified ? `
+              <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full text-3xs font-bold uppercase">
+                ✓ Notificado ${notifiedDate ? `(${notifiedDate})` : ''}
+              </span>
+            ` : `
+              <span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full text-3xs font-bold uppercase">
+                ⏳ Pendiente
+              </span>
+            `}
+          </td>
+          <td class="py-4 px-5 text-right">
+            ${n.notified ? `
+              <button disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-3xs font-bold uppercase cursor-default">
+                Ya Enviado
+              </button>
+            ` : `
+              <button
+                type="button"
+                data-notif-id="${n.id}"
+                class="send-restock-btn px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-white rounded-lg text-3xs font-extrabold uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer shadow-3xs inline-flex items-center gap-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 text-rose-400">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                </svg>
+                Enviar Correo de Stock
+              </button>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Attach click listeners to send restock buttons
+    document.querySelectorAll('.send-restock-btn').forEach((btn: any) => {
+      btn.addEventListener('click', async () => {
+        const notifId = btn.getAttribute('data-notif-id');
+        if (!notifId) return;
+
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Enviando...';
+
+        try {
+          const { error: sendErr } = await actions.sendRestockEmail({ notificationId: notifId });
+          if (sendErr) throw sendErr;
+
+          alert('¡Correo de aviso de reposición enviado correctamente!');
+          btn.className = "px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-3xs font-bold uppercase cursor-default inline-flex items-center gap-1";
+          btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            Enviado
+          `;
+        } catch (err: any) {
+          console.error(err);
+          alert('Error al enviar correo de reposición: ' + (err.message || 'Error desconocido'));
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+    });
+  } catch (err: any) {
+    console.error('Error loading restock notifications:', err);
+    restockTableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="py-8 text-center text-rose-600 font-medium">Error al cargar avisos: ${err.message || 'Error desconocido'}</td>
+      </tr>
+    `;
+  }
+}
+
+// Restock Pagination Event Listeners
+restockPrevBtn?.addEventListener('click', () => {
+  if (state.restock.currentPage > 1) {
+    state.restock.pageHistory.pop();
+    state.restock.currentPage--;
+    const prevId = state.restock.pageHistory[state.restock.pageHistory.length - 1] || null;
+    loadRestockNotifications(prevId);
+  }
+});
+
+restockNextBtn?.addEventListener('click', () => {
+  if (state.restock.nextVisibleId) {
+    state.restock.pageHistory.push(state.restock.nextVisibleId);
+    state.restock.currentPage++;
+    loadRestockNotifications(state.restock.nextVisibleId);
   }
 });

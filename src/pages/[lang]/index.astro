@@ -583,7 +583,7 @@ const storeJsonLd = {
                 <!-- Product Image Slider -->
                 <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
                   <!-- Swipeable Images Container -->
-                  <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                  <div class={`product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none ${product.stock <= 0 ? 'saturate-[0.85]' : ''}`} style="scrollbar-width: none; -ms-overflow-style: none;">
                     {product.images.map((imgUrl, imgIdx) => (
                       <a
                         href={`/${lang}/productos/${product.slug}`}
@@ -623,11 +623,22 @@ const storeJsonLd = {
                     </svg>
                   </button>
 
-                  {product.stock <= 5 && (
+                  {product.stock <= 0 && (
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
+                      <line x1="100" y1="0" x2="0" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
+                    </svg>
+                  )}
+
+                  {product.stock <= 0 ? (
+                    <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-neutral-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 border border-white/10">
+                      {isEn ? "SOLD OUT" : "AGOTADO"}
+                    </span>
+                  ) : 5 >= product.stock ? (
                     <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-rose-600 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10">
                       {isEn ? "LAST ITEMS" : "ÚLTIMAS UNIDADES"}
                     </span>
-                  )}
+                  ) : null}
 
                   <!-- Price badge overlay in bottom right corner (compact on mobile, square edges) -->
                   <span class="absolute bottom-1.5 right-1.5 sm:bottom-2.5 sm:right-2.5 px-1.5 py-0.5 sm:px-2.5 sm:py-1 bg-slate-950/85 backdrop-blur-xs text-white text-[10px] sm:text-xs font-extrabold font-mono rounded-none shadow-sm z-10 border border-white/10 select-none">
