@@ -60,6 +60,92 @@ const esUrl = `${siteUrl}${esPath}`;
 const enUrl = `${siteUrl}${enPath}`;
 ---
 
+<!-- Respaldo Inteligente CDN: Circuit Breaker y Failover en Memoria / SessionStorage -->
+<script is:inline>
+  (function() {
+    var CLOUDFRONT_BACKUP = 'dxnijhj42o0ni.cloudfront.net';
+    var FIREBASE_ORIGIN = 'firebasestorage.googleapis.com';
+    var PRIMARY_CDN = 'cdn.flexformfitness.com';
+    var STORAGE_KEY = 'fff_primary_cdn_blocked';
+
+    // Comprobar si ya sabíamos en esta sesión que el CDN primario estaba caído
+    var isBlocked = false;
+    try {
+      var blockedUntil = sessionStorage.getItem(STORAGE_KEY);
+      if (blockedUntil && parseInt(blockedUntil, 10) > Date.now()) {
+        isBlocked = true;
+      }
+    } catch (e) {}
+
+    function rewriteElement(el) {
+      if (!el) return;
+      var currentSrc = el.src || '';
+      var currentSrcset = el.srcset || '';
+
+      if (currentSrc.indexOf(PRIMARY_CDN) !== -1) {
+        el.dataset.cdnTriedCloudfront = '1';
+        el.src = currentSrc.replace(PRIMARY_CDN, CLOUDFRONT_BACKUP);
+      }
+      if (currentSrcset && currentSrcset.indexOf(PRIMARY_CDN) !== -1) {
+        el.srcset = currentSrcset.split(PRIMARY_CDN).join(CLOUDFRONT_BACKUP);
+      }
+    }
+
+    // Si ya sabemos que está caído, reescribir con MutationObserver al vuelo ANTES de que el navegador pida la URL rota
+    if (isBlocked) {
+      var observer = new MutationObserver(function(mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          var added = mutations[i].addedNodes;
+          for (var j = 0; j < added.length; j++) {
+            var node = added[j];
+            if (node.nodeType === 1) {
+              if (node.tagName === 'IMG' || node.tagName === 'SOURCE') {
+                rewriteElement(node);
+              }
+              var imgs = node.querySelectorAll ? node.querySelectorAll('img, source') : [];
+              for (var k = 0; k < imgs.length; k++) {
+                rewriteElement(imgs[k]);
+              }
+            }
+          }
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    // Disyuntor (Circuit Breaker): En cuanto la PRIMERA imagen falle, cortar en seco y conmutar TODO el DOM
+    function triggerCircuitBreaker() {
+      if (isBlocked) return;
+      isBlocked = true;
+      try {
+        sessionStorage.setItem(STORAGE_KEY, String(Date.now() + 60 * 60 * 1000)); // 1 hora en memoria
+      } catch (e) {}
+
+      // Reemplazar inmediatamente todas las imágenes de la página para que no sigan fallando las demás
+      var imgs = document.querySelectorAll('img[src*="' + PRIMARY_CDN + '"], source[srcset*="' + PRIMARY_CDN + '"]');
+      for (var i = 0; i < imgs.length; i++) {
+        rewriteElement(imgs[i]);
+      }
+    }
+
+    // Interceptor de errores de imagen
+    window.addEventListener('error', function(e) {
+      var el = e.target;
+      if (el && (el.tagName === 'IMG' || el.tagName === 'SOURCE')) {
+        var src = el.src || '';
+        if (src.indexOf(PRIMARY_CDN) !== -1) {
+          triggerCircuitBreaker();
+          rewriteElement(el);
+        } else if (src.indexOf(CLOUDFRONT_BACKUP) !== -1 && !el.dataset.cdnTriedFirebase) {
+          el.dataset.cdnTriedFirebase = '1';
+          el.src = src.replace(CLOUDFRONT_BACKUP, FIREBASE_ORIGIN);
+          if (el.srcset) el.srcset = el.srcset.split(CLOUDFRONT_BACKUP).join(FIREBASE_ORIGIN);
+        }
+      }
+    }, true);
+  })();
+</script>
+
 <!-- Primary Meta Tags -->
 <title>{fullTitle}</title>
 <meta name="title" content={fullTitle} />

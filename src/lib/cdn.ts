@@ -2,7 +2,8 @@
  * Convierte URLs de Firebase Storage al CDN proxy de Cloudflare Worker
  * para reducir costos de egress y mejorar velocidad de carga mediante caché.
  */
-export const CDN_DOMAIN = 'cdn.flexformfitness.com';
+export const CDN_DOMAIN = (typeof process !== 'undefined' && process.env?.PUBLIC_CDN_DOMAIN) || (import.meta.env && import.meta.env.PUBLIC_CDN_DOMAIN) || 'cdn.flexformfitness.com';
+export const CDN_BACKUP_DOMAIN = (typeof process !== 'undefined' && process.env?.PUBLIC_CDN_BACKUP_DOMAIN) || (import.meta.env && import.meta.env.PUBLIC_CDN_BACKUP_DOMAIN) || '';
 export const FIREBASE_STORAGE_DOMAIN = 'firebasestorage.googleapis.com';
 
 export function optimizeStorageUrl(url: string | null | undefined): string {
