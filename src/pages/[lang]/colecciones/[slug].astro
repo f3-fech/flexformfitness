@@ -197,6 +197,8 @@ interface SwatchColor {
   name: string;
   hex: string;
   image: string | null;
+  isOutOfStock: boolean;
+  isLight: boolean;
 }
 
 const getUniqueColors = (product: Product): SwatchColor[] => {
@@ -209,15 +211,40 @@ const getUniqueColors = (product: Product): SwatchColor[] => {
     
     if (!colorMap.has(name)) {
       const hex = v.colorHex || getColorHex(name);
+      const colorVariants = product.variants.filter((item) => {
+        const itemParts = item.name.split('/').map((p) => p.trim());
+        return (itemParts[0] || 'Base') === name;
+      });
+      const isOutOfStock = colorVariants.length > 0 && !colorVariants.some((item) => Number(item.stock || 0) > 0);
+      const isLight = isLightColor(hex);
+
       colorMap.set(name, {
         name: name,
         hex: hex,
-        image: v.image || null
+        image: v.image || null,
+        isOutOfStock: isOutOfStock,
+        isLight: isLight,
       });
     }
   });
   
   return Array.from(colorMap.values());
+};
+
+const getProductImages = (product: Product): string[] => {
+  const images = [...(product.images || [])];
+  if (product.variants && product.variants.length > 0) {
+    product.variants.forEach((v) => {
+      if (v.image) {
+        const cleanV = v.image.split('#')[0].split('?')[0].trim();
+        const exists = images.some((img) => img.split('#')[0].split('?')[0].trim() === cleanV);
+        if (!exists) {
+          images.push(v.image);
+        }
+      }
+    });
+  }
+  return images.length > 0 ? images : ['/images/placeholder.jpg'];
 };
 
 const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://flexformfitness.com';
@@ -383,12 +410,13 @@ const formatRichText = (content: string | undefined | null): string => {
                       {subProducts.map((product) => (
                         <div class="product-card group flex flex-col justify-start w-full" data-collections={getProductCollectionIds(product.id)}>
                           <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
-                            <div class={`product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none ${product.stock <= 0 ? 'saturate-[0.85]' : ''}`} style="scrollbar-width: none; -ms-overflow-style: none;">
-                              {product.images.map((imgUrl, imgIdx) => (
+                            <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                              {getProductImages(product).map((imgUrl, imgIdx) => (
                                 <a
                                   href={`/${lang}/productos/${product.slug}`}
-                                  class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                                  class="product-slide block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
                                   data-index={imgIdx}
+                                  data-image-clean={imgUrl.split('#')[0].split('?')[0].trim()}
                                   style="aspect-ratio: 2/3;"
                                 >
                                   <img
@@ -422,12 +450,7 @@ const formatRichText = (content: string | undefined | null): string => {
                               </svg>
                             </button>
 
-                            {product.stock <= 0 && (
-                              <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                                <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
-                                <line x1="100" y1="0" x2="0" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
-                              </svg>
-                            )}
+
 
                             {product.stock <= 0 ? (
                               <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-neutral-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 border border-white/10">
@@ -455,11 +478,18 @@ const formatRichText = (content: string | undefined | null): string => {
                               {getUniqueColors(product).map((color) => (
                                 <button 
                                   type="button"
-                                  class="color-swatch-btn w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                                  class="color-swatch-btn relative w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none flex items-center justify-center overflow-hidden" 
                                   style={{ backgroundColor: color.hex }}
-                                  title={color.name}
-                                  data-variant-image={color.image}
-                                />
+                                  title={`${color.name}${color.isOutOfStock ? (isEn ? ' (Sold Out)' : ' (Agotado)') : ''}`}
+                                  data-variant-image={color.image ? color.image.split('#')[0].split('?')[0].trim() : ''}
+                                >
+                                  {color.isOutOfStock && (
+                                    <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                                      <line x1="0" y1="0" x2="100" y2="100" stroke={color.isLight ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.85)"} stroke-width="1.2" vector-effect="non-scaling-stroke" />
+                                      <line x1="100" y1="0" x2="0" y2="100" stroke={color.isLight ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.85)"} stroke-width="1.2" vector-effect="non-scaling-stroke" />
+                                    </svg>
+                                  )}
+                                </button>
                               ))}
                             </div>
                           </div>
@@ -490,12 +520,13 @@ const formatRichText = (content: string | undefined | null): string => {
                       {uncategorized.map((product) => (
                         <div class="product-card group flex flex-col justify-start w-full" data-collections={getProductCollectionIds(product.id)}>
                           <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
-                            <div class={`product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none ${product.stock <= 0 ? 'saturate-[0.85]' : ''}`} style="scrollbar-width: none; -ms-overflow-style: none;">
-                              {product.images.map((imgUrl, imgIdx) => (
+                            <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                              {getProductImages(product).map((imgUrl, imgIdx) => (
                                 <a
                                   href={`/${lang}/productos/${product.slug}`}
-                                  class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                                  class="product-slide block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
                                   data-index={imgIdx}
+                                  data-image-clean={imgUrl.split('#')[0].split('?')[0].trim()}
                                   style="aspect-ratio: 2/3;"
                                 >
                                   <img
@@ -529,12 +560,7 @@ const formatRichText = (content: string | undefined | null): string => {
                               </svg>
                             </button>
 
-                            {product.stock <= 0 && (
-                              <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                                <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
-                                <line x1="100" y1="0" x2="0" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
-                              </svg>
-                            )}
+
 
                             {product.stock <= 0 ? (
                               <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-neutral-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 border border-white/10">
@@ -562,11 +588,18 @@ const formatRichText = (content: string | undefined | null): string => {
                               {getUniqueColors(product).map((color) => (
                                 <button 
                                   type="button"
-                                  class="color-swatch-btn w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                                  class="color-swatch-btn relative w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none flex items-center justify-center overflow-hidden" 
                                   style={{ backgroundColor: color.hex }}
-                                  title={color.name}
-                                  data-variant-image={color.image}
-                                />
+                                  title={`${color.name}${color.isOutOfStock ? (isEn ? ' (Sold Out)' : ' (Agotado)') : ''}`}
+                                  data-variant-image={color.image ? color.image.split('#')[0].split('?')[0].trim() : ''}
+                                >
+                                  {color.isOutOfStock && (
+                                    <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                                      <line x1="0" y1="0" x2="100" y2="100" stroke={color.isLight ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.85)"} stroke-width="1.2" vector-effect="non-scaling-stroke" />
+                                      <line x1="100" y1="0" x2="0" y2="100" stroke={color.isLight ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.85)"} stroke-width="1.2" vector-effect="non-scaling-stroke" />
+                                    </svg>
+                                  )}
+                                </button>
                               ))}
                             </div>
                           </div>
@@ -582,12 +615,13 @@ const formatRichText = (content: string | undefined | null): string => {
               {products.map((product) => (
                 <div class="product-card group flex flex-col justify-start w-full" data-collections={getProductCollectionIds(product.id)}>
                   <div class="relative aspect-[2/3] w-full bg-slate-50 border border-slate-100 overflow-hidden group/slider" style="aspect-ratio: 2/3; overflow: hidden;">
-                    <div class={`product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none ${product.stock <= 0 ? 'saturate-[0.85]' : ''}`} style="scrollbar-width: none; -ms-overflow-style: none;">
-                      {product.images.map((imgUrl, imgIdx) => (
+                    <div class="product-images-slider flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none" style="scrollbar-width: none; -ms-overflow-style: none;">
+                      {getProductImages(product).map((imgUrl, imgIdx) => (
                         <a
                           href={`/${lang}/productos/${product.slug}`}
-                          class="block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
+                          class="product-slide block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden"
                           data-index={imgIdx}
+                          data-image-clean={imgUrl.split('#')[0].split('?')[0].trim()}
                           style="aspect-ratio: 2/3;"
                         >
                           <img
@@ -621,12 +655,7 @@ const formatRichText = (content: string | undefined | null): string => {
                       </svg>
                     </button>
 
-                    {product.stock <= 0 && (
-                      <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                        <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
-                        <line x1="100" y1="0" x2="0" y2="100" stroke="rgba(15, 23, 42, 0.5)" stroke-width="1" vector-effect="non-scaling-stroke" style="filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.8));" />
-                      </svg>
-                    )}
+
 
                     {product.stock <= 0 ? (
                       <span class="absolute top-2.5 left-2.5 px-2 py-0.5 bg-neutral-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-wider z-10 border border-white/10">
@@ -654,11 +683,18 @@ const formatRichText = (content: string | undefined | null): string => {
                       {getUniqueColors(product).map((color) => (
                         <button 
                           type="button"
-                          class="color-swatch-btn w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none" 
+                          class="color-swatch-btn relative w-4 h-4 md:w-5 md:h-5 rounded-none border border-slate-200/80 shadow-3xs hover:scale-110 active:scale-90 transition-transform cursor-pointer focus:outline-none flex items-center justify-center overflow-hidden" 
                           style={{ backgroundColor: color.hex }}
-                          title={color.name}
-                          data-variant-image={color.image}
-                        />
+                          title={`${color.name}${color.isOutOfStock ? (isEn ? ' (Sold Out)' : ' (Agotado)') : ''}`}
+                          data-variant-image={color.image ? color.image.split('#')[0].split('?')[0].trim() : ''}
+                        >
+                          {color.isOutOfStock && (
+                            <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                              <line x1="0" y1="0" x2="100" y2="100" stroke={color.isLight ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.85)"} stroke-width="1.2" vector-effect="non-scaling-stroke" />
+                              <line x1="100" y1="0" x2="0" y2="100" stroke={color.isLight ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.85)"} stroke-width="1.2" vector-effect="non-scaling-stroke" />
+                            </svg>
+                          )}
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -767,41 +803,63 @@ const formatRichText = (content: string | undefined | null): string => {
           arrowLeft.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            slider.scrollLeft -= slider.clientWidth;
+            slider.scrollBy({ left: -slider.clientWidth, behavior: 'smooth' });
           });
 
           arrowRight.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            slider.scrollLeft += slider.clientWidth;
+            slider.scrollBy({ left: slider.clientWidth, behavior: 'smooth' });
           });
         }
+
+        const cleanUrl = (u: string) => (u || '').split('#')[0].split('?')[0].trim();
 
         swatches.forEach((swatch) => {
           swatch.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
 
-            const imgUrl = swatch.dataset.variantImage;
-            if (!imgUrl || !slider) return;
+            const targetClean = cleanUrl(swatch.dataset.variantImage || '');
+            if (!targetClean || !slider) return;
 
-            // Find if this image URL exists in the slides
-            const slides = Array.from(slider.querySelectorAll('img'));
-            const matchedIndex = slides.findIndex((img) => {
-              const src = img.getAttribute('src') || '';
-              return src === imgUrl || img.src === imgUrl;
+            // Highlight active swatch with ring
+            swatches.forEach((s) => s.classList.remove('ring-1', 'ring-slate-900', 'ring-offset-1'));
+            swatch.classList.add('ring-1', 'ring-slate-900', 'ring-offset-1');
+
+            // Find matching slide by data-image-clean or img src
+            const slides = Array.from(slider.querySelectorAll('.product-slide')) as HTMLElement[];
+            let targetSlide = slides.find((slide) => {
+              const slideClean = cleanUrl(slide.dataset.imageClean || '');
+              const img = slide.querySelector('img');
+              const imgSrc = cleanUrl(img?.getAttribute('src') || img?.src || '');
+              return slideClean === targetClean || imgSrc === targetClean ||
+                     slideClean.endsWith(targetClean) || targetClean.endsWith(slideClean) ||
+                     imgSrc.endsWith(targetClean) || targetClean.endsWith(imgSrc);
             });
 
-            if (matchedIndex !== -1) {
-              slider.scrollLeft = matchedIndex * slider.clientWidth;
-            } else {
-              // If not found in slider, swap the first slide's image source to show it!
-              const firstImg = slides[0];
-              if (firstImg) {
-                firstImg.src = imgUrl;
-                slider.scrollLeft = 0; // Go to first slide
-              }
+            // If not found in current slides, dynamically create and append it so it can slide
+            if (!targetSlide) {
+              const productLink = slides[0]?.getAttribute('href') || '#';
+              const newSlide = document.createElement('a');
+              newSlide.href = productLink;
+              newSlide.className = 'product-slide block w-full h-full shrink-0 snap-start snap-always relative overflow-hidden';
+              newSlide.style.aspectRatio = '2/3';
+              newSlide.dataset.imageClean = targetClean;
+              const newImg = document.createElement('img');
+              newImg.src = swatch.dataset.variantImage || '';
+              newImg.className = 'w-full h-full object-cover group-hover:scale-[1.01] transition-opacity duration-300';
+              newImg.loading = 'lazy';
+              newSlide.appendChild(newImg);
+              slider.appendChild(newSlide);
+              targetSlide = newSlide;
             }
+
+            // Smoothly slide to the target slide!
+            slider.scrollTo({
+              left: targetSlide.offsetLeft,
+              behavior: 'smooth',
+            });
           });
         });
       });
